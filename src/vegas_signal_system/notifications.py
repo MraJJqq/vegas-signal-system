@@ -32,12 +32,10 @@ def _format_message(observations: list[dict[str, Any]], test: bool = False) -> s
 
 def send_ntfy(topic: str, title: str, message: str, base_url: str | None = None,
               timeout: int = 10) -> dict[str, Any]:
-    """Publish a message to ntfy using a secret topic and the JSON publish API."""
+    """Publish a message to ntfy using its JSON API."""
     topic = topic.strip()
-    # Topic names are effectively bearer secrets on public ntfy.sh. Require a long,
-    # URL-safe value to reduce accidental use of guessable public topic names.
     if not re.fullmatch(r"[A-Za-z0-9_-]{24,128}", topic):
-        raise ValueError("NTFY_TOPIC 格式无效：请使用至少24位的随机字母、数字、下划线或连字符")
+        raise ValueError("NTFY_TOPIC 格式无效：请使用至少24位随机字符")
     base = (base_url or os.environ.get("NTFY_BASE_URL", DEFAULT_NTFY_BASE_URL)).strip().rstrip("/")
     parsed = urlparse(base)
     if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
@@ -47,8 +45,7 @@ def send_ntfy(topic: str, title: str, message: str, base_url: str | None = None,
         ensure_ascii=False,
     ).encode("utf-8")
     request = urllib.request.Request(
-        base,
-        data=payload,
+        base, data=payload,
         headers={"Content-Type": "application/json; charset=utf-8"},
         method="POST",
     )
