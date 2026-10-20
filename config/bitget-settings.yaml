@@ -1,0 +1,33 @@
+# Initial Bitget live-market configuration: BTC USDT futures only.
+# Other instruments remain on the existing proxy provider until a matching Bitget
+# market instrument is verified.
+app:
+  name: "Vegas信号系统"
+  timezone: "UTC"
+  output_dir: "output"
+  csv_data_dir: "data/sample"
+market_data:
+  provider: "bitget"
+  history_limit: 200
+symbols:
+  - {id: "BTC", name: "比特币（Bitget USDT 合约）", enabled: true, bitget_symbol: "BTCUSDT", bitget_product_type: "USDT-FUTURES"}
+timeframes:
+  direction_sources: ["4h", "8h"]
+  entry_watch: ["1h", "2h"]
+  required_columns: ["timestamp", "open", "high", "low", "close", "volume"]
+indicators:
+  filter_sma: 2
+  entry_ema: 36
+  direction_ema: 144
+  direction_ema_alternative: 169
+  major_ema: 576
+rules:
+  block_when_direction_conflicts: true
+  require_entry_midline_touch: true
+  entry_midline_ema: 144
+  entry_midline_touch_mode: "high_low_overlap"
+  emit_candidate_observations: true
+notifications:
+  enabled: true
+  provider: "ntfy"
+  topic_env: "NTFY_TOPIC"
