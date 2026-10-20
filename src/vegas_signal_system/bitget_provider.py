@@ -11,53 +11,69 @@ from .indicators import validate_ohlcv
 
 
 class BitgetMarketDataProvider:
-    """Public Bitget USDT-futures candles; no API key required for market data."""
+    """Bitget-only public market candles. No alternate-provider fallback."""
 
-    BASE_URL = "https://api.bitget.com/api/v2/mix/market/candles"
+    FUTURES_URL = "https://api.bitget.com/api/v2/mix/market/candles"
+    SPOT_URL = "https://api.bitget.com/api/v3/market/candles"
 
-    def __init__(self, symbols: list[dict], history_limit: int = 200, timeout: int = 15):
+    def __init__(self, symbols: list[dict], history_limit: int = 2000, timeout: int = 15):
         self.symbols = {
             str(item["id"]): {
-                "symbol": str(item.get("bitget_symbol") or item.get("provider_symbol") or ""),
+                "symbol": str(item.get("bitget_symbol") or ""),
+                "category": str(item.get("bitget_category", "USDT-FUTURES")).upper(),
                 "product_type": str(item.get("bitget_product_type", "USDT-FUTURES")),
             }
             for item in symbols
-            if item.get("bitget_symbol") or item.get("provider_symbol")
+            if item.get("bitget_symbol")
         }
         self.history_limit = max(300, min(int(history_limit), 3000))
         self.timeout = timeout
         self._cache: dict[str, pd.DataFrame] = {}
+
+    def _request(self, url: str, query: dict) -> dict:
+        request = Request(
+            f"{url}?{urlencode(query)}",
+            headers={"User-Agent": "VegasSignalSystem/1.0", "Accept": "application/json"},
+        )
+        with urlopen(request, timeout=self.timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        if payload.get("code") != "00000":
+            raise ValueError(f"Bitget API error: {payload.get('msg', 'unknown error')}")
+        return payload
 
     def _load_hourly(self, symbol_id: str) -> pd.DataFrame:
         if symbol_id in self._cache:
             return self._cache[symbol_id]
         spec = self.symbols.get(symbol_id)
         if not spec or not spec["symbol"]:
-            raise ValueError(f"No Bitget symbol configured for {symbol_id}")
+            raise ValueError(f"No Bitget symbol configured for {symbol_id}; alternate data sources are disabled")
+
         rows = []
         end_time = None
         remaining = self.history_limit
-        # Bitget limits each request to 1,000 candles; paginate backwards to
-        # retain enough history for the 144-period EMA on 8H candles.
         while remaining > 0:
             batch_size = min(1000, remaining)
-            query = {
-                "symbol": spec["symbol"],
-                "productType": spec["product_type"],
-                "granularity": "1H",
-                "limit": str(batch_size),
-            }
-            if end_time is not None:
-                query["endTime"] = str(end_time)
-            params = urlencode(query)
-            request = Request(
-                f"{self.BASE_URL}?{params}",
-                headers={"User-Agent": "VegasSignalSystem/1.0", "Accept": "application/json"},
-            )
-            with urlopen(request, timeout=self.timeout) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            if payload.get("code") != "00000":
-                raise ValueError(f"Bitget API error for {spec['symbol']}: {payload.get('msg', 'unknown error')}")
+            if spec["category"] == "SPOT":
+                query = {
+                    "category": "SPOT",
+                    "symbol": spec["symbol"],
+                    "interval": "1H",
+                    "limit": str(batch_size),
+                }
+                if end_time is not None:
+                    query["endTime"] = str(end_time)
+                payload = self._request(self.SPOT_URL, query)
+            else:
+                query = {
+                    "symbol": spec["symbol"],
+                    "productType": spec["product_type"],
+                    "granularity": "1H",
+                    "limit": str(batch_size),
+                }
+                if end_time is not None:
+                    query["endTime"] = str(end_time)
+                payload = self._request(self.FUTURES_URL, query)
+
             batch = payload.get("data") or []
             if not batch:
                 break
@@ -69,15 +85,19 @@ class BitgetMarketDataProvider:
             end_time = oldest - 1
             if len(batch) < batch_size:
                 break
+
         if not rows:
-            raise ValueError(f"No Bitget hourly candles returned for {spec['symbol']}")
-        frame = pd.DataFrame(rows, columns=[
-            "timestamp", "open", "high", "low", "close", "volume", "quote_volume"
-        ])
-        frame["timestamp"] = pd.to_datetime(pd.to_numeric(frame["timestamp"], errors="coerce"), unit="ms", utc=True)
+            raise ValueError(f"No Bitget hourly candles returned for {spec['symbol']} ({spec['category']})")
+
+        frame = pd.DataFrame(rows)
+        # Bitget candle rows: timestamp, open, high, low, close, volume, quote volume.
+        frame = frame.iloc[:, :7]
+        frame.columns = ["timestamp", "open", "high", "low", "close", "volume", "quote_volume"]
+        frame["timestamp"] = pd.to_datetime(
+            pd.to_numeric(frame["timestamp"], errors="coerce"), unit="ms", utc=True
+        )
         for column in ("open", "high", "low", "close", "volume"):
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
-        # Exclude the currently forming 1H candle to avoid repainting / premature signals.
         current_hour = pd.Timestamp.now(tz="UTC").floor("h")
         frame = frame[frame["timestamp"] + pd.Timedelta(hours=1) <= current_hour]
         frame = frame[["timestamp", "open", "high", "low", "close", "volume"]]
@@ -91,5 +111,5 @@ class BitgetMarketDataProvider:
         hourly = self._load_hourly(symbol_id)
         result = resample_ohlcv(hourly, timeframe)
         if result.empty:
-            raise ValueError(f"No completed {timeframe} candles available for {symbol_id}")
+            raise ValueError(f"No completed {timeframe} Bitget candles available for {symbol_id}")
         return result
