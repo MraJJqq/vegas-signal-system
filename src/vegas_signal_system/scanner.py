@@ -7,6 +7,7 @@ import pandas as pd
 
 from .data import CsvMarketDataProvider, YahooFinanceMarketDataProvider
 from .rules import scan_symbol
+from .notifications import notify_observations
 
 
 def build_provider(config: dict, data_dir: str | Path | None = None):
@@ -48,4 +49,10 @@ def run_scan(config: dict, data_dir: str | Path | None = None, output_dir: str |
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     result.to_csv(output_dir / f"scan_{stamp}.csv", index=False, encoding="utf-8-sig")
     result.to_json(output_dir / f"scan_{stamp}.json", orient="records", force_ascii=False, indent=2)
+    notification_settings = config.get("notifications", {})
+    try:
+        print(notify_observations(result, notification_settings))
+    except Exception as exc:
+        # Notification failures must not erase scan results or hide the scan itself.
+        print(f"微信通知发送失败：{type(exc).__name__}: {exc}")
     return result
