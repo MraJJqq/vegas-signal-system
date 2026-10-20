@@ -12,9 +12,9 @@ Evaluate 1H and 2H independently. On each timeframe, use that timeframe's own EM
    - Close exactly on EMA12: neither side.
 4. A 1H observation uses 1H EMA12/EMA144; a 2H observation uses 2H EMA12/EMA144. Never mix timeframes.
 
-The observation phase currently has no reset/expiry condition. This is intentionally left explicit for a later rule decision, rather than inventing an expiry. Because OHLC candles do not contain tick-by-tick paths, the high/low spanning EMA144 is a data-level proxy for contact, not proof of the exact intrabar path.
+The observation phase has no reset/expiry condition: once any available completed candle touches EMA144, observation remains active for all later candles in the available series. On every completed 1H/2H candle, if the higher-timeframe direction gate permits the side and close is above EMA12 (long) or below EMA12 (short), emit that direction's signal. Because OHLC candles do not contain tick-by-tick paths, the high/low spanning EMA144 is a data-level proxy for contact, not proof of the exact intrabar path.
 
-This module marks candidate candles; it does not itself simulate fills, stop loss, or exits, and does not claim a backtest performance result.
+The live scanner pushes only confirmed EMA12 close-side signals through ntfy. This module marks candidate candles; it does not itself simulate fills, stop loss, or exits, and does not claim a backtest performance result.
 
 ## No-lookahead requirements
 
