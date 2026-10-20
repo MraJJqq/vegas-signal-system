@@ -9,26 +9,26 @@ market_data:
   provider: "bitget"
   history_limit: 2000
 symbols:
-  - {id: "SPY", name: "标普500 ETF代币", enabled: true, bitget_symbol: "rSPYUSDT", bitget_category: "SPOT"}
-  - {id: "QQQ", name: "纳斯达克100 ETF代币", enabled: true, bitget_symbol: "rQQQUSDT", bitget_category: "SPOT"}
-  - {id: "SNDK", name: "闪迪股票代币", enabled: true, bitget_symbol: "rSNDKUSDT", bitget_category: "SPOT"}
-  - {id: "NVDA", name: "英伟达股票代币", enabled: true, bitget_symbol: "rNVDAUSDT", bitget_category: "SPOT"}
-  - {id: "AMD", name: "AMD股票代币", enabled: true, bitget_symbol: "rAMDUSDT", bitget_category: "SPOT"}
-  - {id: "AVGO", name: "博通股票代币", enabled: true, bitget_symbol: "rAVGOUSDT", bitget_category: "SPOT"}
-  - {id: "MU", name: "美光股票代币", enabled: true, bitget_symbol: "rMUUSDT", bitget_category: "SPOT"}
-  - {id: "TSM", name: "台积电股票代币", enabled: true, bitget_symbol: "rTSMUSDT", bitget_category: "SPOT"}
-  - {id: "ARM", name: "Arm股票代币", enabled: true, bitget_symbol: "rARMUSDT", bitget_category: "SPOT"}
-  - {id: "MSFT", name: "微软股票代币", enabled: true, bitget_symbol: "rMSFTUSDT", bitget_category: "SPOT"}
-  - {id: "AAPL", name: "苹果股票代币", enabled: true, bitget_symbol: "rAAPLUSDT", bitget_category: "SPOT"}
-  - {id: "AMZN", name: "亚马逊股票代币", enabled: true, bitget_symbol: "rAMZNUSDT", bitget_category: "SPOT"}
-  - {id: "META", name: "Meta股票代币", enabled: true, bitget_symbol: "rMETAUSDT", bitget_category: "SPOT"}
-  - {id: "GOOGL", name: "谷歌股票代币", enabled: true, bitget_symbol: "rGOOGLUSDT", bitget_category: "SPOT"}
-  - {id: "TSLA", name: "特斯拉股票代币", enabled: true, bitget_symbol: "rTSLAUSDT", bitget_category: "SPOT"}
-  - {id: "PLTR", name: "Palantir股票代币", enabled: true, bitget_symbol: "rPLTRUSDT", bitget_category: "SPOT"}
-  - {id: "ORCL", name: "甲骨文股票代币", enabled: true, bitget_symbol: "rORCLUSDT", bitget_category: "SPOT"}
-  - {id: "COIN", name: "Coinbase股票代币", enabled: true, bitget_symbol: "rCOINUSDT", bitget_category: "SPOT"}
-  - {id: "MSTR", name: "Strategy股票代币", enabled: true, bitget_symbol: "rMSTRUSDT", bitget_category: "SPOT"}
-  - {id: "HOOD", name: "Robinhood股票代币", enabled: true, bitget_symbol: "rHOODUSDT", bitget_category: "SPOT"}
+  - {id: "SPY", name: "标普500 ETF代币", enabled: true, bitget_stock_code: "SPY"}
+  - {id: "QQQ", name: "纳斯达克100 ETF代币", enabled: true, bitget_stock_code: "QQQ"}
+  - {id: "SNDK", name: "闪迪股票代币", enabled: true, bitget_stock_code: "SNDK"}
+  - {id: "NVDA", name: "英伟达股票代币", enabled: true, bitget_stock_code: "NVDA"}
+  - {id: "AMD", name: "AMD股票代币", enabled: true, bitget_stock_code: "AMD"}
+  - {id: "AVGO", name: "博通股票代币", enabled: true, bitget_stock_code: "AVGO"}
+  - {id: "MU", name: "美光股票代币", enabled: true, bitget_stock_code: "MU"}
+  - {id: "TSM", name: "台积电股票代币", enabled: true, bitget_stock_code: "TSM"}
+  - {id: "ARM", name: "Arm股票代币", enabled: true, bitget_stock_code: "ARM"}
+  - {id: "MSFT", name: "微软股票代币", enabled: true, bitget_stock_code: "MSFT"}
+  - {id: "AAPL", name: "苹果股票代币", enabled: true, bitget_stock_code: "AAPL"}
+  - {id: "AMZN", name: "亚马逊股票代币", enabled: true, bitget_stock_code: "AMZN"}
+  - {id: "META", name: "Meta股票代币", enabled: true, bitget_stock_code: "META"}
+  - {id: "GOOGL", name: "谷歌股票代币", enabled: true, bitget_stock_code: "GOOGL"}
+  - {id: "TSLA", name: "特斯拉股票代币", enabled: true, bitget_stock_code: "TSLA"}
+  - {id: "PLTR", name: "Palantir股票代币", enabled: true, bitget_stock_code: "PLTR"}
+  - {id: "ORCL", name: "甲骨文股票代币", enabled: true, bitget_stock_code: "ORCL"}
+  - {id: "COIN", name: "Coinbase股票代币", enabled: true, bitget_stock_code: "COIN"}
+  - {id: "MSTR", name: "Strategy股票代币", enabled: true, bitget_stock_code: "MSTR"}
+  - {id: "HOOD", name: "Robinhood股票代币", enabled: true, bitget_stock_code: "HOOD"}
 timeframes:
   direction_sources: ["4h", "8h"]
   entry_watch: ["1h", "2h"]
