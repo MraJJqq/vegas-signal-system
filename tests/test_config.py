@@ -11,7 +11,7 @@ ROOT = Path(__file__).parents[1]
 def test_load_default_config():
     config = load_config(ROOT / "config" / "settings.yaml")
     enabled = [item["id"] for item in config["symbols"] if item["enabled"]]
-    assert enabled == ["GOLD", "CRUDE_OIL", "BTC", "SNDK", "HYPE"]
+    assert enabled == ["GOLD", "CRUDE_OIL", "BTC", "HYPE", "SNDK"]
     hype = next(item for item in config["symbols"] if item["id"] == "HYPE")
     assert hype["bitget_symbol"] == "HYPEUSDT"
     assert hype["bitget_category"] == "USDT-FUTURES"
