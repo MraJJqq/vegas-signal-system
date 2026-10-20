@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+
+from .data import CsvMarketDataProvider
+from .rules import scan_symbol
+
+
+def run_scan(config: dict, data_dir: str | Path | None = None, output_dir: str | Path | None = None) -> pd.DataFrame:
+    data_dir = data_dir or config.get("app", {}).get("csv_data_dir", "data/sample")
+    output_dir = Path(output_dir or config.get("app", {}).get("output_dir", "output"))
+    provider = CsvMarketDataProvider(data_dir)
+    observations = []
+    for symbol in config.get("symbols", []):
+        if not symbol.get("enabled", False):
+            continue
+        try:
+            observations.append(scan_symbol(symbol, provider, config).to_dict())
+        except Exception as exc:  # isolate one symbol's failure from the rest of the scan
+            observations.append({
+                "symbol_id": str(symbol.get("id", "UNKNOWN")),
+                "symbol_name": str(symbol.get("name", "Unknown")),
+                "timestamp": "",
+                "status": "SCAN_ERROR",
+                "direction_4h": "unavailable",
+                "direction_8h": "unavailable",
+                "entry_timeframe": None,
+                "close": None,
+                "message": f"扫描失败：{type(exc).__name__}: {exc}",
+            })
+    result = pd.DataFrame(observations)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    result.to_csv(output_dir / f"scan_{stamp}.csv", index=False, encoding="utf-8-sig")
+    result.to_json(output_dir / f"scan_{stamp}.json", orient="records", force_ascii=False, indent=2)
+    return result
