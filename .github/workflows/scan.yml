@@ -42,7 +42,7 @@ jobs:
           if [[ "${{ github.event.inputs.test_notification }}" == "true" ]]; then
             vegas-scan --config config/settings.yaml --test-notification | tee scan-log.txt
           else
-            vegas-scan --config config/settings.yaml --provider yfinance --output-dir output | tee scan-log.txt
+            vegas-scan --config config/bitget-settings.yaml --provider bitget --output-dir output | tee scan-log.txt
           fi
           echo "## Vegas Signal Scan" >> "$GITHUB_STEP_SUMMARY"
           echo 'Observation-only; no orders are placed.' >> "$GITHUB_STEP_SUMMARY"
