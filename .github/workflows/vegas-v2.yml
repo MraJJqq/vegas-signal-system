@@ -1,0 +1,25 @@
+name: Vegas Signal V2 Tests
+
+on:
+  push:
+    branches: ["vegas-signal-v2-clean"]
+    paths:
+      - "v2/**"
+      - ".github/workflows/vegas-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout V2 branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run isolated V2 rule tests
+        run: python -m unittest discover -s v2 -p "test_*.py" -v
