@@ -1,6 +1,5 @@
 # Initial Bitget live-market configuration: BTC USDT futures only.
-# Other instruments remain on the existing proxy provider until a matching Bitget
-# market instrument is verified.
+# Every live market scan must use Bitget. Unsupported instruments are reported unavailable; no fallback source.
 app:
   name: "Vegas信号系统"
   timezone: "UTC"
