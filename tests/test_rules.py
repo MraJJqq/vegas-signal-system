@@ -14,8 +14,8 @@ def make_frame(n=220, direction="up", touch_history=True):
         with_indicators = add_indicators(frame, config())
         idx = 170
         ema = float(with_indicators.loc[idx, "ema_144"])
-        frame.loc[idx, "low"] = ema - 0.1
-        frame.loc[idx, "high"] = ema + 0.1
+        frame.loc[idx, "low"] = min(float(frame.loc[idx, "low"]), ema) - 0.1
+        frame.loc[idx, "high"] = max(float(frame.loc[idx, "high"]), ema) + 0.1
     return frame
 
 
