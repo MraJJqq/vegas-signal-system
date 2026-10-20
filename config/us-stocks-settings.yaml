@@ -1,5 +1,5 @@
-# Bitget-only stock-token scan. A symbol is scanned only against the configured Bitget market.
-# If Bitget does not list a symbol or return candles, the result is DATA_UNAVAILABLE/SCAN_ERROR.
+# Bitget-only USDT futures scan. All stock/ETF symbols are configured as USDT-margined contracts.
+# If Bitget does not list a contract or return candles, the result is DATA_UNAVAILABLE; no spot-token or alternate-source fallback.
 app:
   name: "Vegas美股扫描（Bitget数据源）"
   timezone: "UTC"
@@ -9,26 +9,26 @@ market_data:
   provider: "bitget"
   history_limit: 2000
 symbols:
-  - {id: "SPY", name: "标普500 ETF代币", enabled: true, bitget_stock_code: "SPY"}
-  - {id: "QQQ", name: "纳斯达克100 ETF代币", enabled: true, bitget_stock_code: "QQQ"}
-  - {id: "SNDK", name: "闪迪股票代币", enabled: true, bitget_stock_code: "SNDK"}
-  - {id: "NVDA", name: "英伟达股票代币", enabled: true, bitget_stock_code: "NVDA"}
-  - {id: "AMD", name: "AMD股票代币", enabled: true, bitget_stock_code: "AMD"}
-  - {id: "AVGO", name: "博通股票代币", enabled: true, bitget_stock_code: "AVGO"}
-  - {id: "MU", name: "美光股票代币", enabled: true, bitget_stock_code: "MU"}
-  - {id: "TSM", name: "台积电股票代币", enabled: true, bitget_stock_code: "TSM"}
-  - {id: "ARM", name: "Arm股票代币", enabled: true, bitget_stock_code: "ARM"}
-  - {id: "MSFT", name: "微软股票代币", enabled: true, bitget_stock_code: "MSFT"}
-  - {id: "AAPL", name: "苹果股票代币", enabled: true, bitget_stock_code: "AAPL"}
-  - {id: "AMZN", name: "亚马逊股票代币", enabled: true, bitget_stock_code: "AMZN"}
-  - {id: "META", name: "Meta股票代币", enabled: true, bitget_stock_code: "META"}
-  - {id: "GOOGL", name: "谷歌股票代币", enabled: true, bitget_stock_code: "GOOGL"}
-  - {id: "TSLA", name: "特斯拉股票代币", enabled: true, bitget_stock_code: "TSLA"}
-  - {id: "PLTR", name: "Palantir股票代币", enabled: true, bitget_stock_code: "PLTR"}
-  - {id: "ORCL", name: "甲骨文股票代币", enabled: true, bitget_stock_code: "ORCL"}
-  - {id: "COIN", name: "Coinbase股票代币", enabled: true, bitget_stock_code: "COIN"}
-  - {id: "MSTR", name: "Strategy股票代币", enabled: true, bitget_stock_code: "MSTR"}
-  - {id: "HOOD", name: "Robinhood股票代币", enabled: true, bitget_stock_code: "HOOD"}
+  - {id: "SPY", name: "标普500 ETF合约候选", enabled: true, bitget_symbol: "SPYUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "QQQ", name: "纳斯达克100 ETF合约候选", enabled: true, bitget_symbol: "QQQUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "SNDK", name: "闪迪USDT合约候选", enabled: true, bitget_symbol: "SNDKUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "NVDA", name: "英伟达USDT合约候选", enabled: true, bitget_symbol: "NVDAUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "AMD", name: "AMD USDT合约候选", enabled: true, bitget_symbol: "AMDUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "AVGO", name: "博通USDT合约候选", enabled: true, bitget_symbol: "AVGOUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "MU", name: "美光USDT合约候选", enabled: true, bitget_symbol: "MUUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "TSM", name: "台积电USDT合约候选", enabled: true, bitget_symbol: "TSMUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "ARM", name: "Arm USDT合约候选", enabled: true, bitget_symbol: "ARMUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "MSFT", name: "微软USDT合约候选", enabled: true, bitget_symbol: "MSFTUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "AAPL", name: "苹果USDT合约候选", enabled: true, bitget_symbol: "AAPLUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "AMZN", name: "亚马逊USDT合约候选", enabled: true, bitget_symbol: "AMZNUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "META", name: "Meta USDT合约候选", enabled: true, bitget_symbol: "METAUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "GOOGL", name: "谷歌USDT合约候选", enabled: true, bitget_symbol: "GOOGLUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "TSLA", name: "特斯拉USDT合约候选", enabled: true, bitget_symbol: "TSLAUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "PLTR", name: "Palantir USDT合约候选", enabled: true, bitget_symbol: "PLTRUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "ORCL", name: "甲骨文USDT合约候选", enabled: true, bitget_symbol: "ORCLUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "COIN", name: "Coinbase USDT合约候选", enabled: true, bitget_symbol: "COINUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "MSTR", name: "Strategy USDT合约候选", enabled: true, bitget_symbol: "MSTRUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "HOOD", name: "Robinhood USDT合约候选", enabled: true, bitget_symbol: "HOODUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
 timeframes:
   direction_sources: ["4h", "8h"]
   entry_watch: ["1h", "2h"]
