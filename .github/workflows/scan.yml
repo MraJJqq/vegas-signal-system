@@ -70,6 +70,17 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TEST_ONLY: ${{ github.event.inputs.test_notification }}
         run: |
+          python -c 'import json,os,urllib.request; t=os.environ.get("NTFY_TOPIC","").strip(); b=os.environ.get("NTFY_BASE_URL","https://ntfy.sh").rstrip("/"); s=os.environ.get("JOB_STATUS","unknown"); u=os.environ.get("RUN_URL",""); m="通知测试" if os.environ.get("TEST_ONLY","").lower()=="true" else "行情扫描"; p=json.dumps({"topic":t,"title":"Vegas合约扫描完成" if s=="success" else "Vegas合约扫描异常","message":f"任务类型：{m}\n任务状态：{s}\n仅观察信号，不自动下单。\n运行详情：{u}"},ensure_ascii=False).encode(); r=urllib.request.Request(b,data=p,headers={"Content-Type":"application/json; charset=utf-8"},method="POST"); urllib.request.urlopen(r,timeout=15).read() if t else print("NTFY_TOPIC missing; notification skipped")'
+
+      - name: Notify scan completion via ntfy
+        if: always()
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_BASE_URL: ${{ vars.NTFY_BASE_URL || 'https://ntfy.sh' }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TEST_ONLY: ${{ github.event.inputs.test_notification }}
+        run: |
           python - <<'PY'
           import json, os, urllib.request
           topic = os.environ.get("NTFY_TOPIC", "").strip()
