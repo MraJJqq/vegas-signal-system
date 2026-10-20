@@ -2,6 +2,12 @@ name: Scheduled Vegas Scan
 
 on:
   workflow_dispatch:
+    inputs:
+      test_notification:
+        description: "Send a test notification only (does not scan markets)"
+        required: false
+        default: false
+        type: boolean
   push:
     paths:
       - ".github/workflows/scan.yml"
@@ -14,7 +20,7 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -27,15 +33,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[market-data]"
-      - name: Run hourly market scan
+      - name: Run Vegas scan or notification test
+        env:
+          WECHAT_WORK_WEBHOOK: ${{ secrets.WECHAT_WORK_WEBHOOK }}
         run: |
-          if [ "${{ inputs.test_notification }}" = "true" ]; then\n            vegas-scan --config config/settings.yaml --test-notification | tee scan-log.txt\n          else\n            vegas-scan --config config/settings.yaml --provider yfinance --output-dir output | tee scan-log.txt\n          fi
+          if [[ "${{ github.event.inputs.test_notification }}" == "true" ]]; then
+            vegas-scan --config config/settings.yaml --test-notification | tee scan-log.txt
+          else
+            vegas-scan --config config/settings.yaml --provider yfinance --output-dir output | tee scan-log.txt
+          fi
           echo "## Vegas Signal Scan" >> "$GITHUB_STEP_SUMMARY"
-          echo 'This scheduled run is an observation-only scan. It does not place orders.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Yahoo Finance symbols are data proxies and may differ from the broker chart.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Observation-only; no orders are placed.' >> "$GITHUB_STEP_SUMMARY"
           cat scan-log.txt >> "$GITHUB_STEP_SUMMARY"
       - name: Upload scan results
-        if: always()
+        if: always() && github.event.inputs.test_notification != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: vegas-scan-${{ github.run_id }}
