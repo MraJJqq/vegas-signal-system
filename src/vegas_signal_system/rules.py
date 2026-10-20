@@ -13,6 +13,18 @@ def _last_close(frame: pd.DataFrame) -> float | None:
     return None if pd.isna(value) else float(value)
 
 
+def _last_candle_touches_ema(frame: pd.DataFrame, period: int = 144) -> bool:
+    """Return whether the latest completed candle overlaps the selected EMA."""
+    key = f"ema_{period}"
+    if frame.empty or key not in frame.columns:
+        return False
+    latest = frame.iloc[-1]
+    ema = latest.get(key)
+    if pd.isna(ema):
+        return False
+    return float(latest["low"]) <= float(ema) <= float(latest["high"])
+
+
 def _observation_started(frame: pd.DataFrame, period: int = 144) -> bool:
     """Observation stays active once any available completed candle touches EMA144."""
     key = f"ema_{period}"
