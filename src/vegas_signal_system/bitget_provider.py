@@ -26,7 +26,7 @@ class BitgetMarketDataProvider:
                 "product_type": str(item.get("bitget_product_type", "USDT-FUTURES")),
             }
             for item in symbols
-            if item.get("bitget_symbol")
+            if item.get("bitget_symbol") or item.get("bitget_stock_code")
         }
         self.history_limit = max(300, min(int(history_limit), 3000))
         self.timeout = timeout
