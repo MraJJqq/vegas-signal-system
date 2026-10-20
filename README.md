@@ -1,68 +1,63 @@
 # Vegas 信号系统
 
-独立的 Vegas 交易信号扫描项目，观察品种包括黄金、原油、BTC 和一组主要美股（半导体、科技平台、网络安全、券商/交易平台及能源龙头）。**本项目只生成观察结果，不自动下单。**
+独立的 Vegas 交易信号扫描项目。当前扫描池包括黄金、原油、BTC、SPY/QQQ，以及半导体、科技平台、加密相关和部分能源/工业龙头美股。**本项目只生成观察结果，不自动下单。**
 
-## 当前状态
+## 当前规则与范围
 
-- YAML 配置：品种、时间周期和指标参数可配置
-- OHLCV 数据校验、指标计算和基础方向分类
-- 4H/8H 方向冲突过滤：方向冲突时空仓观察
-- 1H/2H EMA144 中锋触碰检测：最新完整 K 线的最高价/最低价覆盖 EMA144 即记录触碰
-- 触碰后输出 WATCH_ENTRY_CONFIRMATION 观察状态；不会把触碰本身当成正式进场信号
-- CSV 行情输入、CSV/JSON 扫描结果输出
-- 可选 Yahoo Finance 小时行情适配器，并重采样为 1H/2H/4H/8H 完整 K 线
-- GitHub Actions 每小时定时扫描工作流（结果以构件保存 14 天）\n- 企业微信（WeCom）群机器人 Markdown 推送：只推送出现 EMA144 中锋触碰的观察候选；没有候选则不打扰\n- 手动测试推送：在 GitHub Actions → Scheduled Vegas Scan → Run workflow 中勾选 `test_notification`
-- 自动单元测试和 CI 工作流
+- 4H/8H方向冲突：按规则空仓观察
+- 方向一致后观察1H/2H EMA144中锋触碰
+- 最新完整K线的最高价/最低价覆盖EMA144才算触碰
+- 触碰只输出 `WATCH_ENTRY_CONFIRMATION`，不代表正式进场信号
+- Yahoo Finance小时行情代理重采样为1H/2H/4H/8H完整K线
+- 每小时自动扫描；结果CSV/JSON作为GitHub Actions构件保留14天
+- 可选企业微信群机器人Markdown推送；仅推送EMA144触碰观察候选
+- 单一品种数据失败不会阻断其他品种扫描
+- 不自动下单、不自动管理仓位
 
-**重要限制：** Yahoo Finance 属于行情代理源，不保证与 Bitget 或你的经纪商图表完全一致，也可能遇到数据缺失、延迟或服务限流。方向分类仍是开发基线。EMA144 触碰按“最高价 >= EMA144 且最低价 <= EMA144”实现，但触碰后的正式信号确认条件尚未完成，因此 WATCH_ENTRY_CONFIRMATION 仍只是观察状态，不是正式 Vegas 进场信号。缺少数据或条件不完整时，不会产生正式进场信号。
+## 美股扫描池
 
-## 目录
+包含SPY、QQQ，以及NVDA、AMD、AVGO、MU、SNDK、TSM、ARM、MSFT、AAPL、AMZN、META、GOOGL、TSLA、PLTR、ORCL、NFLX、JPM、XOM、LLY、COST、COIN、MSTR、HOOD、CRWD、ANET、GE、CAT等。可在 `config/settings.yaml` 中启用/禁用或增删品种。
 
-- config/settings.yaml：项目配置
-- src/vegas_signal_system/：核心代码
-- data/sample/：本地 CSV 数据格式说明
-- tests/：单元测试
-- .github/workflows/tests.yml：自动测试
-- .github/workflows/scan.yml：每小时自动扫描；也可在 GitHub Actions 页面手动运行
+## 启用企业微信推送
 
-## 环境与安装
+推送使用**企业微信群机器人**Webhook，不是普通个人微信账号的直接私聊接口。
 
-建议使用 Python 3.10 或更高版本。
+1. 在企业微信群中添加群机器人，复制Webhook地址。
+2. 打开GitHub仓库的 **Settings → Secrets and variables → Actions → New repository secret**。
+3. Secret名称填写 `WECHAT_WORK_WEBHOOK`，值填写完整Webhook地址。不要把Webhook写进代码、提交记录或聊天消息。
+4. 打开 **Actions → Scheduled Vegas Scan → Run workflow**。
+5. 首次测试时，将 `test_notification` 设为 `true` 后运行。此模式只发送测试消息，不扫描市场。
+6. 测试成功后，后续每小时扫描会在存在 `WATCH_ENTRY_CONFIRMATION` 候选时推送摘要；没有候选则不推送，避免刷屏。
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m pip install -e .
-pytest
-```
+如果仓库Secret未配置，扫描仍可运行，只会在日志中说明通知未发送。上游行情缺失、Yahoo Finance限流或GitHub Actions配额可能影响扫描，不保证每次都成功。
 
-## 行情 CSV 格式
+## 行情源限制
 
-每个品种、每个周期一个文件，文件名格式为 {SYMBOL_ID}_{timeframe}.csv。例如 GOLD_4h.csv、GOLD_8h.csv、GOLD_1h.csv、GOLD_2h.csv。
+Yahoo Finance是行情代理源，代码不保证与Bitget或其他经纪商图表完全一致；个别美股可能因上游数据限制而返回空数据。股票池扩展代表扩大观察范围，不代表每只股票都适合交易。方向分类和触碰后的正式确认规则仍需持续做历史数据与无未来数据审计。
 
-必须包含列：timestamp,open,high,low,close,volume。时间戳应可解析，价格与成交量必须为数字。数据源的品种代码映射需要按实际供应商核对。
+## 运行方式
 
-## 运行扫描
-
-```bash
-vegas-scan --config config/settings.yaml
-```
-
-可选：用 Yahoo Finance 代理行情运行单次扫描（需要安装可选依赖）：
+安装Python 3.10或更高版本：
 
 ```bash
 python -m pip install -e ".[market-data]"
+python -m pip install -e ".[dev]"
+pytest -q
+```
+
+单次扫描：
+
+```bash
 vegas-scan --config config/settings.yaml --provider yfinance --output-dir output
 ```
 
-GitHub Actions 已配置每小时自动扫描。打开仓库的 Actions → Scheduled Vegas Scan 可查看运行结果；每次运行会保存 CSV/JSON 结果和日志为构件，保留 14 天。定时任务受 GitHub Actions 配额、上游行情源可用性和限流影响，不保证每次都成功。该任务仅在配置 `WECHAT_WORK_WEBHOOK` GitHub Actions Secret 后发送企业微信群机器人通知；普通个人微信号不能直接作为 webhook 接收端。通知仅提示 EMA144 触碰观察候选，不是正式进场信号。系统不会自动下单。
+手动测试推送（需先设置环境变量）：
 
-## 后续开发顺序
+```bash
+export WECHAT_WORK_WEBHOOK="你的企业微信群机器人Webhook"
+vegas-scan --config config/settings.yaml --test-notification
+```
 
-1. 核对真实行情数据源及品种代码
-2. 固化 EMA144 触碰后的完整信号确认规则
-3. 补齐历史数据测试、无未来数据审计和结果复核
-4. 在 GitHub 仓库 Settings → Secrets and variables → Actions → New repository secret 添加 `WECHAT_WORK_WEBHOOK`（企业微信群机器人 Webhook URL），再通过 Actions 手动勾选 `test_notification` 测试推送
+CSV数据格式为 `{SYMBOL_ID}_{timeframe}.csv`，必须包含 `timestamp,open,high,low,close,volume`。
 
-任何信号逻辑的更改都应经过测试与历史数据验证；本项目不执行交易委托。
+任何信号逻辑更改都应经过自动测试与历史数据验证；本项目不执行交易委托。
