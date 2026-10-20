@@ -1,7 +1,10 @@
+import sys
 import unittest
+from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from signal_engine import generate_signals
 
 
@@ -19,8 +22,7 @@ class SignalEngineTests(unittest.TestCase):
     def test_empty_data_returns_no_signals(self):
         empty4 = pd.DataFrame(columns=["open", "high", "low", "close"],
                               index=pd.DatetimeIndex([], tz="UTC"))
-        empty8 = empty4.copy()
-        self.assertEqual(generate_signals(empty4, empty8), [])
+        self.assertEqual(generate_signals(empty4, empty4.copy()), [])
 
     def test_rejects_duplicate_timestamps(self):
         frame = self.frame([10, 11, 12], "4h")
@@ -33,8 +35,7 @@ class SignalEngineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             generate_signals(frame, self.frame([10, 11, 12], "8h"))
 
-    def test_no_lookahead_alignment_is_backward(self):
-        # Smoke test with enough history for the configured EMA windows.
+    def test_engine_runs_after_indicator_warmup(self):
         closes4 = [100 + i * 0.1 for i in range(700)]
         closes8 = [100 + i * 0.2 for i in range(350)]
         result = generate_signals(self.frame(closes4, "4h"), self.frame(closes8, "8h"))
