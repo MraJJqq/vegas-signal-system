@@ -33,7 +33,7 @@ jobs:
       - name: Install scanner and optional market data provider
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[market-data]"
+          python -m pip install -e "."
       - name: Run Vegas scan or notification test
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
