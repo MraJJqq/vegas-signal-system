@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .data import CsvMarketDataProvider, YahooFinanceMarketDataProvider
+from .data import CsvMarketDataProvider
 from .bitget_provider import BitgetMarketDataProvider
 from .rules import scan_symbol
 from .notifications import notify_observations
@@ -25,11 +25,6 @@ def build_provider(config: dict, data_dir: str | Path | None = None):
         return BitgetMarketDataProvider(
             symbols,
             history_limit=int(settings.get("history_limit", 200)),
-        )
-    if provider_name == "yfinance":
-        return YahooFinanceMarketDataProvider(
-            config.get("symbols", []),
-            history_period=str(settings.get("history_period", "60d")),
         )
     raise ValueError(f"Unsupported market data provider: {provider_name}")
 
