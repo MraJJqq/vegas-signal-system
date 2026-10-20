@@ -1,5 +1,6 @@
 name: Scheduled Vegas Scan
 
+# A push to this workflow file can be used to trigger a real-market smoke test.
 on:
   workflow_dispatch:
     inputs:
