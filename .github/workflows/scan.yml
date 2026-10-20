@@ -35,7 +35,7 @@ jobs:
           python -m pip install -e ".[market-data]"
       - name: Run Vegas scan or notification test
         env:
-          WECHAT_WORK_WEBHOOK: ${{ secrets.WECHAT_WORK_WEBHOOK }}
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
         run: |
           if [[ "${{ github.event.inputs.test_notification }}" == "true" ]]; then
             vegas-scan --config config/settings.yaml --test-notification | tee scan-log.txt
