@@ -16,7 +16,7 @@ def test_no_candidates_does_not_send(monkeypatch):
             [{"symbol_id": "BTC", "status": "WATCH_ENTRY_CONDITIONS"}],
             {"enabled": True, "provider": "ntfy"},
         )
-        assert "没有 EMA144 触碰观察候选" in result
+        assert "没有符合过滤线条件的正式信号" in result
         send.assert_not_called()
 
 
@@ -24,13 +24,13 @@ def test_candidate_sends_notification(monkeypatch):
     monkeypatch.setenv("NTFY_TOPIC", "a" * 32)
     candidate = {
         "symbol_id": "BTC", "symbol_name": "比特币",
-        "status": "WATCH_ENTRY_CONFIRMATION", "direction_4h": "up",
+        "status": "ENTRY_SIGNAL_LONG", "direction_4h": "up",
         "direction_8h": "up", "entry_timeframe": "1h", "close": 65000.0,
         "timestamp": "2026-10-20T10:00:00+00:00", "message": "触碰EMA144",
     }
     with patch("vegas_signal_system.notifications.send_ntfy") as send:
         result = notify_observations([candidate], {"enabled": True, "provider": "ntfy"})
-        assert "1 条" in result
+        assert "1 条过滤线信号" in result
         assert "比特币" in send.call_args.args[2]
 
 
