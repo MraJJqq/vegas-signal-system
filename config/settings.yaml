@@ -9,9 +9,9 @@ market_data:
   history_limit: 2000
 symbols:
   - {id: "GOLD", name: "黄金（Bitget黄金代币候选）", enabled: true, bitget_symbol: "PAXGUSDT", bitget_category: "SPOT"}
-  - {id: "CRUDE_OIL", name: "原油（Bitget品种候选）", enabled: true, bitget_symbol: "OILUSDT", bitget_category: "SPOT"}
+  - {id: "CRUDE_OIL", name: "原油（Bitget CLUSDT U本位永续合约）", enabled: true, bitget_symbol: "CLUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
   - {id: "BTC", name: "比特币（Bitget USDT合约）", enabled: true, bitget_symbol: "BTCUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
-  - {id: "SNDK", name: "闪迪股票代币（Bitget候选）", enabled: true, bitget_symbol: "rSNDKUSDT", bitget_category: "SPOT"}
+  - {id: "SNDK", name: "闪迪（USDT合约候选）", enabled: true, bitget_symbol: "SNDKUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
 timeframes:
   direction_sources: ["4h", "8h"]
   entry_watch: ["1h", "2h"]
