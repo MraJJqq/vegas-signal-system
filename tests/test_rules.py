@@ -24,7 +24,7 @@ class MemoryProvider:
 
 def config():
     return {
-        "timeframes": {"direction_sources": ["4h", "8h"], "entry_watch": ["1h", "2h"]},
+        "timeframes": {"direction_sources": ["4h"], "entry_watch": ["1h", "2h"]},
         "indicators": {"filter_sma": 2, "entry_ema": 36, "direction_ema": 144,
                        "direction_ema_alternative": 169, "major_ema": 576},
         "rules": {"require_entry_midline_touch": True, "entry_midline_ema": 144,
