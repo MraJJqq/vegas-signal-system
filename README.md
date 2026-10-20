@@ -1,22 +1,18 @@
 # Vegas 信号系统
 
-独立的 Vegas 交易信号扫描项目。当前扫描池包括黄金、原油、BTC、SPY/QQQ，以及半导体、科技平台、加密相关和部分能源/工业龙头美股。**本项目只生成观察结果，不自动下单。**
+独立的 Vegas 交易信号扫描项目。当前扫描池由 `config/settings.yaml` 中启用的品种决定；默认观察黄金、原油、BTC和SNDK。**本项目只生成观察结果，不自动下单。**
 
 ## 当前规则与范围
 
-- 4H/8H方向冲突：按规则空仓观察
-- 方向一致后观察1H/2H EMA144中锋触碰
+- 当前临时采用4H单周期方向判断（按用户批准的方案C）；暂不等待8H方向数据
+- 4H方向明确后观察1H/2H EMA144中锋触碰
 - 最新完整K线的最高价/最低价覆盖EMA144才算触碰
 - 触碰只输出 `WATCH_ENTRY_CONFIRMATION`，不代表正式进场信号
-- Yahoo Finance小时行情代理重采样为1H/2H/4H/8H完整K线
+- 当前Bitget行情由1H数据重采样生成4H及1H/2H观察K线；方向逻辑仅读取4H
 - 每小时自动扫描；结果CSV/JSON作为GitHub Actions构件保留14天
 - ntfy 通知推送到 iPad/iPhone；仅推送EMA144触碰观察候选
 - 单一品种数据失败不会阻断其他品种扫描
 - 不自动下单、不自动管理仓位
-
-## 美股扫描池
-
-包含SPY、QQQ，以及NVDA、AMD、AVGO、MU、SNDK、TSM、ARM、MSFT、AAPL、AMZN、META、GOOGL、TSLA、PLTR、ORCL、NFLX、JPM、XOM、LLY、COST、COIN、MSTR、HOOD、CRWD、ANET、GE、CAT等。可在 `config/settings.yaml` 中启用/禁用或增删品种。
 
 ## 设置 ntfy 推送到 iPad
 
