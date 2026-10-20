@@ -35,7 +35,8 @@ jobs:
           python -m pip install -e ".[market-data]"
       - name: Run Vegas scan or notification test
         env:
-          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_BASE_URL: ${{ vars.NTFY_BASE_URL || 'https://ntfy.sh' }}
         run: |
           if [[ "${{ github.event.inputs.test_notification }}" == "true" ]]; then
             vegas-scan --config config/settings.yaml --test-notification | tee scan-log.txt
