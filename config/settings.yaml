@@ -1,0 +1,45 @@
+# Vegas Signal System configuration
+# Provider symbols are examples and may need mapping for your chosen market-data source.
+app:
+  name: "Vegas信号系统"
+  timezone: "UTC"
+  output_dir: "output"
+  csv_data_dir: "data/sample"
+
+symbols:
+  - id: "GOLD"
+    name: "黄金"
+    enabled: true
+    provider_symbol: "XAUUSD"
+  - id: "CRUDE_OIL"
+    name: "原油"
+    enabled: true
+    provider_symbol: "USOIL"
+  - id: "BTC"
+    name: "比特币"
+    enabled: true
+    provider_symbol: "BTCUSDT"
+
+timeframes:
+  direction_sources: ["4h", "8h"]
+  entry_watch: ["1h", "2h"]
+  required_columns: ["timestamp", "open", "high", "low", "close", "volume"]
+
+indicators:
+  filter_sma: 2
+  entry_ema: 36
+  direction_ema: 144
+  direction_ema_alternative: 169
+  major_ema: 576
+
+rules:
+  # If 4H and 8H direction conflict, do not emit a trade signal.
+  block_when_direction_conflicts: true
+  # Entry is only evaluated after price reaches the configured 1H/2H midline area.
+  require_entry_midline_touch: true
+  # This first scaffold reports candidate observations, not executable orders.
+  emit_candidate_observations: true
+
+notifications:
+  enabled: false
+  provider: "none"
