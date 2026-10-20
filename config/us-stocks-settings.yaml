@@ -1,34 +1,34 @@
-# One-off/ongoing US equities overview scan via Yahoo Finance proxy data.
-# These are observation instruments, not a recommendation to trade every ticker.
+# Bitget-only stock-token scan. A symbol is scanned only against the configured Bitget market.
+# If Bitget does not list a symbol or return candles, the result is DATA_UNAVAILABLE/SCAN_ERROR.
 app:
-  name: "Vegas美股扫描"
+  name: "Vegas美股扫描（Bitget数据源）"
   timezone: "UTC"
   output_dir: "output"
   csv_data_dir: "data/sample"
 market_data:
-  provider: "yfinance"
-  history_period: "60d"
+  provider: "bitget"
+  history_limit: 2000
 symbols:
-  - {id: "SPY", name: "标普500 ETF", enabled: true, provider_symbol: "SPY"}
-  - {id: "QQQ", name: "纳斯达克100 ETF", enabled: true, provider_symbol: "QQQ"}
-  - {id: "SNDK", name: "闪迪", enabled: true, provider_symbol: "SNDK"}
-  - {id: "NVDA", name: "英伟达", enabled: true, provider_symbol: "NVDA"}
-  - {id: "AMD", name: "超威半导体", enabled: true, provider_symbol: "AMD"}
-  - {id: "AVGO", name: "博通", enabled: true, provider_symbol: "AVGO"}
-  - {id: "MU", name: "美光科技", enabled: true, provider_symbol: "MU"}
-  - {id: "TSM", name: "台积电ADR", enabled: true, provider_symbol: "TSM"}
-  - {id: "ARM", name: "Arm", enabled: true, provider_symbol: "ARM"}
-  - {id: "MSFT", name: "微软", enabled: true, provider_symbol: "MSFT"}
-  - {id: "AAPL", name: "苹果", enabled: true, provider_symbol: "AAPL"}
-  - {id: "AMZN", name: "亚马逊", enabled: true, provider_symbol: "AMZN"}
-  - {id: "META", name: "Meta", enabled: true, provider_symbol: "META"}
-  - {id: "GOOGL", name: "谷歌A", enabled: true, provider_symbol: "GOOGL"}
-  - {id: "TSLA", name: "特斯拉", enabled: true, provider_symbol: "TSLA"}
-  - {id: "PLTR", name: "Palantir", enabled: true, provider_symbol: "PLTR"}
-  - {id: "ORCL", name: "甲骨文", enabled: true, provider_symbol: "ORCL"}
-  - {id: "COIN", name: "Coinbase", enabled: true, provider_symbol: "COIN"}
-  - {id: "MSTR", name: "Strategy", enabled: true, provider_symbol: "MSTR"}
-  - {id: "HOOD", name: "Robinhood", enabled: true, provider_symbol: "HOOD"}
+  - {id: "SPY", name: "标普500 ETF代币", enabled: true, bitget_symbol: "rSPYUSDT", bitget_category: "SPOT"}
+  - {id: "QQQ", name: "纳斯达克100 ETF代币", enabled: true, bitget_symbol: "rQQQUSDT", bitget_category: "SPOT"}
+  - {id: "SNDK", name: "闪迪股票代币", enabled: true, bitget_symbol: "rSNDKUSDT", bitget_category: "SPOT"}
+  - {id: "NVDA", name: "英伟达股票代币", enabled: true, bitget_symbol: "rNVDAUSDT", bitget_category: "SPOT"}
+  - {id: "AMD", name: "AMD股票代币", enabled: true, bitget_symbol: "rAMDUSDT", bitget_category: "SPOT"}
+  - {id: "AVGO", name: "博通股票代币", enabled: true, bitget_symbol: "rAVGOUSDT", bitget_category: "SPOT"}
+  - {id: "MU", name: "美光股票代币", enabled: true, bitget_symbol: "rMUUSDT", bitget_category: "SPOT"}
+  - {id: "TSM", name: "台积电股票代币", enabled: true, bitget_symbol: "rTSMUSDT", bitget_category: "SPOT"}
+  - {id: "ARM", name: "Arm股票代币", enabled: true, bitget_symbol: "rARMUSDT", bitget_category: "SPOT"}
+  - {id: "MSFT", name: "微软股票代币", enabled: true, bitget_symbol: "rMSFTUSDT", bitget_category: "SPOT"}
+  - {id: "AAPL", name: "苹果股票代币", enabled: true, bitget_symbol: "rAAPLUSDT", bitget_category: "SPOT"}
+  - {id: "AMZN", name: "亚马逊股票代币", enabled: true, bitget_symbol: "rAMZNUSDT", bitget_category: "SPOT"}
+  - {id: "META", name: "Meta股票代币", enabled: true, bitget_symbol: "rMETAUSDT", bitget_category: "SPOT"}
+  - {id: "GOOGL", name: "谷歌股票代币", enabled: true, bitget_symbol: "rGOOGLUSDT", bitget_category: "SPOT"}
+  - {id: "TSLA", name: "特斯拉股票代币", enabled: true, bitget_symbol: "rTSLAUSDT", bitget_category: "SPOT"}
+  - {id: "PLTR", name: "Palantir股票代币", enabled: true, bitget_symbol: "rPLTRUSDT", bitget_category: "SPOT"}
+  - {id: "ORCL", name: "甲骨文股票代币", enabled: true, bitget_symbol: "rORCLUSDT", bitget_category: "SPOT"}
+  - {id: "COIN", name: "Coinbase股票代币", enabled: true, bitget_symbol: "rCOINUSDT", bitget_category: "SPOT"}
+  - {id: "MSTR", name: "Strategy股票代币", enabled: true, bitget_symbol: "rMSTRUSDT", bitget_category: "SPOT"}
+  - {id: "HOOD", name: "Robinhood股票代币", enabled: true, bitget_symbol: "rHOODUSDT", bitget_category: "SPOT"}
 timeframes:
   direction_sources: ["4h", "8h"]
   entry_watch: ["1h", "2h"]
