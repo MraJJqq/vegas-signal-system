@@ -5,14 +5,26 @@ from pathlib import Path
 
 import pandas as pd
 
-from .data import CsvMarketDataProvider
+from .data import CsvMarketDataProvider, YahooFinanceMarketDataProvider
 from .rules import scan_symbol
 
 
+def build_provider(config: dict, data_dir: str | Path | None = None):
+    settings = config.get("market_data", {})
+    provider_name = str(settings.get("provider", "csv")).lower()
+    if provider_name == "csv":
+        return CsvMarketDataProvider(data_dir or config.get("app", {}).get("csv_data_dir", "data/sample"))
+    if provider_name == "yfinance":
+        return YahooFinanceMarketDataProvider(
+            config.get("symbols", []),
+            history_period=str(settings.get("history_period", "60d")),
+        )
+    raise ValueError(f"Unsupported market data provider: {provider_name}")
+
+
 def run_scan(config: dict, data_dir: str | Path | None = None, output_dir: str | Path | None = None) -> pd.DataFrame:
-    data_dir = data_dir or config.get("app", {}).get("csv_data_dir", "data/sample")
     output_dir = Path(output_dir or config.get("app", {}).get("output_dir", "output"))
-    provider = CsvMarketDataProvider(data_dir)
+    provider = build_provider(config, data_dir=data_dir)
     observations = []
     for symbol in config.get("symbols", []):
         if not symbol.get("enabled", False):
