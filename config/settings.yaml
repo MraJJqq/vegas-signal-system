@@ -13,7 +13,7 @@ symbols:
   - {id: "BTC", name: "比特币（Bitget USDT合约）", enabled: true, bitget_symbol: "BTCUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
   - {id: "SNDK", name: "闪迪（USDT合约候选）", enabled: true, bitget_symbol: "SNDKUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
 timeframes:
-  direction_sources: ["4h", "8h"]
+  direction_sources: ["4h"]
   entry_watch: ["1h", "2h"]
   required_columns: ["timestamp", "open", "high", "low", "close", "volume"]
 indicators:
