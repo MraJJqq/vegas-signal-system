@@ -18,18 +18,18 @@
 
 包含SPY、QQQ，以及NVDA、AMD、AVGO、MU、SNDK、TSM、ARM、MSFT、AAPL、AMZN、META、GOOGL、TSLA、PLTR、ORCL、NFLX、JPM、XOM、LLY、COST、COIN、MSTR、HOOD、CRWD、ANET、GE、CAT等。可在 `config/settings.yaml` 中启用/禁用或增删品种。
 
-## 设置个人微信推送（Server酱 Turbo）
+## 设置 ntfy 推送到 iPad
 
-1. 在 iPad 上打开 [Server酱官网](https://sct.ftqq.com)，用个人微信扫码登录。
-2. 进入官网的「SendKey」页面，复制以 `SCT` 开头的 SendKey。不要把密钥发到聊天里，也不要提交到代码仓库。
-3. 打开 [GitHub 仓库 Actions Secrets 设置页](https://github.com/MraJJqq/vegas-signal-system/settings/secrets/actions)。
-4. 点击 **New repository secret**，名称准确填写 `SERVERCHAN_SENDKEY`，值粘贴刚才复制的 SendKey，再保存。
-5. 打开 [GitHub Actions 工作流](https://github.com/MraJJqq/vegas-signal-system/actions/workflows/scan.yml)，点击 **Run workflow**，将 `test_notification` 设为 `true)，再运行。
-6. 确认个人微信收到“Vegas信号系统推送测试”。收到后，后续每小时扫描在存在 `WATCH_ENTRY_CONFIRMATION` 候选时会推送摘要；没有候选则不推送，避免刷屏。
+1. 在 iPad 上打开 [App Store ntfy 搜索页](https://apps.apple.com/search?term=ntfy)，安装 ntfy 官方应用。
+2. 打开 App，添加/订阅一个主题（Subscribe）。
+3. 使用密码管理器生成至少32位随机主题名，只使用英文字母、数字、下划线或连字符。主题名相当于密码，不要使用容易猜测的名称。
+4. 打开 [GitHub 仓库 Actions Secrets 设置页](https://github.com/MraJJqq/vegas-signal-system/settings/secrets/actions)，点击 **New repository secret**，名称填 `NTFY_TOPIC`，值填主题名，保存。不要把主题名发到聊天里或提交到仓库。
+5. 打开 iPad「设置 → 通知 → ntfy」，允许通知，并检查专注模式设置。
+6. 打开 [GitHub Actions 工作流](https://github.com/MraJJqq/vegas-signal-system/actions/workflows/scan.yml)，点击 **Run workflow**，把 `test_notification` 设为 `true)，运行后检查 ntfy App 是否收到测试消息。
 
-**需要你亲自完成的部分：** 第1步微信扫码登录并获取 SendKey，以及第4步把密钥粘贴到 GitHub Secret。出于账号与密钥安全原因，程序不会把密钥写入仓库或日志。完成这些后，GitHub Actions 可自动扫描和推送。
+成功后，每小时扫描只会在存在 `WATCH_ENTRY_CONFIRMATION` 候选时发送一条汇总消息；没有候选则不推送。通知仅供观察，不是正式进场信号，系统不会自动下单。
 
-如果仓库Secret未配置，扫描仍可运行，只会在日志中说明通知未发送。Server酱免费会员官方文档注明每天最多5条；额度或上游服务异常可能影响推送。
+默认使用公共服务 `https://ntfy.sh`。如果以后使用自己的 ntfy 服务器，可在 GitHub 仓库 Settings → Secrets and variables → Actions → Variables 中添加 `NTFY_BASE_URL`，值为 HTTPS 服务根地址。公共主题可被知道主题名的人订阅，因此必须将主题名视为密码；公共服务仍是第三方中转。即使自建服务器，iOS 即时通知也可能依赖 ntfy.sh 的上游推送基础设施。
 
 ## 行情源限制
 
@@ -54,7 +54,7 @@ vegas-scan --config config/settings.yaml --provider yfinance --output-dir output
 手动测试推送（需先设置环境变量）：
 
 ```bash
-export SERVERCHAN_SENDKEY="你的SendKey"
+export NTFY_TOPIC="你的随机主题名"
 vegas-scan --config config/settings.yaml --test-notification
 ```
 
