@@ -13,20 +13,22 @@ def _last_close(frame: pd.DataFrame) -> float | None:
     return None if pd.isna(value) else float(value)
 
 
-def _last_candle_touches_ema(frame: pd.DataFrame, period: int = 144) -> bool:
-    """True when the latest candle's high-low range covers its EMA line."""
+def _observation_started(frame: pd.DataFrame, period: int = 144) -> bool:
+    """Observation stays active once any available completed candle touches EMA144."""
     key = f"ema_{period}"
     if frame.empty or key not in frame.columns:
         return False
-    candle = frame.iloc[-1]
-    ema = candle[key]
-    if pd.isna(ema):
-        return False
-    return float(candle["low"]) <= float(ema) <= float(candle["high"])
+    ema = frame[key]
+    touched = (
+        frame["low"].le(ema)
+        & frame["high"].ge(ema)
+        & ema.notna()
+    ).fillna(False)
+    return bool(touched.any())
 
 
 def scan_symbol(symbol: dict[str, Any], provider, config: dict[str, Any]) -> SignalObservation:
-    """Scan one symbol conservatively; EMA touch is an observation, not an entry."""
+    """Apply direction gate, then persistent EMA144 observation and EMA12 close-side signal."""
     symbol_id, symbol_name = str(symbol["id"]), str(symbol["name"])
     timeframes = config.get("timeframes", {})
     direction_sources = list(timeframes.get("direction_sources", ["4h", "8h"]))
@@ -34,16 +36,24 @@ def scan_symbol(symbol: dict[str, Any], provider, config: dict[str, Any]) -> Sig
     indicators = config.get("indicators", {})
     period = int(indicators.get("direction_ema", 144))
     touch_period = int(config.get("rules", {}).get("entry_midline_ema", 144))
+    filter_period = int(config.get("rules", {}).get("entry_filter_ema", 12))
     frames: dict[str, pd.DataFrame] = {}
     errors: list[str] = []
+
     for timeframe in direction_sources + entry_timeframes:
         try:
-            frames[timeframe] = add_indicators(provider.load(symbol_id, timeframe), config)
+            frame = add_indicators(provider.load(symbol_id, timeframe), config)
+            filter_key = f"ema_{filter_period}"
+            if filter_key not in frame.columns:
+                frame[filter_key] = frame["close"].ewm(
+                    span=filter_period, adjust=False, min_periods=filter_period
+                ).mean()
+            frames[timeframe] = frame
         except (FileNotFoundError, ValueError) as exc:
             errors.append(f"{timeframe}: {exc}")
 
     timestamp = ""
-    for timeframe in direction_sources + entry_timeframes:
+    for timeframe in entry_timeframes + direction_sources:
         if timeframe in frames and not frames[timeframe].empty:
             timestamp = frames[timeframe].iloc[-1]["timestamp"].isoformat()
             break
@@ -60,34 +70,51 @@ def scan_symbol(symbol: dict[str, Any], provider, config: dict[str, Any]) -> Sig
     elif len(set(direction_values)) > 1:
         status, message = "NO_TRADE_CONFLICT", "配置的方向来源方向冲突；按规则空仓。"
     else:
-        status, message = "DIRECTION_ALIGNED", "4H方向明确；检查1H/2H的EMA触碰。"
+        status, message = "DIRECTION_ALIGNED", "方向周期一致；检查1H/2H持续观察期与过滤线。"
 
     entry_timeframe = None
     close = None
     if status == "DIRECTION_ALIGNED":
+        allowed_direction = direction_values[0]
         available = [tf for tf in entry_timeframes if tf in frames and not frames[tf].empty]
-        if not available:
+        qualified = []
+        for tf in available:
+            frame = frames[tf]
+            filter_key = f"ema_{filter_period}"
+            if not _observation_started(frame, touch_period):
+                continue
+            latest = frame.iloc[-1]
+            if pd.isna(latest.get(filter_key)):
+                continue
+            if allowed_direction == "up" and float(latest["close"]) > float(latest[filter_key]):
+                qualified.append((tf, frame))
+            elif allowed_direction == "down" and float(latest["close"]) < float(latest[filter_key]):
+                qualified.append((tf, frame))
+
+        if qualified:
+            entry_timeframe, selected = qualified[0]
+            close = _last_close(selected)
+            status = "ENTRY_SIGNAL_LONG" if allowed_direction == "up" else "ENTRY_SIGNAL_SHORT"
+            side_text = (
+                f"收盘价在EMA{filter_period}上方，做多信号"
+                if allowed_direction == "up"
+                else f"收盘价在EMA{filter_period}下方，做空信号"
+            )
+            message = (
+                f"{entry_timeframe.upper()}观察期持续有效：历史K线已触碰EMA{touch_period}，"
+                f"最新完整K线{side_text}；方向过滤通过。"
+            )
+        elif not available:
             status = "DATA_UNAVAILABLE"
             message = "方向周期一致，但缺少1H/2H进场观察数据；不产生交易信号。"
         else:
             entry_timeframe = available[0]
             close = _last_close(frames[entry_timeframe])
-            touched = next((tf for tf in available if _last_candle_touches_ema(frames[tf], touch_period)), None)
-            if touched is not None:
-                entry_timeframe = touched
-                close = _last_close(frames[touched])
-                status = "WATCH_ENTRY_CONFIRMATION"
-                message = (
-                    f"4H方向明确；{touched.upper()}最新完整K线的最高价/最低价覆盖"
-                    f"EMA{touch_period}，已记录中锋触碰观察；后续信号确认规则尚未完成，"
-                    "不视为正式进场信号。"
-                )
-            else:
-                status = "WATCH_ENTRY_CONDITIONS"
-                message = (
-                    f"4H方向明确；当前1H/2H最新完整K线未触碰EMA{touch_period}，"
-                    "继续观察；不视为正式进场信号。"
-                )
+            status = "WATCH_ENTRY_CONDITIONS"
+            message = (
+                f"方向周期一致；继续观察。需在持续有效的中锋观察期内，"
+                f"最新完整K线收盘价位于EMA{filter_period}对应方向一侧。"
+            )
     elif errors and status == "DATA_UNAVAILABLE":
         message += " 数据详情：" + " | ".join(errors)
 
