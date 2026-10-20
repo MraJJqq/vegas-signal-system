@@ -2,6 +2,9 @@ name: Scheduled Vegas Scan
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/scan.yml"
   schedule:
     - cron: "17 * * * *"
 
