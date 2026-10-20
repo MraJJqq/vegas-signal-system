@@ -48,6 +48,7 @@ def test_missing_secret_is_reported(monkeypatch):
 
 
 def test_ntfy_json_api_and_success():
+    import json
     from vegas_signal_system.notifications import send_ntfy
     response = MagicMock()
     response.status = 200
@@ -58,7 +59,6 @@ def test_ntfy_json_api_and_success():
         assert result["status"] == 200
         req = urlopen.call_args.args[0]
         assert req.full_url == "https://ntfy.sh"
-        import json
         payload = json.loads(req.data.decode("utf-8"))
         assert payload["topic"] == "c" * 32
         assert payload["title"] == "Test title"
@@ -66,14 +66,14 @@ def test_ntfy_json_api_and_success():
 
 
 def test_rejects_guessable_topic():
-    from vegas_signal_system.notifications import send_ntfy
     import pytest
+    from vegas_signal_system.notifications import send_ntfy
     with pytest.raises(ValueError, match="NTFY_TOPIC"):
         send_ntfy("vegas", "Test", "Body")
 
 
 def test_rejects_non_https_base_url():
-    from vegas_signal_system.notifications import send_ntfy
     import pytest
+    from vegas_signal_system.notifications import send_ntfy
     with pytest.raises(ValueError, match="HTTPS"):
         send_ntfy("d" * 32, "Test", "Body", base_url="http://example.com")
