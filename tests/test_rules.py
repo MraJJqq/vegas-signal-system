@@ -41,8 +41,6 @@ def set_last_candle_to_ema(frame):
     ema = float(with_indicators.iloc[-1]["ema_144"])
     frame.loc[frame.index[-1], "low"] = ema - 0.1
     frame.loc[frame.index[-1], "high"] = ema + 0.1
-    frame.loc[frame.index[-1], "open"] = ema
-    frame.loc[frame.index[-1], "close"] = ema
     return frame
 
 
