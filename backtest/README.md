@@ -1,23 +1,23 @@
-# Gold backtest framework — first milestone
+# Gold backtest framework — entry observation rules
 
-This module defines the agreed entry-candidate rule for the gold (XAUUSDT) backtest.
+## Entry observation phase
 
-## Entry candidate rule
+Evaluate 1H and 2H independently. On each timeframe, use that timeframe's own EMA12 and EMA144.
 
-Evaluate 1H and 2H independently. On the evaluated timeframe, a candle qualifies only when:
+1. A completed candle whose high-low range spans EMA144 is the OHLC-data proxy for price having touched EMA144.
+2. That touch starts an observation phase. The phase remains active on later candles, even if those candles no longer touch EMA144.
+3. During the observation phase, check each completed candle's close against that timeframe's EMA12:
+   - Long candidate: close above EMA12, with the higher-timeframe direction gate allowing longs.
+   - Short candidate: close below EMA12, with the higher-timeframe direction gate allowing shorts.
+   - Close exactly on EMA12: neither side.
+4. A 1H observation uses 1H EMA12/EMA144; a 2H observation uses 2H EMA12/EMA144. Never mix timeframes.
 
-1. Its high-low range covers EMA144 (the 中锋 touch rule).
-2. For an up-direction setup, that candle closes above its own EMA12 filter.
-3. For a down-direction setup, that candle closes below its own EMA12 filter.
-4. Direction is supplied by the higher-timeframe Vegas direction gate; neutral or unknown direction produces no candidate.
+The observation phase currently has no reset/expiry condition. This is intentionally left explicit for a later rule decision, rather than inventing an expiry. Because OHLC candles do not contain tick-by-tick paths, the high/low spanning EMA144 is a data-level proxy for contact, not proof of the exact intrabar path.
 
-A 1H candidate uses the 1H candle and 1H EMA12/EMA144. A 2H candidate uses the 2H candle and 2H EMA12/EMA144. Do not mix indicators across timeframes.
+This module marks candidate candles; it does not itself simulate fills, stop loss, or exits, and does not claim a backtest performance result.
 
-This milestone creates candidate detection only. It does not claim that a trade was filled, does not invent stop/exit rules, and does not report performance statistics until candle-by-candle execution, stop/exit mechanics, and data-quality checks are implemented and tested.
-
-## Data and no-lookahead requirements
+## No-lookahead requirements
 
 - Use completed candles only.
 - EMA values use current and past closes only.
-- Signal timestamp is the close time of the qualifying candle; a simulated fill must not occur earlier than the next available executable price.
-- Keep 1H and 2H candidate records identifiable by timeframe.
+- A signal is known at candle close; a simulated fill must not occur earlier than the next available executable price.
