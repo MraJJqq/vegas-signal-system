@@ -1,5 +1,5 @@
 # Vegas Signal System configuration
-# Yahoo Finance symbols are data proxies and must be checked against your chart venue.
+# Yahoo Finance symbols are proxies; confirm instruments against your trading venue.
 app:
   name: "Vegas信号系统"
   timezone: "UTC"
@@ -7,22 +7,38 @@ app:
   csv_data_dir: "data/sample"
 
 market_data:
-  provider: "csv"
+  provider: "yfinance"
   history_period: "60d"
 
 symbols:
-  - id: "GOLD"
-    name: "黄金"
-    enabled: true
-    provider_symbol: "GC=F"
-  - id: "CRUDE_OIL"
-    name: "原油"
-    enabled: true
-    provider_symbol: "CL=F"
-  - id: "BTC"
-    name: "比特币"
-    enabled: true
-    provider_symbol: "BTC-USD"
+  - {id: "GOLD", name: "黄金期货代理", enabled: true, provider_symbol: "GC=F"}
+  - {id: "CRUDE_OIL", name: "纽约原油期货代理", enabled: true, provider_symbol: "CL=F"}
+  - {id: "BTC", name: "比特币", enabled: true, provider_symbol: "BTC-USD"}
+  - {id: "SNDK", name: "闪迪", enabled: true, provider_symbol: "SNDK"}
+  - {id: "NVDA", name: "英伟达", enabled: true, provider_symbol: "NVDA"}
+  - {id: "AMD", name: "超威半导体", enabled: true, provider_symbol: "AMD"}
+  - {id: "AVGO", name: "博通", enabled: true, provider_symbol: "AVGO"}
+  - {id: "MU", name: "美光科技", enabled: true, provider_symbol: "MU"}
+  - {id: "TSM", name: "台积电ADR", enabled: true, provider_symbol: "TSM"}
+  - {id: "MRVL", name: "迈威尔科技", enabled: true, provider_symbol: "MRVL"}
+  - {id: "ARM", name: "Arm", enabled: true, provider_symbol: "ARM"}
+  - {id: "QCOM", name: "高通", enabled: true, provider_symbol: "QCOM"}
+  - {id: "AAPL", name: "苹果", enabled: true, provider_symbol: "AAPL"}
+  - {id: "MSFT", name: "微软", enabled: true, provider_symbol: "MSFT"}
+  - {id: "AMZN", name: "亚马逊", enabled: true, provider_symbol: "AMZN"}
+  - {id: "GOOGL", name: "谷歌A", enabled: true, provider_symbol: "GOOGL"}
+  - {id: "META", name: "Meta", enabled: true, provider_symbol: "META"}
+  - {id: "TSLA", name: "特斯拉", enabled: true, provider_symbol: "TSLA"}
+  - {id: "PLTR", name: "Palantir", enabled: true, provider_symbol: "PLTR"}
+  - {id: "ORCL", name: "甲骨文", enabled: true, provider_symbol: "ORCL"}
+  - {id: "NFLX", name: "奈飞", enabled: true, provider_symbol: "NFLX"}
+  - {id: "SMCI", name: "超微电脑", enabled: true, provider_symbol: "SMCI"}
+  - {id: "CRWD", name: "CrowdStrike", enabled: true, provider_symbol: "CRWD"}
+  - {id: "COIN", name: "Coinbase", enabled: true, provider_symbol: "COIN"}
+  - {id: "HOOD", name: "Robinhood", enabled: true, provider_symbol: "HOOD"}
+  - {id: "JPM", name: "摩根大通", enabled: true, provider_symbol: "JPM"}
+  - {id: "XOM", name: "埃克森美孚", enabled: true, provider_symbol: "XOM"}
+  - {id: "CVX", name: "雪佛龙", enabled: true, provider_symbol: "CVX"}
 
 timeframes:
   direction_sources: ["4h", "8h"]
@@ -44,5 +60,7 @@ rules:
   emit_candidate_observations: true
 
 notifications:
-  enabled: false
-  provider: "none"
+  enabled: true
+  provider: "wecom_bot"
+  webhook_env: "WECHAT_WORK_WEBHOOK"
+  send_only_candidate_status: true
