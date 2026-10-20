@@ -39,6 +39,8 @@ indicators:
 rules:
   block_when_direction_conflicts: true
   require_entry_midline_touch: true
+  entry_midline_ema: 144
+  entry_midline_touch_mode: "high_low_overlap"
   emit_candidate_observations: true
 
 notifications:
