@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from .config import load_config
-from .notifications import notify_observations, send_test_notification
+from .notifications import send_test_notification
 from .scanner import run_scan
 
 
@@ -27,7 +27,6 @@ def main() -> None:
         print("No enabled symbols configured.")
     else:
         print(results.to_string(index=False))
-    print(notify_observations(results, notification_settings))
     print("\nScan complete. Results are observations only; no orders were placed.")
 
 
