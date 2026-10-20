@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from .data import CsvMarketDataProvider, YahooFinanceMarketDataProvider
+from .bitget_provider import BitgetMarketDataProvider
 from .rules import scan_symbol
 from .notifications import notify_observations
 
@@ -15,6 +16,16 @@ def build_provider(config: dict, data_dir: str | Path | None = None):
     provider_name = str(settings.get("provider", "csv")).lower()
     if provider_name == "csv":
         return CsvMarketDataProvider(data_dir or config.get("app", {}).get("csv_data_dir", "data/sample"))
+    if provider_name == "bitget":
+        symbols = [dict(item) for item in config.get("symbols", [])]
+        for item in symbols:
+            if str(item.get("id", "")).upper() == "BTC" and not item.get("bitget_symbol"):
+                item["bitget_symbol"] = "BTCUSDT"
+                item["bitget_product_type"] = "USDT-FUTURES"
+        return BitgetMarketDataProvider(
+            symbols,
+            history_limit=int(settings.get("history_limit", 200)),
+        )
     if provider_name == "yfinance":
         return YahooFinanceMarketDataProvider(
             config.get("symbols", []),
