@@ -8,7 +8,7 @@ app:
   csv_data_dir: "data/sample"
 market_data:
   provider: "bitget"
-  history_limit: 200
+  history_limit: 2000
 symbols:
   - {id: "BTC", name: "比特币（Bitget USDT 合约）", enabled: true, bitget_symbol: "BTCUSDT", bitget_product_type: "USDT-FUTURES"}
 timeframes:
