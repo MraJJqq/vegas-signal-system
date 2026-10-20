@@ -4,6 +4,7 @@ import argparse
 
 from .config import load_config
 from .scanner import run_scan
+from .notifications import send_test_notification
 
 
 def main() -> None:
@@ -12,6 +13,7 @@ def main() -> None:
     parser.add_argument("--data-dir", default=None, help="CSV directory containing SYMBOL_TIMEFRAME.csv files")
     parser.add_argument("--output-dir", default=None, help="Directory for scan result files")
     parser.add_argument("--provider", choices=["csv", "yfinance"], default=None, help="Override provider configured in YAML")
+    parser.add_argument("--test-notification", action="store_true", help="Send a test message to the configured WeCom bot and exit")
     args = parser.parse_args()
     config = load_config(args.config)
     if args.provider:
