@@ -1,0 +1,26 @@
+app:
+  name: vegas-signal-system-v2
+  mode: signal_reminder_only
+  auto_execute_orders: false
+
+indicators:
+  filter_ema: 12
+  pioneer_ema: 36
+  middle_ema: 144
+  red_peak_ema: 576
+
+rules:
+  crossover_timeframe: 4h
+  confirmation_timeframe: 4h
+  require_completed_candles: true
+  retest_lines:
+    - 4h_middle
+    - 8h_pioneer
+  retest_selection: first_touched
+  filter_line: ema12
+  first_retest_failure: invalidate_setup
+  one_formal_signal_per_crossover: true
+
+notifications:
+  provider: ntfy
+  enabled: false
