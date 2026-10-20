@@ -24,7 +24,7 @@ class MemoryProvider:
 
 def config():
     return {
-        "timeframes": {"direction_sources": ["4h", "8h"], "entry_watch": ["1h", "2h"]},
+        "timeframes": {"direction_sources": ["4h"], "entry_watch": ["1h", "2h"]},
         "indicators": {"filter_sma": 2, "entry_ema": 36, "direction_ema": 144,
                        "direction_ema_alternative": 169, "major_ema": 576},
         "rules": {"require_entry_midline_touch": True, "entry_midline_ema": 144,
@@ -45,15 +45,17 @@ def set_last_candle_to_ema(frame):
 
 
 def test_direction_conflict_blocks_trade():
-    provider = MemoryProvider({"4h": make_frame("up") if False else make_frame(direction="up"),
+    cfg = config()
+    cfg["timeframes"]["direction_sources"] = ["4h", "8h"]
+    provider = MemoryProvider({"4h": make_frame(direction="up"),
                                "8h": make_frame(direction="down"), "1h": make_frame(), "2h": make_frame()})
-    result = scan_symbol(symbol(), provider, config())
+    result = scan_symbol(symbol(), provider, cfg)
     assert result.status == "NO_TRADE_CONFLICT"
     assert "空仓" in result.message
 
 
 def test_aligned_direction_without_touch_remains_observation():
-    provider = MemoryProvider({"4h": make_frame(), "8h": make_frame(), "1h": make_frame(), "2h": make_frame()})
+    provider = MemoryProvider({"4h": make_frame(), "1h": make_frame(), "2h": make_frame()})
     result = scan_symbol(symbol(), provider, config())
     assert result.status == "WATCH_ENTRY_CONDITIONS"
     assert result.entry_timeframe in {"1h", "2h"}
@@ -62,7 +64,7 @@ def test_aligned_direction_without_touch_remains_observation():
 
 
 def test_latest_candle_wick_overlap_records_touch_but_not_entry():
-    provider = MemoryProvider({"4h": make_frame(), "8h": make_frame(),
+    provider = MemoryProvider({"4h": make_frame(),
                                "1h": set_last_candle_to_ema(make_frame()), "2h": make_frame()})
     result = scan_symbol(symbol(), provider, config())
     assert result.status == "WATCH_ENTRY_CONFIRMATION"
@@ -72,15 +74,23 @@ def test_latest_candle_wick_overlap_records_touch_but_not_entry():
 
 
 def test_touch_in_2h_is_detected_when_1h_does_not_touch():
-    provider = MemoryProvider({"4h": make_frame(), "8h": make_frame(),
+    provider = MemoryProvider({"4h": make_frame(),
                                "1h": make_frame(), "2h": set_last_candle_to_ema(make_frame())})
     result = scan_symbol(symbol(), provider, config())
     assert result.status == "WATCH_ENTRY_CONFIRMATION"
     assert result.entry_timeframe == "2h"
 
 
-def test_missing_direction_data_never_emits_entry():
-    provider = MemoryProvider({"4h": make_frame(), "1h": make_frame()})
+def test_4h_only_direction_does_not_require_8h_data():
+    provider = MemoryProvider({"4h": make_frame(), "1h": make_frame(), "2h": make_frame()})
+    result = scan_symbol(symbol(), provider, config())
+    assert result.status == "WATCH_ENTRY_CONDITIONS"
+    assert result.direction_4h == "up"
+    assert result.direction_8h == "unavailable"
+
+
+def test_missing_required_4h_direction_data_never_emits_entry():
+    provider = MemoryProvider({"1h": make_frame(), "2h": make_frame()})
     result = scan_symbol(symbol(), provider, config())
     assert result.status == "DATA_UNAVAILABLE"
     assert result.entry_timeframe is None

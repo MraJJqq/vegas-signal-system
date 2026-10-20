@@ -58,9 +58,9 @@ def scan_symbol(symbol: dict[str, Any], provider, config: dict[str, Any]) -> Sig
     elif any(value == "neutral" for value in direction_values):
         status, message = "NO_TRADE_NEUTRAL", "至少一个方向周期不明确；保持观察。"
     elif len(set(direction_values)) > 1:
-        status, message = "NO_TRADE_CONFLICT", "4H/8H方向冲突；按规则空仓。"
+        status, message = "NO_TRADE_CONFLICT", "配置的方向来源方向冲突；按规则空仓。"
     else:
-        status, message = "DIRECTION_ALIGNED", "方向周期一致；检查1H/2H的EMA触碰。"
+        status, message = "DIRECTION_ALIGNED", "4H方向明确；检查1H/2H的EMA触碰。"
 
     entry_timeframe = None
     close = None
@@ -78,14 +78,14 @@ def scan_symbol(symbol: dict[str, Any], provider, config: dict[str, Any]) -> Sig
                 close = _last_close(frames[touched])
                 status = "WATCH_ENTRY_CONFIRMATION"
                 message = (
-                    f"4H/8H方向一致；{touched.upper()}最新完整K线的最高价/最低价覆盖"
+                    f"4H方向明确；{touched.upper()}最新完整K线的最高价/最低价覆盖"
                     f"EMA{touch_period}，已记录中锋触碰观察；后续信号确认规则尚未完成，"
                     "不视为正式进场信号。"
                 )
             else:
                 status = "WATCH_ENTRY_CONDITIONS"
                 message = (
-                    f"4H/8H方向一致；当前1H/2H最新完整K线未触碰EMA{touch_period}，"
+                    f"4H方向明确；当前1H/2H最新完整K线未触碰EMA{touch_period}，"
                     "继续观察；不视为正式进场信号。"
                 )
     elif errors and status == "DATA_UNAVAILABLE":
