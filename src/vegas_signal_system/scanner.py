@@ -54,5 +54,5 @@ def run_scan(config: dict, data_dir: str | Path | None = None, output_dir: str |
         print(notify_observations(result, notification_settings))
     except Exception as exc:
         # Notification failures must not erase scan results or hide the scan itself.
-        print(f"微信通知发送失败：{type(exc).__name__}: {exc}")
+        print(f"ntfy 通知发送失败：{type(exc).__name__}: {exc}")
     return result
