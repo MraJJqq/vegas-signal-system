@@ -16,6 +16,7 @@ class BitgetMarketDataProvider:
     FUTURES_URL = "https://api.bitget.com/api/v2/mix/market/candles"
     SPOT_URL = "https://api.bitget.com/api/v2/spot/market/candles"
     REALITY_STOCKS_URL = "https://api.bitget.com/api/v3/reality/market/stock-info"
+    REALITY_CANDLES_URL = "https://api.bitget.com/api/v3/market/candles"
 
     def __init__(self, symbols: list[dict], history_limit: int = 2000, timeout: int = 15):
         self.symbols = {
@@ -66,6 +67,7 @@ class BitgetMarketDataProvider:
         if not spec["symbol"] and spec["stock_code"]:
             spec["symbol"] = self._resolve_reality_symbol(spec["stock_code"])
             spec["category"] = "SPOT"
+            spec["is_reality"] = True
         if not spec["symbol"]:
             raise ValueError(f"No Bitget symbol configured for {symbol_id}; alternate data sources are disabled")
 
@@ -74,7 +76,19 @@ class BitgetMarketDataProvider:
         remaining = self.history_limit
         while remaining > 0:
             batch_size = min(1000, remaining)
-            if spec["category"] == "SPOT":
+            if spec.get("is_reality"):
+                # Reality rTokens use Bitget's v3 spot-candles endpoint.
+                query = {
+                    "category": "SPOT",
+                    "symbol": spec["symbol"],
+                    "interval": "1H",
+                    "type": "market",
+                    "limit": str(batch_size),
+                }
+                if end_time is not None:
+                    query["endTime"] = str(end_time)
+                payload = self._request(self.REALITY_CANDLES_URL, query)
+            elif spec["category"] == "SPOT":
                 query = {
                     "category": "SPOT",
                     "symbol": spec["symbol"],
