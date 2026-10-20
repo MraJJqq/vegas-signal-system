@@ -12,7 +12,7 @@ def main() -> None:
     parser.add_argument("--config", default="config/settings.yaml", help="Path to YAML config")
     parser.add_argument("--data-dir", default=None, help="CSV directory containing SYMBOL_TIMEFRAME.csv files")
     parser.add_argument("--output-dir", default=None, help="Directory for scan result files")
-    parser.add_argument("--provider", choices=["csv", "yfinance"], default=None, help="Override provider configured in YAML")
+    parser.add_argument("--provider", choices=["csv", "yfinance", "bitget"], default=None, help="Override provider configured in YAML")
     parser.add_argument("--test-notification", action="store_true", help="Send a test message through the configured notification channel")
     args = parser.parse_args()
     config = load_config(args.config)
