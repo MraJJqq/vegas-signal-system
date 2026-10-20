@@ -7,7 +7,7 @@ app:
   csv_data_dir: "data/sample"
 market_data:
   provider: "csv"
-  history_period: "60d"
+  history_period: "2y"
 symbols:
   - {id: "GOLD", name: "黄金", enabled: true, provider_symbol: "GC=F"}
   - {id: "CRUDE_OIL", name: "原油", enabled: true, provider_symbol: "CL=F"}
