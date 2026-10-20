@@ -1,20 +1,14 @@
 import pandas as pd
-
+from vegas_signal_system.indicators import add_indicators
 from vegas_signal_system.rules import scan_symbol
 
 
 def make_frame(n=180, direction="up"):
-    if direction == "up":
-        close = [100.0 + i * 0.5 for i in range(n)]
-    else:
-        close = [200.0 - i * 0.5 for i in range(n)]
+    close = [100.0 + i * 0.5 for i in range(n)] if direction == "up" else [200.0 - i * 0.5 for i in range(n)]
     return pd.DataFrame({
         "timestamp": pd.date_range("2025-01-01", periods=n, freq="h", tz="UTC"),
-        "open": close,
-        "high": [value + 1 for value in close],
-        "low": [value - 1 for value in close],
-        "close": close,
-        "volume": [100.0] * n,
+        "open": close, "high": [v + 1 for v in close], "low": [v - 1 for v in close],
+        "close": close, "volume": [100.0] * n,
     })
 
 
@@ -30,17 +24,11 @@ class MemoryProvider:
 
 def config():
     return {
-        "timeframes": {
-            "direction_sources": ["4h", "8h"],
-            "entry_watch": ["1h", "2h"],
-        },
-        "indicators": {
-            "filter_sma": 2,
-            "entry_ema": 36,
-            "direction_ema": 144,
-            "direction_ema_alternative": 169,
-            "major_ema": 576,
-        },
+        "timeframes": {"direction_sources": ["4h", "8h"], "entry_watch": ["1h", "2h"]},
+        "indicators": {"filter_sma": 2, "entry_ema": 36, "direction_ema": 144,
+                       "direction_ema_alternative": 169, "major_ema": 576},
+        "rules": {"require_entry_midline_touch": True, "entry_midline_ema": 144,
+                  "entry_midline_touch_mode": "high_low_overlap"},
     }
 
 
@@ -48,29 +36,49 @@ def symbol():
     return {"id": "BTC", "name": "比特币", "enabled": True}
 
 
+def set_last_candle_to_ema(frame):
+    with_indicators = add_indicators(frame, config())
+    ema = float(with_indicators.iloc[-1]["ema_144"])
+    frame.loc[frame.index[-1], "low"] = ema - 0.1
+    frame.loc[frame.index[-1], "high"] = ema + 0.1
+    frame.loc[frame.index[-1], "open"] = ema
+    frame.loc[frame.index[-1], "close"] = ema
+    return frame
+
+
 def test_direction_conflict_blocks_trade():
-    provider = MemoryProvider({
-        "4h": make_frame(direction="up"),
-        "8h": make_frame(direction="down"),
-        "1h": make_frame(),
-        "2h": make_frame(),
-    })
+    provider = MemoryProvider({"4h": make_frame("up") if False else make_frame(direction="up"),
+                               "8h": make_frame(direction="down"), "1h": make_frame(), "2h": make_frame()})
     result = scan_symbol(symbol(), provider, config())
     assert result.status == "NO_TRADE_CONFLICT"
     assert "空仓" in result.message
 
 
-def test_aligned_direction_is_observation_not_entry_signal():
-    provider = MemoryProvider({
-        "4h": make_frame(direction="up"),
-        "8h": make_frame(direction="up"),
-        "1h": make_frame(),
-        "2h": make_frame(),
-    })
+def test_aligned_direction_without_touch_remains_observation():
+    provider = MemoryProvider({"4h": make_frame(), "8h": make_frame(), "1h": make_frame(), "2h": make_frame()})
     result = scan_symbol(symbol(), provider, config())
     assert result.status == "WATCH_ENTRY_CONDITIONS"
     assert result.entry_timeframe in {"1h", "2h"}
-    assert "不视为正式信号" in result.message
+    assert "未触碰EMA144" in result.message
+    assert "不视为正式进场信号" in result.message
+
+
+def test_latest_candle_wick_overlap_records_touch_but_not_entry():
+    provider = MemoryProvider({"4h": make_frame(), "8h": make_frame(),
+                               "1h": set_last_candle_to_ema(make_frame()), "2h": make_frame()})
+    result = scan_symbol(symbol(), provider, config())
+    assert result.status == "WATCH_ENTRY_CONFIRMATION"
+    assert result.entry_timeframe == "1h"
+    assert "覆盖EMA144" in result.message
+    assert "不视为正式进场信号" in result.message
+
+
+def test_touch_in_2h_is_detected_when_1h_does_not_touch():
+    provider = MemoryProvider({"4h": make_frame(), "8h": make_frame(),
+                               "1h": make_frame(), "2h": set_last_candle_to_ema(make_frame())})
+    result = scan_symbol(symbol(), provider, config())
+    assert result.status == "WATCH_ENTRY_CONFIRMATION"
+    assert result.entry_timeframe == "2h"
 
 
 def test_missing_direction_data_never_emits_entry():
