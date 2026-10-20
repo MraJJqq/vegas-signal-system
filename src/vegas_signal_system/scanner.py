@@ -43,12 +43,12 @@ def run_scan(config: dict, data_dir: str | Path | None = None, output_dir: str |
                 "symbol_id": str(symbol.get("id", "UNKNOWN")),
                 "symbol_name": str(symbol.get("name", "Unknown")),
                 "timestamp": "",
-                "status": "SCAN_ERROR",
+                "status": "DATA_UNAVAILABLE" if str(config.get("market_data", {}).get("provider", "")).lower() == "bitget" else "SCAN_ERROR",
                 "direction_4h": "unavailable",
                 "direction_8h": "unavailable",
                 "entry_timeframe": None,
                 "close": None,
-                "message": f"扫描失败：{type(exc).__name__}: {exc}",
+                "message": f"Bitget行情不可用：{type(exc).__name__}: {exc}" if str(config.get("market_data", {}).get("provider", "")).lower() == "bitget" else f"扫描失败：{type(exc).__name__}: {exc}",
             })
     result = pd.DataFrame(observations)
     output_dir.mkdir(parents=True, exist_ok=True)
