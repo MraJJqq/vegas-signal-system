@@ -1,46 +1,17 @@
-# Vegas Signal System configuration
-# Yahoo Finance symbols are data proxies; verify symbols against the chart venue.
+# All live market scans use Bitget only. Unsupported instruments fail visibly; no alternate source.
 app:
   name: "Vegas信号系统"
   timezone: "UTC"
   output_dir: "output"
   csv_data_dir: "data/sample"
 market_data:
-  provider: "csv"
-  history_period: "2y"
+  provider: "bitget"
+  history_limit: 2000
 symbols:
-  - {id: "GOLD", name: "黄金", enabled: true, provider_symbol: "GC=F"}
-  - {id: "CRUDE_OIL", name: "原油", enabled: true, provider_symbol: "CL=F"}
-  - {id: "BTC", name: "比特币", enabled: true, provider_symbol: "BTC-USD"}
-  - {id: "SPY", name: "标普500 ETF", enabled: true, provider_symbol: "SPY"}
-  - {id: "QQQ", name: "纳斯达克100 ETF", enabled: true, provider_symbol: "QQQ"}
-  - {id: "NVDA", name: "英伟达", enabled: true, provider_symbol: "NVDA"}
-  - {id: "AMD", name: "超威半导体", enabled: true, provider_symbol: "AMD"}
-  - {id: "AVGO", name: "博通", enabled: true, provider_symbol: "AVGO"}
-  - {id: "MU", name: "美光科技", enabled: true, provider_symbol: "MU"}
-  - {id: "SNDK", name: "闪迪", enabled: true, provider_symbol: "SNDK"}
-  - {id: "TSM", name: "台积电ADR", enabled: true, provider_symbol: "TSM"}
-  - {id: "ARM", name: "Arm", enabled: true, provider_symbol: "ARM"}
-  - {id: "MSFT", name: "微软", enabled: true, provider_symbol: "MSFT"}
-  - {id: "AAPL", name: "苹果", enabled: true, provider_symbol: "AAPL"}
-  - {id: "AMZN", name: "亚马逊", enabled: true, provider_symbol: "AMZN"}
-  - {id: "META", name: "Meta", enabled: true, provider_symbol: "META"}
-  - {id: "GOOGL", name: "谷歌A", enabled: true, provider_symbol: "GOOGL"}
-  - {id: "TSLA", name: "特斯拉", enabled: true, provider_symbol: "TSLA"}
-  - {id: "PLTR", name: "Palantir", enabled: true, provider_symbol: "PLTR"}
-  - {id: "ORCL", name: "甲骨文", enabled: true, provider_symbol: "ORCL"}
-  - {id: "NFLX", name: "奈飞", enabled: true, provider_symbol: "NFLX"}
-  - {id: "JPM", name: "摩根大通", enabled: true, provider_symbol: "JPM"}
-  - {id: "XOM", name: "埃克森美孚", enabled: true, provider_symbol: "XOM"}
-  - {id: "LLY", name: "礼来", enabled: true, provider_symbol: "LLY"}
-  - {id: "COST", name: "好市多", enabled: true, provider_symbol: "COST"}
-  - {id: "COIN", name: "Coinbase", enabled: true, provider_symbol: "COIN"}
-  - {id: "MSTR", name: "Strategy", enabled: true, provider_symbol: "MSTR"}
-  - {id: "HOOD", name: "Robinhood", enabled: true, provider_symbol: "HOOD"}
-  - {id: "CRWD", name: "CrowdStrike", enabled: true, provider_symbol: "CRWD"}
-  - {id: "ANET", name: "Arista Networks", enabled: true, provider_symbol: "ANET"}
-  - {id: "GE", name: "GE Aerospace", enabled: true, provider_symbol: "GE"}
-  - {id: "CAT", name: "卡特彼勒", enabled: true, provider_symbol: "CAT"}
+  - {id: "GOLD", name: "黄金（Bitget黄金代币候选）", enabled: true, bitget_symbol: "PAXGUSDT", bitget_category: "SPOT"}
+  - {id: "CRUDE_OIL", name: "原油（Bitget品种候选）", enabled: true, bitget_symbol: "OILUSDT", bitget_category: "SPOT"}
+  - {id: "BTC", name: "比特币（Bitget USDT合约）", enabled: true, bitget_symbol: "BTCUSDT", bitget_category: "USDT-FUTURES", bitget_product_type: "USDT-FUTURES"}
+  - {id: "SNDK", name: "闪迪股票代币（Bitget候选）", enabled: true, bitget_symbol: "rSNDKUSDT", bitget_category: "SPOT"}
 timeframes:
   direction_sources: ["4h", "8h"]
   entry_watch: ["1h", "2h"]
