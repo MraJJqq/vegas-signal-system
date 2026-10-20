@@ -10,7 +10,7 @@
 - 触碰只输出 `WATCH_ENTRY_CONFIRMATION`，不代表正式进场信号
 - Yahoo Finance小时行情代理重采样为1H/2H/4H/8H完整K线
 - 每小时自动扫描；结果CSV/JSON作为GitHub Actions构件保留14天
-- 个人微信通知通过 Server酱 API 发送；仅推送EMA144触碰观察候选
+- ntfy 通知推送到 iPad/iPhone；仅推送EMA144触碰观察候选
 - 单一品种数据失败不会阻断其他品种扫描
 - 不自动下单、不自动管理仓位
 
