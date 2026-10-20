@@ -10,7 +10,7 @@
 - 触碰只输出 `WATCH_ENTRY_CONFIRMATION`，不代表正式进场信号
 - Yahoo Finance小时行情代理重采样为1H/2H/4H/8H完整K线
 - 每小时自动扫描；结果CSV/JSON作为GitHub Actions构件保留14天
-- 可选企业微信群机器人Markdown推送；仅推送EMA144触碰观察候选
+- 个人微信通知通过 Server酱 API 发送；仅推送EMA144触碰观察候选
 - 单一品种数据失败不会阻断其他品种扫描
 - 不自动下单、不自动管理仓位
 
@@ -18,18 +18,18 @@
 
 包含SPY、QQQ，以及NVDA、AMD、AVGO、MU、SNDK、TSM、ARM、MSFT、AAPL、AMZN、META、GOOGL、TSLA、PLTR、ORCL、NFLX、JPM、XOM、LLY、COST、COIN、MSTR、HOOD、CRWD、ANET、GE、CAT等。可在 `config/settings.yaml` 中启用/禁用或增删品种。
 
-## 启用企业微信推送
+## 设置个人微信推送（Server酱 Turbo）
 
-推送使用**企业微信群机器人**Webhook，不是普通个人微信账号的直接私聊接口。
+1. 在 iPad 上打开 [Server酱官网](https://sct.ftqq.com)，用个人微信扫码登录。
+2. 进入官网的「SendKey」页面，复制以 `SCT` 开头的 SendKey。不要把密钥发到聊天里，也不要提交到代码仓库。
+3. 打开 [GitHub 仓库 Actions Secrets 设置页](https://github.com/MraJJqq/vegas-signal-system/settings/secrets/actions)。
+4. 点击 **New repository secret**，名称准确填写 `SERVERCHAN_SENDKEY`，值粘贴刚才复制的 SendKey，再保存。
+5. 打开 [GitHub Actions 工作流](https://github.com/MraJJqq/vegas-signal-system/actions/workflows/scan.yml)，点击 **Run workflow**，将 `test_notification` 设为 `true)，再运行。
+6. 确认个人微信收到“Vegas信号系统推送测试”。收到后，后续每小时扫描在存在 `WATCH_ENTRY_CONFIRMATION` 候选时会推送摘要；没有候选则不推送，避免刷屏。
 
-1. 在企业微信群中添加群机器人，复制Webhook地址。
-2. 打开GitHub仓库的 **Settings → Secrets and variables → Actions → New repository secret**。
-3. Secret名称填写 `WECHAT_WORK_WEBHOOK`，值填写完整Webhook地址。不要把Webhook写进代码、提交记录或聊天消息。
-4. 打开 **Actions → Scheduled Vegas Scan → Run workflow**。
-5. 首次测试时，将 `test_notification` 设为 `true` 后运行。此模式只发送测试消息，不扫描市场。
-6. 测试成功后，后续每小时扫描会在存在 `WATCH_ENTRY_CONFIRMATION` 候选时推送摘要；没有候选则不推送，避免刷屏。
+**需要你亲自完成的部分：** 第1步微信扫码登录并获取 SendKey，以及第4步把密钥粘贴到 GitHub Secret。出于账号与密钥安全原因，程序不会把密钥写入仓库或日志。完成这些后，GitHub Actions 可自动扫描和推送。
 
-如果仓库Secret未配置，扫描仍可运行，只会在日志中说明通知未发送。上游行情缺失、Yahoo Finance限流或GitHub Actions配额可能影响扫描，不保证每次都成功。
+如果仓库Secret未配置，扫描仍可运行，只会在日志中说明通知未发送。Server酱免费会员官方文档注明每天最多5条；额度或上游服务异常可能影响推送。
 
 ## 行情源限制
 
@@ -54,7 +54,7 @@ vegas-scan --config config/settings.yaml --provider yfinance --output-dir output
 手动测试推送（需先设置环境变量）：
 
 ```bash
-export WECHAT_WORK_WEBHOOK="你的企业微信群机器人Webhook"
+export SERVERCHAN_SENDKEY="你的SendKey"
 vegas-scan --config config/settings.yaml --test-notification
 ```
 
