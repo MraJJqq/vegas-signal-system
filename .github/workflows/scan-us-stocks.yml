@@ -11,6 +11,10 @@ on:
   schedule:
     - cron: "37 * * * 1-5"
 
+concurrency:
+  group: bitget-stock-scan
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
