@@ -1,0 +1,35 @@
+# Example only; contains no secrets.
+app:
+  name: vegas-signal-system-v2
+  mode: signal_reminder_only
+  auto_execute_orders: false
+
+market_data:
+  provider: bitget
+  symbols: [] # Populate only with verified supported contract symbols.
+  timeframes: [1h, 2h, 4h, 8h]
+  require_completed_candles: true
+  allow_lookahead: false
+
+indicators:
+  entry_filter_ema: 12
+  pioneer_ema: 36
+  middle_ema: 144
+  large_capital_ema: 576
+
+rules:
+  direction_sources: [4h, 8h]
+  direction_conflict_action: no_trade
+  touch_line: ema144
+  touch_definition: candle_high_gte_line_and_low_lte_line
+  entry_signal_requires_completed_candle: true
+  missing_data_action: unavailable
+
+risk:
+  budget_usdt_approx: 10
+  isolated_margin_only: true
+  cross_margin: false
+
+notifications:
+  provider: ntfy
+  enabled: false # Enable only after secret/configuration is safely supplied.
