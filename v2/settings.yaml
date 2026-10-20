@@ -1,0 +1,33 @@
+app:
+  name: "Vegas信号系统 V2"
+  timezone: "UTC"
+market_data:
+  provider: "bitget"
+  history_limit: 2000
+symbols:
+  - {id: "GOLD", bitget_symbol: "XAUUSDT", product_type: "USDT-FUTURES", enabled: true}
+  - {id: "CRUDE_OIL", bitget_symbol: "CLUSDT", product_type: "USDT-FUTURES", enabled: true}
+  - {id: "BTC", bitget_symbol: "BTCUSDT", product_type: "USDT-FUTURES", enabled: true}
+  - {id: "HYPE", bitget_symbol: "HYPEUSDT", product_type: "USDT-FUTURES", enabled: true}
+  - {id: "SNDK", bitget_symbol: "SNDKUSDT", product_type: "USDT-FUTURES", enabled: true}
+timeframes:
+  direction_source: "4h"
+  touch_and_signal: ["1h", "2h", "4h"]
+indicators:
+  touch_midline_ema: 144
+  formal_signal_filter_ema: 12
+rules:
+  touch_mode: "high_low_overlap"
+  require_completed_candle: true
+  signal_long: "completed_close_strictly_above_same_timeframe_ema12"
+  signal_short: "completed_close_strictly_below_same_timeframe_ema12"
+  equality_is_signal: false
+  observation_state_key: ["symbol", "timeframe"]
+  deduplication_key: ["symbol", "timeframe", "direction", "candle_timestamp"]
+notifications:
+  enabled: true
+  provider: "ntfy"
+  send_observation_events: false
+  send_formal_signals_only: true
+execution:
+  place_orders: false
