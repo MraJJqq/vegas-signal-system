@@ -14,7 +14,7 @@ class BitgetMarketDataProvider:
     """Bitget-only public market candles. No alternate-provider fallback."""
 
     FUTURES_URL = "https://api.bitget.com/api/v2/mix/market/candles"
-    SPOT_URL = "https://api.bitget.com/api/v3/market/candles"
+    SPOT_URL = "https://api.bitget.com/api/v2/spot/market/candles"
 
     def __init__(self, symbols: list[dict], history_limit: int = 2000, timeout: int = 15):
         self.symbols = {
@@ -57,7 +57,7 @@ class BitgetMarketDataProvider:
                 query = {
                     "category": "SPOT",
                     "symbol": spec["symbol"],
-                    "interval": "1H",
+                    "granularity": "1h",
                     "limit": str(batch_size),
                 }
                 if end_time is not None:
