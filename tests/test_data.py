@@ -19,7 +19,7 @@ def hourly_frame(count=20):
 
 def test_resample_aggregates_ohlcv_and_excludes_unclosed_candle():
     frame = hourly_frame(12)
-    result = resample_ohlcv(frame, "4h", now=pd.Timestamp("2026-01-01T12:00:00Z"))
+    result = resample_ohlcv(frame, "4h", now=pd.Timestamp("2026-01-01T10:00:00Z"))
     assert result["timestamp"].tolist() == list(pd.to_datetime([
         "2026-01-01T00:00:00Z",
         "2026-01-01T04:00:00Z",
