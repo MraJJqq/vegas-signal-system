@@ -39,8 +39,8 @@ def symbol():
 def set_last_candle_to_ema(frame):
     with_indicators = add_indicators(frame, config())
     ema = float(with_indicators.iloc[-1]["ema_144"])
-    frame.loc[frame.index[-1], "low"] = ema - 0.1
-    frame.loc[frame.index[-1], "high"] = ema + 0.1
+    frame.loc[frame.index[-1], "low"] = min(float(frame.iloc[-1]["low"]), ema)
+    frame.loc[frame.index[-1], "high"] = max(float(frame.iloc[-1]["high"]), ema)
     return frame
 
 
