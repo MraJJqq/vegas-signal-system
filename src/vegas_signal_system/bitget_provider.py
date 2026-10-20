@@ -15,11 +15,13 @@ class BitgetMarketDataProvider:
 
     FUTURES_URL = "https://api.bitget.com/api/v2/mix/market/candles"
     SPOT_URL = "https://api.bitget.com/api/v2/spot/market/candles"
+    REALITY_STOCKS_URL = "https://api.bitget.com/api/v3/reality/market/stock-info"
 
     def __init__(self, symbols: list[dict], history_limit: int = 2000, timeout: int = 15):
         self.symbols = {
             str(item["id"]): {
                 "symbol": str(item.get("bitget_symbol") or ""),
+                "stock_code": str(item.get("bitget_stock_code") or "").upper(),
                 "category": str(item.get("bitget_category", "USDT-FUTURES")).upper(),
                 "product_type": str(item.get("bitget_product_type", "USDT-FUTURES")),
             }
@@ -29,6 +31,7 @@ class BitgetMarketDataProvider:
         self.history_limit = max(300, min(int(history_limit), 3000))
         self.timeout = timeout
         self._cache: dict[str, pd.DataFrame] = {}
+        self._reality_symbols: dict[str, str] | None = None
 
     def _request(self, url: str, query: dict) -> dict:
         request = Request(
@@ -41,11 +44,29 @@ class BitgetMarketDataProvider:
             raise ValueError(f"Bitget API error: {payload.get('msg', 'unknown error')}")
         return payload
 
+    def _resolve_reality_symbol(self, stock_code: str) -> str:
+        if self._reality_symbols is None:
+            payload = self._request(self.REALITY_STOCKS_URL, {})
+            self._reality_symbols = {
+                str(item.get("code", "")).upper(): str(item.get("symbol", ""))
+                for item in payload.get("data", [])
+                if item.get("code") and item.get("symbol")
+            }
+        symbol = self._reality_symbols.get(stock_code, "")
+        if not symbol:
+            raise ValueError(f"Bitget Reality does not list stock code {stock_code}")
+        return symbol
+
     def _load_hourly(self, symbol_id: str) -> pd.DataFrame:
         if symbol_id in self._cache:
             return self._cache[symbol_id]
         spec = self.symbols.get(symbol_id)
-        if not spec or not spec["symbol"]:
+        if not spec:
+            raise ValueError(f"No Bitget symbol configured for {symbol_id}; alternate data sources are disabled")
+        if not spec["symbol"] and spec["stock_code"]:
+            spec["symbol"] = self._resolve_reality_symbol(spec["stock_code"])
+            spec["category"] = "SPOT"
+        if not spec["symbol"]:
             raise ValueError(f"No Bitget symbol configured for {symbol_id}; alternate data sources are disabled")
 
         rows = []
