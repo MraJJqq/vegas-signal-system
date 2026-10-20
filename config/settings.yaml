@@ -1,24 +1,28 @@
 # Vegas Signal System configuration
-# Provider symbols are examples and may need mapping for your chosen market-data source.
+# Yahoo Finance symbols are data proxies and must be checked against your chart venue.
 app:
   name: "Vegas信号系统"
   timezone: "UTC"
   output_dir: "output"
   csv_data_dir: "data/sample"
 
+market_data:
+  provider: "csv"
+  history_period: "60d"
+
 symbols:
   - id: "GOLD"
     name: "黄金"
     enabled: true
-    provider_symbol: "XAUUSD"
+    provider_symbol: "GC=F"
   - id: "CRUDE_OIL"
     name: "原油"
     enabled: true
-    provider_symbol: "USOIL"
+    provider_symbol: "CL=F"
   - id: "BTC"
     name: "比特币"
     enabled: true
-    provider_symbol: "BTCUSDT"
+    provider_symbol: "BTC-USD"
 
 timeframes:
   direction_sources: ["4h", "8h"]
@@ -33,11 +37,8 @@ indicators:
   major_ema: 576
 
 rules:
-  # If 4H and 8H direction conflict, do not emit a trade signal.
   block_when_direction_conflicts: true
-  # Entry is only evaluated after price reaches the configured 1H/2H midline area.
   require_entry_midline_touch: true
-  # This first scaffold reports candidate observations, not executable orders.
   emit_candidate_observations: true
 
 notifications:
