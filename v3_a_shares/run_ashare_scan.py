@@ -1,4 +1,4 @@
-"""Run the shared V3 Vegas engine over the fixed A-share 4H session candles."""
+"""Run the A-share-only V3 scan using the 4H midline and EMA12 filter."""
 from __future__ import annotations
 
 import json
@@ -11,8 +11,7 @@ ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
 sys.path.insert(0, str(REPO / "v3"))
 
-import pandas as pd
-from akshare_market_data import AShareDataError, fetch_symbol_4h_history
+from akshare_market_data import fetch_symbol_4h_history
 from bitget_market_data import ema
 from notification_digest import ConfirmedSignal, format_digest, load_daily_state, save_daily_state, send_ntfy, update_daily_digest
 from signal_system_v3 import Candle, WatchState, evaluate_candle
@@ -21,25 +20,22 @@ TZ = ZoneInfo("Asia/Shanghai")
 
 
 def scan_symbol(name: str, code: str):
-    # Same history requirement, EMA calculation, state machine, red-peak
-    # observation trigger, midline direction, and EMA12 confirmation as V3.
+    # A-share-specific scope: observe the EMA144/EMA169 midline band only;
+    # EMA12 remains the closed-candle confirmation filter. No red-peak EMA576/676.
     bars = fetch_symbol_4h_history(code)
     closes = [bar.close for bar in bars]
     ema12 = ema(closes, 12)
     ema144 = ema(closes, 144)
     ema169 = ema(closes, 169)
-    ema576 = ema(closes, 576)
-    ema676 = ema(closes, 676)
     watch = WatchState()
     events = []
     for index, bar in enumerate(bars):
-        values = (ema12[index], ema144[index], ema169[index], ema576[index], ema676[index])
+        values = (ema12[index], ema144[index], ema169[index])
         if any(value is None for value in values):
             continue
         candle = Candle(close=bar.close, high=bar.high, low=bar.low, closed=bar.closed)
         event = evaluate_candle(
-            "4H", candle, float(values[0]), float(values[1]), float(values[2]),
-            watch, float(values[3]), float(values[4])
+            "4H", candle, float(values[0]), float(values[1]), float(values[2]), watch
         )
         if event:
             candle_time = datetime.combine(bar.session_date, datetime.min.time(), TZ).isoformat()
@@ -54,8 +50,7 @@ def scan_symbol(name: str, code: str):
     print(
         f"PASS {code} {name}: session_bars={len(bars)} "
         f"latest={last.session_date} close={last.close:g} "
-        f"EMA12={ema12[-1]:g} EMA144={ema144[-1]:g} EMA169={ema169[-1]:g} "
-        f"EMA576={ema576[-1]:g} EMA676={ema676[-1]:g}"
+        f"EMA12={ema12[-1]:g} EMA144={ema144[-1]:g} EMA169={ema169[-1]:g}"
     )
     return events
 
@@ -66,7 +61,7 @@ def main():
     found, errors = [], []
     scan_total = len(universe["symbols"])
     scan_successes = 0
-    print(f"V3 A-share scan local_day={today.isoformat()} timezone=Asia/Shanghai timeframe=4H")
+    print(f"V3 A-share scan local_day={today.isoformat()} timezone=Asia/Shanghai timeframe=4H indicators=EMA144,EMA169,EMA12 red_peak=OFF")
     for item in universe["symbols"]:
         code, name = item["code"], item["name"]
         try:
@@ -84,7 +79,6 @@ def main():
     print(f"SCAN_SIGNALS_TODAY={len(found)}")
 
     # Never publish a formal-signal notification from an incomplete scan.
-    # Error details remain in the GitHub Actions log, not the signal channel.
     if errors or scan_successes != scan_total:
         print("SCAN_ABORTED_INCOMPLETE=1; no notification sent; digest state unchanged")
         raise SystemExit(1)
