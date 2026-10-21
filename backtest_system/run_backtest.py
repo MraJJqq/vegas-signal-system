@@ -149,8 +149,9 @@ def run(start: datetime, end: datetime, signals_path: Path, output_dir: Path) ->
         )
         for c in all_candles
     ])
-    for signal in sorted(signals, key=lambda s: (s.timestamp, s.symbol)):
-        engine.process_signals([signal])
+    # Submit the complete signal batch so higher-timeframe priority can be
+    # applied when several timeframes signal the same symbol at one timestamp.
+    engine.process_signals(sorted(signals, key=lambda s: (s.timestamp, s.symbol)))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     candle_rows = candles_to_csv_rows(sorted(all_candles, key=lambda c: (c.symbol, c.timeframe, c.timestamp)))
