@@ -53,5 +53,19 @@ class SignalSystemV3Tests(unittest.TestCase):
         self.assertIsNone(event)
 
 
+    def test_candle_that_starts_observation_cannot_signal_on_same_candle(self):
+        state = WatchState()
+        # The candle touches the band intrabar but closes above both the band
+        # and EMA12. Touch starts observation; it is not itself a formal signal.
+        event = evaluate_candle("4H", Candle(103, 104, 101), 102, 100, 102, state)
+        self.assertIsNone(event)
+        self.assertTrue(state.active)
+
+        # A later closed candle may confirm the signal.
+        event = evaluate_candle("4H", Candle(104, 105, 103), 102, 100, 102, state)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.direction, "LONG")
+
+
 if __name__ == "__main__":
     unittest.main()
