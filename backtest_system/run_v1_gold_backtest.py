@@ -125,7 +125,47 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
                    is_synthetic=c.is_synthetic)
             for c in candles if start - timedelta(days=70) <= c.timestamp < end
         ])
-    engine.process_signals(signals)
+    # Recognize the explicitly defined bullish 1H reversal pattern using closed closes.
+    reversal_events = []
+    hourly_candles = data["1H"]
+    hourly_closes = [c.close for c in hourly_candles]
+    reversal_indices = bullish_reversal_indices(
+        hourly_closes, indicators["1H"]["ema36"], indicators["1H"]["ema144"]
+    )
+    for index in reversal_indices:
+        candle = hourly_candles[index]
+        event_time = candle_close_time(candle, "1H")
+        if start <= event_time <= end:
+            reversal_events.append((event_time, candle.close, candle.is_synthetic))
+
+    # Replay signals and confirmed reversal events chronologically, never using an open candle.
+    signals_by_time = {}
+    for signal in prioritized_signals:
+        signals_by_time.setdefault(signal.timestamp, []).append(signal)
+    reversals_by_time = {}
+    for event_time, price, synthetic in reversal_events:
+        reversals_by_time.setdefault(event_time, []).append((price, synthetic))
+
+    for event_time in sorted(set(signals_by_time) | set(reversals_by_time)):
+        if event_time in signals_by_time:
+            engine.process_signals(signals_by_time[event_time])
+        if event_time in reversals_by_time:
+            for price, synthetic in reversals_by_time[event_time]:
+                has_short_exposure = any(
+                    p.symbol == symbol.upper() and p.is_open
+                    and p.kind in {"main", "addon"} and p.direction is Direction.SHORT
+                    for p in engine.report.positions
+                )
+                if has_short_exposure:
+                    engine.confirm_reversal(
+                        symbol=symbol.upper(),
+                        opposite_direction=Direction.LONG,
+                        timestamp=event_time,
+                        price=price,
+                        timeframe="1H",
+                        reversal_structure_confirmed=True,
+                        synthetic_source=synthetic,
+                    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     all_candles = [c for tf in data for c in data[tf] if start <= c.timestamp < end]
@@ -148,7 +188,7 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
         "direction_alignment_passes": direction_passes,
         "recognized_signals_before_priority": len(signals),
         "signals_after_same_symbol_time_priority": len(prioritized_signals),
-        "signals_removed_by_same_symbol_time_priority": len(signals) - len(prioritized_signals),
+        "signals_removed_by_same_symbol_time_priority": len(signals) - len(prioritized_signals),\n        "confirmed_bullish_reversal_patterns": len(reversal_events),
         "positions_opened": report["summary"]["positions_opened"],
         "positions_closed": report["summary"]["positions_closed"],
         "entry_rule": "4H/8H close-vs-EMA144 directions agree; 1H/2H range touches EMA144; same closed candle closes on agreed side of EMA12",
