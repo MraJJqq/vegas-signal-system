@@ -1,4 +1,4 @@
-"""Run the V5 hourly Bitget 4H scan; market pool excludes user's self-monitored assets."""
+"""Run V5 over all active Bitget USDT contracts: crypto plus listed stock/RWA contracts."""
 import argparse
 import os
 from datetime import datetime
