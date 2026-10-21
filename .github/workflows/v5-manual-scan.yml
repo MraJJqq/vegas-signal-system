@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # Run once per hour. GitHub Actions cron is evaluated in UTC.
-    - cron: "7 * * * *"
+    - cron: "0 * * * *"
   push:
     branches: [main]
     paths:
