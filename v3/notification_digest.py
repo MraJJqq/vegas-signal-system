@@ -129,7 +129,7 @@ def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://
         f"{server.rstrip('/')}/{topic}",
         data=message.encode("utf-8"),
         headers={
-            "Title": "VEGAS · V3 SIGNAL",
+            "Title": "VEGAS V3 SIGNAL",
             "Priority": "high",
             "Tags": "green_circle,red_circle",
             "Content-Type": "text/plain; charset=utf-8",
