@@ -19,10 +19,12 @@ from signal_system_v5 import Candle
 
 BASE_URL = "https://api.bitget.com"
 CANDLES_PATH = "/api/v3/market/candles"
+CONTRACTS_PATH = "/api/v2/mix/market/contracts"
 HISTORY_CANDLES_PATH = "/api/v3/market/history-candles"
 PRODUCT_TYPE = "USDT-FUTURES"
 FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 ALLOWED_TIMEFRAMES = ("4H",)
+EXCLUDED_NON_TARGET_SYMBOLS = {"XAUUSDT", "CLUSDT"}
 HISTORY_PAGE_SIZE = 100
 
 
@@ -99,6 +101,34 @@ def _http_get_json(url: str, timeout: float = 10.0) -> dict:
             f"{payload.get('msg', 'unknown error')}"
         )
     return payload
+
+
+
+def discover_v5_symbols(request_json: Callable[[str], dict] | None = None) -> list[str]:
+    """Discover active Bitget USDT contracts, including crypto and listed stock/RWA contracts."""
+    fetch_json = request_json or _http_get_json
+    url = f"{BASE_URL}{CONTRACTS_PATH}?{urlencode({'productType': PRODUCT_TYPE})}"
+    payload = fetch_json(url)
+    data = payload.get("data")
+    if not isinstance(data, list):
+        raise BitgetAPIError("Bitget contracts response data is not a list")
+    symbols: set[str] = set()
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        symbol = str(item.get("symbol", "")).strip().upper()
+        if not symbol or not symbol.endswith("USDT"):
+            continue
+        if item.get("quoteCoin") != "USDT":
+            continue
+        if str(item.get("symbolStatus", "")).lower() != "normal":
+            continue
+        if symbol in EXCLUDED_NON_TARGET_SYMBOLS:
+            continue
+        symbols.add(symbol)
+    if not symbols:
+        raise BitgetAPIError("Bitget returned no eligible active USDT contracts")
+    return sorted(symbols)
 
 
 def parse_candle_rows(rows: Iterable[list]) -> list[MarketCandle]:
