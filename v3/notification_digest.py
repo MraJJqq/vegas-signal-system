@@ -90,14 +90,17 @@ def save_daily_state(path: str | Path, state: dict) -> None:
 
 
 def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
-    """Keep ntfy messages concise: symbol and direction only."""
+    """Format the daily digest in a polished, compact trading-terminal style."""
     daily = state.get("signals", [])
-    if not daily:
-        return "V3 正式信号：无"
+    header = "VEGAS  |  V3 SIGNAL"
+    divider = "━━━━━━━━━━━━━━━━"
 
-    # One concise line per symbol/direction, preserving the day's digest.
+    if not daily:
+        return f"{header}\n{divider}\n当前无正式信号"
+
+    # One section per unique symbol/direction, preserving the day's digest.
     seen = set()
-    lines = ["V3 正式信号"]
+    sections = [header, divider]
     for item in daily:
         symbol = item["symbol"]
         direction = item["direction"]
@@ -105,9 +108,16 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
         if key in seen:
             continue
         seen.add(key)
-        label = "做多" if direction == "LONG" else "做空"
-        lines.append(f"{symbol} {label}")
-    return "\n".join(lines)
+        if direction == "LONG":
+            direction_line = "▲  LONG  ·  做多"
+        else:
+            direction_line = "▼  SHORT  ·  做空"
+        sections.extend((symbol, direction_line, "4H 正式信号", divider))
+
+    # Avoid a trailing divider while retaining the visual hierarchy.
+    if sections[-1] == divider:
+        sections.pop()
+    return "\\n".join(sections)
 
 def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://ntfy.sh") -> None:
     """Send a message to ntfy. Topic must come from the configured secret/env."""
