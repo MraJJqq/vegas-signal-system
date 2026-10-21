@@ -109,7 +109,7 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
             if key in seen:
                 continue
             seen.add(key)
-            direction_line = "▲  LONG  ·  做多" if direction == "LONG" else "▼  SHORT  ·  做空"
+            direction_line = "🟢  ▲ LONG  ·  做多" if direction == "LONG" else "🔴  ▼ SHORT  ·  做空"
             sections.extend((symbol, direction_line, "4H 正式信号", divider))
         if sections[-1] == divider:
             sections.pop()
@@ -131,7 +131,7 @@ def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://
         headers={
             "Title": "Vegas V3 Signal",
             "Priority": "high",
-            "Tags": "chart_with_upwards_trend",
+            "Tags": "chart_with_upwards_trend,green_circle,red_circle",
             "Content-Type": "text/plain; charset=utf-8",
         },
         method="POST",
