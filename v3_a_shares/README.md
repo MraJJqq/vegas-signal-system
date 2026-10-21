@@ -51,6 +51,12 @@ A successful unit test run validates code behavior with mocked data only. A
 separate live-data test is still required before enabling full-market scans.
 
 
+## Focused scan pool
+
+The initial watchlist is defined in `universe.json` and contains 12 liquid Shanghai/Shenzhen main-board candidates across consumer, banking, metals, utilities, manufacturing, semiconductors, pharmaceuticals, and industrial equipment. It excludes ChiNext, STAR Market, and Beijing-listed stocks. This is a candidate universe, not a claim that each stock currently has a clear Vegas trend. The Vegas rules must decide whether a formal signal exists.
+
+The pool remains `pilot_not_enabled` until live-data validation confirms sufficient complete 4H session candles for EMA676 and suspension handling. No A-share signal is sent by this configuration alone.
+
 ## Automated validation
 
 The isolated workflow `.github/workflows/ashare-data-validation.yml` runs offline unit tests and a live-data smoke test. It does not enable scheduled scanning or send notifications.
