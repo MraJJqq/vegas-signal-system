@@ -90,26 +90,24 @@ def save_daily_state(path: str | Path, state: dict) -> None:
 
 
 def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
-    new_events = list(new_events)
-    lines = [f"Vegas V3 信号汇总（{state['local_day']}）"]
-    if new_events:
-        lines.append(f"本次新增正式信号：{len(new_events)}")
-        for item in new_events:
-            lines.append(
-                f"新信号：{item.symbol} {item.direction} {item.timeframe} "
-                f"收盘价={item.close:g} K线时间={item.candle_time}"
-            )
-    else:
-        lines.append("本次没有新信号。")
+    """Keep ntfy messages concise: symbol and direction only."""
     daily = state.get("signals", [])
-    lines.append(f"当天已确认正式信号：{len(daily)}")
-    for item in daily:
-        lines.append(
-            f"- {item['symbol']} {item['direction']} {item['timeframe']} "
-            f"收盘价={item['close']:g} K线时间={item['candle_time']}"
-        )
-    return "\n".join(lines)
+    if not daily:
+        return "V3 正式信号：无"
 
+    # One concise line per symbol/direction, preserving the day's digest.
+    seen = set()
+    lines = ["V3 正式信号"]
+    for item in daily:
+        symbol = item["symbol"]
+        direction = item["direction"]
+        key = (symbol, direction)
+        if key in seen:
+            continue
+        seen.add(key)
+        label = "做多" if direction == "LONG" else "做空"
+        lines.append(f"{symbol} {label}")
+    return "\n".join(lines)
 
 def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://ntfy.sh") -> None:
     """Send a message to ntfy. Topic must come from the configured secret/env."""
