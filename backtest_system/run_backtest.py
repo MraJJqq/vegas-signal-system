@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from bitget_market_data import candles_to_csv_rows, fetch_history_candles
+from bitget_market_data import HistoricalCandle, candles_to_csv_rows, fetch_history_candles
 from v1_trading_system import Candle, Direction, SignalEvent, VegasBacktestV2
 
 TIMEFRAME_HOURS = {"1H": 1, "2H": 2, "4H": 4, "8H": 8}
@@ -48,6 +48,42 @@ def load_signals(path: Path) -> list[SignalEvent]:
     return signals
 
 
+def fetch_timeframe_candles(symbol: str, timeframe: str, start: datetime, end: datetime) -> list[HistoricalCandle]:
+    """Fetch supported Bitget bars directly; aggregate 2H/8H from complete 1H bars."""
+    if timeframe in {"1H", "4H"}:
+        return fetch_history_candles(symbol=symbol, timeframe=timeframe, start=start, end=end)
+    hours = TIMEFRAME_HOURS[timeframe]
+    hourly = fetch_history_candles(symbol=symbol, timeframe="1H", start=start, end=end)
+    buckets: dict[datetime, list[HistoricalCandle]] = {}
+    for candle in hourly:
+        epoch_hour = int(candle.timestamp.timestamp() // 3600)
+        bucket_epoch = (epoch_hour // hours) * hours
+        bucket_start = datetime.fromtimestamp(bucket_epoch * 3600, tz=timezone.utc)
+        buckets.setdefault(bucket_start, []).append(candle)
+
+    aggregated = []
+    for bucket_start, bars in sorted(buckets.items()):
+        bars.sort(key=lambda bar: bar.timestamp)
+        # Never manufacture a higher-timeframe candle from missing hourly data.
+        if len(bars) != hours:
+            continue
+        expected = [bucket_start + timedelta(hours=i) for i in range(hours)]
+        if [bar.timestamp for bar in bars] != expected:
+            continue
+        aggregated.append(HistoricalCandle(
+            symbol=symbol.upper(),
+            timeframe=timeframe,
+            timestamp=bucket_start,
+            open=bars[0].open,
+            high=max(bar.high for bar in bars),
+            low=min(bar.low for bar in bars),
+            close=bars[-1].close,
+            base_volume=sum(bar.base_volume for bar in bars),
+            quote_volume=sum(bar.quote_volume for bar in bars),
+        ))
+    return [c for c in aggregated if start <= c.timestamp + timedelta(hours=hours) <= end]
+
+
 def write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -74,7 +110,7 @@ def run(start: datetime, end: datetime, signals_path: Path, output_dir: Path) ->
         # Candle timestamps are opening times; include the candle before the
         # first signal so its close can be matched without looking ahead.
         fetch_start = min(s.timestamp for s in series_signals) - timedelta(hours=TIMEFRAME_HOURS[timeframe])
-        fetched = fetch_history_candles(
+        fetched = fetch_timeframe_candles(
             symbol=symbol, timeframe=timeframe, start=fetch_start, end=end,
         )
         if not fetched:
