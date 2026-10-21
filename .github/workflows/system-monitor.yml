@@ -1,8 +1,7 @@
 name: V1 V3 System Monitor
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
+  # Intentionally manual-only until both V1 and V3 are completed and approved for monitoring.
   workflow_dispatch:
 
 permissions:
