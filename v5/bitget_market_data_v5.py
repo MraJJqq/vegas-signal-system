@@ -24,7 +24,9 @@ HISTORY_CANDLES_PATH = "/api/v3/market/history-candles"
 PRODUCT_TYPE = "USDT-FUTURES"
 FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 ALLOWED_TIMEFRAMES = ("4H",)
-EXCLUDED_NON_TARGET_SYMBOLS = {"XAUUSDT", "CLUSDT"}
+V5_STOCK_SYMBOLS = ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","AVGO","AMD","NFLX","ORCL","CRM","PLTR","INTC","QCOM","MU","ARM","TSM","COIN","MSTR","HOOD","JPM","BAC","GS","MS","V","MA","WMT","COST","HD","LOW","XOM","CVX","COP","CAT","GE","BA","LMT","RTX","NKE","MCD","SBUX","KO","PEP","DIS","UBER","ABNB","SHOP","ADBE","IBM"]
+V5_FIXED_SYMBOLS = {"BTCUSDT", "HYPEUSDT", "XAUUSDT", "CLUSDT"}
+TARGET_SYMBOLS = {f"{ticker}USDT" for ticker in V5_STOCK_SYMBOLS} | V5_FIXED_SYMBOLS
 HISTORY_PAGE_SIZE = 100
 
 
@@ -105,31 +107,29 @@ def _http_get_json(url: str, timeout: float = 10.0) -> dict:
 
 
 def discover_v5_symbols(request_json: Callable[[str], dict] | None = None) -> list[str]:
-    """Discover active Bitget USDT contracts, including crypto and listed stock/RWA contracts."""
+    """Discover the configured 50-stock shortlist plus BTC, HYPE, gold and crude oil."""
     fetch_json = request_json or _http_get_json
     url = f"{BASE_URL}{CONTRACTS_PATH}?{urlencode({'productType': PRODUCT_TYPE})}"
     payload = fetch_json(url)
     data = payload.get("data")
     if not isinstance(data, list):
         raise BitgetAPIError("Bitget contracts response data is not a list")
-    symbols: set[str] = set()
+    active: set[str] = set()
     for item in data:
         if not isinstance(item, dict):
             continue
         symbol = str(item.get("symbol", "")).strip().upper()
-        if not symbol or not symbol.endswith("USDT"):
-            continue
-        if item.get("quoteCoin") != "USDT":
-            continue
-        if str(item.get("symbolStatus", "")).lower() != "normal":
-            continue
-        if symbol in EXCLUDED_NON_TARGET_SYMBOLS:
-            continue
-        symbols.add(symbol)
+        if (symbol and symbol.endswith("USDT")
+                and item.get("quoteCoin") == "USDT"
+                and str(item.get("symbolStatus", "")).lower() == "normal"):
+            active.add(symbol)
+    symbols = sorted(TARGET_SYMBOLS & active)
+    unavailable = sorted(TARGET_SYMBOLS - active)
+    listed_stocks = len((TARGET_SYMBOLS & active) - V5_FIXED_SYMBOLS)
+    print(f"V5 universe: target_stocks={len(V5_STOCK_SYMBOLS)} listed_stocks={listed_stocks} fixed_assets={sorted(V5_FIXED_SYMBOLS & active)} unavailable_targets={unavailable}")
     if not symbols:
-        raise BitgetAPIError("Bitget returned no eligible active USDT contracts")
-    return sorted(symbols)
-
+        raise BitgetAPIError("Bitget returned no active symbols from the configured V5 universe")
+    return symbols
 
 def parse_candle_rows(rows: Iterable[list]) -> list[MarketCandle]:
     """Parse Bitget [timestamp, open, high, low, close, baseVol, quoteVol] rows."""
