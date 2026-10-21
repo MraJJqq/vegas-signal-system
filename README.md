@@ -1,59 +1,36 @@
-# Vegas 信号系统
+# Vegas Signal System V3
 
-独立的 Vegas 交易信号扫描项目。当前扫描池由 `config/settings.yaml` 中启用的品种决定；默认观察黄金、原油、BTC和SNDK。**本项目只生成观察结果，不自动下单。**
+本仓库当前开发目标仅为 **Vegas 信号系统 V3**。V3 的唯一规则基准是 `v3/VEGAS_SIGNAL_SYSTEM_V3.md`；未经用户明确批准，不得修改、放宽、替代或重新解释规则。
 
-## 当前规则与范围
+## V3 文件结构
 
-- 当前临时采用4H单周期方向判断（按用户批准的方案C）；暂不等待8H方向数据
-- 4H方向明确后观察1H/2H EMA144中锋触碰
-- 最新完整K线的最高价/最低价覆盖EMA144才算触碰
-- 触碰只输出 `WATCH_ENTRY_CONFIRMATION`，不代表正式进场信号
-- 当前Bitget行情由1H数据重采样生成4H及1H/2H观察K线；方向逻辑仅读取4H
-- 每小时自动扫描；结果CSV/JSON作为GitHub Actions构件保留14天
-- ntfy 通知推送到 iPad/iPhone；仅推送EMA144触碰观察候选
-- 单一品种数据失败不会阻断其他品种扫描
-- 不自动下单、不自动管理仓位
+- `v3/VEGAS_SIGNAL_SYSTEM_V3.md` — 唯一规则基准
+- `v3/signal_system_v3.py` — V3 信号判断程序
+- `v3/test_signal_system_v3.py` — V3 自动测试
+- `.github/workflows/test-v3.yml` — V3 自动测试工作流
 
-## 设置 ntfy 推送到 iPad
+## 固定规则摘要
 
-1. 在 iPad 上打开 [App Store ntfy 搜索页](https://apps.apple.com/search?term=ntfy)，安装 ntfy 官方应用。
-2. 打开 App，添加/订阅一个主题（Subscribe）。
-3. 使用密码管理器生成至少32位随机主题名，只使用英文字母、数字、下划线或连字符。主题名相当于密码，不要使用容易猜测的名称。
-4. 打开 [GitHub 仓库 Actions Secrets 设置页](https://github.com/MraJJqq/vegas-signal-system/settings/secrets/actions)，点击 **New repository secret**，名称填 `NTFY_TOPIC`，值填主题名，保存。不要把主题名发到聊天里或提交到仓库。
-5. 打开 iPad「设置 → 通知 → ntfy」，允许通知，并检查专注模式设置。
-6. 打开 [GitHub Actions 工作流](https://github.com/MraJJqq/vegas-signal-system/actions/workflows/scan.yml)，点击 **Run workflow**，把 `test_notification` 设为 `true)，运行后检查 ntfy App 是否收到测试消息。
+- 观察周期仅限 4H、8H。
+- 中锋为 EMA144、EMA169；过滤线为 EMA12。
+- 价格触及中锋区域，或已收盘 K 线收盘价处于中锋区域内部时，启动观察。
+- 价格在中锋上方为多方向，在中锋下方为空方向。
+- 观察持续到已收盘 K 线满足 EMA12 过滤条件后，才发送正式信号。
+- 观察期不限时，不因横盘自动取消。
+- 不使用未收盘 K 线确认信号。
+- 不擅自加入其他指标、周期或条件。
 
-成功后，每小时扫描只会在存在 `WATCH_ENTRY_CONFIRMATION` 候选时发送一条汇总消息；没有候选则不推送。通知仅供观察，不是正式进场信号，系统不会自动下单。
+## 当前开发状态
 
-默认使用公共服务 `https://ntfy.sh`。如果以后使用自己的 ntfy 服务器，可在 GitHub 仓库 Settings → Secrets and variables → Actions → Variables 中添加 `NTFY_BASE_URL`，值为 HTTPS 服务根地址。公共主题可被知道主题名的人订阅，因此必须将主题名视为密码；公共服务仍是第三方中转。即使自建服务器，iOS 即时通知也可能依赖 ntfy.sh 的上游推送基础设施。
+V3 规则文件、独立判断模块和基础自动测试已建立。Bitget 实时行情接入、持续扫描和 ntfy 正式通知尚未完成；通过基础单元测试不代表系统已可自主运行或已发出真实信号。
 
-## 行情源限制
+## 本地测试
 
-Yahoo Finance是行情代理源，代码不保证与Bitget或其他经纪商图表完全一致；个别美股可能因上游数据限制而返回空数据。股票池扩展代表扩大观察范围，不代表每只股票都适合交易。方向分类和触碰后的正式确认规则仍需持续做历史数据与无未来数据审计。
-
-## 运行方式
-
-安装Python 3.10或更高版本：
+需要 Python 3.12 或兼容版本：
 
 ```bash
-python -m pip install -e ".[market-data]"
-python -m pip install -e ".[dev]"
-pytest -q
+cd v3
+python -m unittest -v test_signal_system_v3.py
 ```
 
-单次扫描：
-
-```bash
-vegas-scan --config config/settings.yaml --provider yfinance --output-dir output
-```
-
-手动测试推送（需先设置环境变量）：
-
-```bash
-export NTFY_TOPIC="你的随机主题名"
-vegas-scan --config config/settings.yaml --test-notification
-```
-
-CSV数据格式为 `{SYMBOL_ID}_{timeframe}.csv`，必须包含 `timestamp,open,high,low,close,volume`。
-
-任何信号逻辑更改都应经过自动测试与历史数据验证；本项目不执行交易委托。
+所有规则变更必须先取得用户明确批准，并同步更新规则文件与测试。
