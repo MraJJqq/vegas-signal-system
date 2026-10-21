@@ -54,8 +54,9 @@ class BitgetMarketDataTests(unittest.TestCase):
         )
         query = parse_qs(urlparse(captured["url"]).query)
         self.assertEqual(query["symbol"], ["BTCUSDT"])
-        self.assertEqual(query["productType"], ["USDT-FUTURES"])
-        self.assertEqual(query["granularity"], ["4H"])
+        self.assertEqual(query["category"], ["USDT-FUTURES"])
+        self.assertEqual(query["interval"], ["4H"])
+        self.assertEqual(query["type"], ["market"])
         self.assertEqual([c.timestamp_ms for c in result],
                          [0, FOUR_HOURS_MS, 2 * FOUR_HOURS_MS])
 
