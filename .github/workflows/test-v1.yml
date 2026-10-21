@@ -27,5 +27,5 @@ jobs:
       - name: Run V1 rule, risk, and runner tests
         working-directory: backtest_system
         run: |
-          python -m unittest -v test_v1_trading_system.py test_run_backtest.py
-          python -m py_compile v1_trading_system.py bitget_market_data.py run_backtest.py test_v1_trading_system.py test_run_backtest.py
+          python -m unittest -v test_v1_trading_system.py test_run_backtest.py test_historical_reversal.py
+          python -m py_compile v1_trading_system.py bitget_market_data.py run_backtest.py run_v1_gold_backtest.py historical_reversal.py test_v1_trading_system.py test_run_backtest.py test_historical_reversal.py
