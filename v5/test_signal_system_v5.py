@@ -1,9 +1,28 @@
 import unittest
 
+from bitget_market_data_v5 import BitgetAPIError, discover_v5_symbols
+
 from signal_system_v5 import Candle, V5WatchStates, evaluate_candle
 
 
 class V5Tests(unittest.TestCase):
+    def test_discovery_includes_crypto_and_rwa_but_excludes_gold_oil(self):
+        def fake_request(url):
+            return {"code": "00000", "data": [
+                {"symbol": "BTCUSDT", "quoteCoin": "USDT", "symbolStatus": "normal", "isRwa": "NO"},
+                {"symbol": "HYPEUSDT", "quoteCoin": "USDT", "symbolStatus": "normal", "isRwa": "NO"},
+                {"symbol": "AAPLUSDT", "quoteCoin": "USDT", "symbolStatus": "normal", "isRwa": "YES"},
+                {"symbol": "XAUUSDT", "quoteCoin": "USDT", "symbolStatus": "normal", "isRwa": "YES"},
+                {"symbol": "CLUSDT", "quoteCoin": "USDT", "symbolStatus": "normal", "isRwa": "YES"},
+                {"symbol": "OFFUSDT", "quoteCoin": "USDT", "symbolStatus": "offline", "isRwa": "NO"},
+            ]}
+        self.assertEqual(discover_v5_symbols(fake_request), ["AAPLUSDT", "BTCUSDT", "HYPEUSDT"])
+
+    def test_discovery_fails_on_invalid_contract_list(self):
+        with self.assertRaises(BitgetAPIError):
+            discover_v5_symbols(lambda url: {"code": "00000", "data": None})
+
+
     def test_touch_does_not_signal_same_candle(self):
         states = V5WatchStates.fresh()
         events = evaluate_candle("4H", Candle(105, 107, 104), 100, 104, 106, 580, 590, states)
