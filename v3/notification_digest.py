@@ -95,7 +95,7 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
     new_events = list(new_events)
     divider = "━━━━━━━━━━━━━━━━"
 
-    sections = ["🟢 🔴 VEGAS · V3 SIGNAL 🔴 🟢", divider]
+    sections = [divider]
     if not daily:
         sections.append("当前无正式信号")
     else:
