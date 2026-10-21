@@ -37,6 +37,22 @@ class V1TradingSystemTests(unittest.TestCase):
         self.assertEqual([p2.margin_budget, p3.margin_budget], [5.0, 2.5])
         self.assertEqual([p2.kind, p3.kind], ["addon", "addon"])
 
+    def test_opposite_signal_is_not_misclassified_as_addon(self):
+        engine = VegasBacktestV2()
+        first = engine.process_signals([
+            signal(direction=Direction.LONG, offset=0)
+        ])[0]
+        opened = engine.process_signals([
+            signal(direction=Direction.SHORT, offset=4)
+        ])
+        self.assertEqual(opened, [])
+        self.assertEqual(len(engine.report.positions), 1)
+        self.assertTrue(first.is_open)
+        self.assertEqual(
+            [t.event for t in engine.report.trades],
+            ["entry", "opposite_signal_ignored"],
+        )
+
     def test_highest_timeframe_wins_for_same_symbol_and_timestamp(self):
         chosen = prioritize_same_symbol_signals([
             signal(timeframe="1H", offset=0, price=100),
