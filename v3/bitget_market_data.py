@@ -59,15 +59,32 @@ class V3Input:
 
 
 def _http_get_json(url: str, timeout: float = 10.0) -> dict:
+    """GET Bitget JSON with bounded exponential backoff for rate limits/transient errors."""
     request = Request(url, headers={"User-Agent": "VegasSignalSystemV3/1.0"})
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise BitgetAPIError(f"Bitget HTTP {exc.code}: {detail[:500]}") from exc
-    except Exception as exc:
-        raise BitgetAPIError(f"Bitget request failed: {exc}") from exc
+    body = ""
+    for attempt in range(5):
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                body = response.read().decode("utf-8")
+            break
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            if exc.code == 429 and attempt < 4:
+                # Bitget rate limits are transient. Back off instead of failing
+                # the entire symbol scan on the first 429 response.
+                retry_after = exc.headers.get("Retry-After")
+                try:
+                    delay = max(float(retry_after), 2.0) if retry_after else 2.0 * (2 ** attempt)
+                except (TypeError, ValueError):
+                    delay = 2.0 * (2 ** attempt)
+                time.sleep(min(delay, 20.0))
+                continue
+            raise BitgetAPIError(f"Bitget HTTP {exc.code}: {detail[:500]}") from exc
+        except Exception as exc:
+            if attempt < 4:
+                time.sleep(min(1.0 * (2 ** attempt), 12.0))
+                continue
+            raise BitgetAPIError(f"Bitget request failed: {exc}") from exc
     try:
         payload = json.loads(body)
     except json.JSONDecodeError as exc:
@@ -75,6 +92,8 @@ def _http_get_json(url: str, timeout: float = 10.0) -> dict:
     if not isinstance(payload, dict):
         raise BitgetAPIError("Bitget response must be a JSON object")
     if payload.get("code") != "00000":
+        if payload.get("code") == "429" and "Too Many" in str(payload.get("msg", "")):
+            raise BitgetAPIError("Bitget API rate limit 429 persisted after retries")
         raise BitgetAPIError(
             f"Bitget API error code={payload.get('code')!r}: "
             f"{payload.get('msg', 'unknown error')}"
