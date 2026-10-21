@@ -6,7 +6,7 @@
 - **V5 信号系统：当前信号系统核心**，代码目录为 `v5/`。
 - **V1：交易/回测系统**，代码目录为 `backtest_system/`，与 V5 保持隔离。
 - **监控系统**：`system_monitor/`（实际运行以对应 workflow 和运行记录为准）。
-- **推送机制**：V5 的正式组成部分，位于 `v5/notification_digest_v5.py`，通过 ntfy 发送 V5 通知。
+- **推送机制**：V5 的正式组成部分，位于 `v5/notification_digest_v5.py`，通过 Server酱 Turbo 推送到个人微信。
 
 ## 隔离与规则保护
 
@@ -15,8 +15,8 @@
 3. 仓库工作目录只保留 V1、V5、监控系统和推送机制，以及运行它们必需的文档、测试和 workflow。
 4. 旧版本目录及 A 股扫描代码/workflow 不属于当前正式组件，不得重新添加，除非用户明确要求。
 5. 文档中提及的组件不代表其已成功部署；运行状态以真实 GitHub Actions 记录和推送结果为准。
-6. **V5 升级保护：推送机制是 V5 的正式组成部分。** 后续维护 V5 时必须保留 `v5/notification_digest_v5.py` 及其 ntfy 去重、摘要和发送能力；未经用户明确批准，不得删除、替换或绕过它。
-7. GitHub Actions 工作流必须位于 `.github/workflows/v5-manual-scan.yml`；它是 V5 的运行入口，必须继续调用 `v5/run_v5_hourly.py` 并配置 `NTFY_TOPIC` 和可选的 `NTFY_BASE_URL`。维护时必须检查调用链，不能只改扫描代码而破坏推送。
+6. **V5 升级保护：推送机制是 V5 的正式组成部分。** 后续维护 V5 时必须保留 `v5/notification_digest_v5.py` 及其去重、摘要和发送能力；未经用户明确批准，不得删除、替换或绕过它。
+7. GitHub Actions 工作流必须位于 `.github/workflows/v5-manual-scan.yml`；它是 V5 的运行入口，必须继续调用 `v5/run_v5_hourly.py` 并配置 GitHub Actions secret `SERVERCHAN_SENDKEY`。维护时必须检查调用链，不能只改扫描代码而破坏推送。
 
 ## 调度约定
 
