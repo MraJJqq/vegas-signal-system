@@ -7,6 +7,10 @@ on:
       - "v3_a_shares/run_ashare_scan.py"
       - "v3_a_shares/akshare_market_data.py"
       - "v3_a_shares/universe.json"
+      - "v3_a_shares/README.md"
+      - "v3/signal_system_v3.py"
+      - "v3/bitget_market_data.py"
+      - "v3/notification_digest.py"
       - ".github/workflows/ashare-scan.yml"
 
 permissions:
@@ -30,8 +34,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore same-day A-share digest state
+        uses: actions/cache/restore@v4
+        with:
+          path: v3_a_shares/.state
+          key: vegas-v3-ashare-digest-${{ github.run_id }}
+          restore-keys: |
+            vegas-v3-ashare-digest-
       - name: Install scan dependencies
         run: python -m pip install --upgrade pip akshare pandas
-      - name: Scan fixed A-share pool and push formal signals
+      - name: Scan fixed A-share pool using shared V3 rules
         working-directory: v3_a_shares
         run: python run_ashare_scan.py
+      - name: Save same-day A-share digest state
+        if: always() && hashFiles('v3_a_shares/.state/notifications.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: v3_a_shares/.state
+          key: vegas-v3-ashare-digest-${{ github.run_id }}
