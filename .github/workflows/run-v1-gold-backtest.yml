@@ -1,0 +1,45 @@
+name: V1 GOLD End-to-End Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Historical window in days"
+        required: true
+        default: "365"
+      symbol:
+        description: "Bitget USDT-FUTURES symbol"
+        required: true
+        default: "XAUUSDT"
+
+permissions:
+  contents: read
+
+jobs:
+  gold-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile V1 modules
+        working-directory: backtest_system
+        run: |
+          python -m py_compile bitget_market_data.py v1_trading_system.py run_v1_gold_backtest.py
+      - name: Run automatic signal recognition and one-year GOLD backtest
+        working-directory: backtest_system
+        run: |
+          python run_v1_gold_backtest.py --symbol "${{ github.event.inputs.symbol || 'XAUUSDT' }}" --days "${{ github.event.inputs.days || '365' }}" --output-dir output
+      - name: Upload report and candles
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1-gold-one-year-backtest
+          path: |
+            backtest_system/output/gold_backtest_report.json
+            backtest_system/output/gold_candles.csv
+          if-no-files-found: error
+          retention-days: 14
