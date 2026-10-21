@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: "7 * * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/v3-hourly-scan.yml"
+      - "v3/bitget_market_data.py"
+      - "v3/signal_system_v3.py"
+      - "v3/run_v3_hourly.py"
+      - "v3/notification_digest.py"
 
 permissions:
   contents: read
