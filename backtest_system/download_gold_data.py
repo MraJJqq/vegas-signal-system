@@ -119,7 +119,7 @@ def download(symbol: str, days: int, output_dir: Path) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download Bitget GOLD history for V1.")
     parser.add_argument("--symbol", default="XAUUSDT")
-    parser.add_argument("--days", type=int, default=180)
+    parser.add_argument("--days", type=int, default=365)
     parser.add_argument("--output-dir", type=Path, default=Path("output"))
     args = parser.parse_args()
     download(args.symbol, args.days, args.output_dir)
