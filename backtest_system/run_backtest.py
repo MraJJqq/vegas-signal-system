@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from bitget_market_data import HistoricalCandle, candles_to_csv_rows, fetch_history_candles
+from bitget_market_data import BitgetMarketDataError, HistoricalCandle, candles_to_csv_rows, fetch_history_candles
 from v1_trading_system import Candle, Direction, SignalEvent, VegasBacktestV2
 
 TIMEFRAME_HOURS = {"1H": 1, "2H": 2, "4H": 4, "8H": 8}
@@ -49,9 +49,15 @@ def load_signals(path: Path) -> list[SignalEvent]:
 
 
 def fetch_timeframe_candles(symbol: str, timeframe: str, start: datetime, end: datetime) -> list[HistoricalCandle]:
-    """Fetch supported Bitget bars directly; aggregate 2H/8H from complete 1H bars."""
-    if timeframe in {"1H", "4H"}:
-        return fetch_history_candles(symbol=symbol, timeframe=timeframe, start=start, end=end)
+    """Prefer native Bitget candles; aggregate from complete 1H bars only as fallback."""
+    try:
+        native = fetch_history_candles(symbol=symbol, timeframe=timeframe, start=start, end=end)
+        if native:
+            return native
+    except (BitgetMarketDataError, ValueError):
+        pass
+    if timeframe == "1H":
+        return []
     hours = TIMEFRAME_HOURS[timeframe]
     hourly = fetch_history_candles(symbol=symbol, timeframe="1H", start=start, end=end)
     buckets: dict[datetime, list[HistoricalCandle]] = {}
