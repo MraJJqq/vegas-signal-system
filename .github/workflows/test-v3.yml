@@ -20,6 +20,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run V3 unit tests
+      - name: Run V3 signal and market-data tests
         working-directory: v3
-        run: python -m unittest -v test_signal_system_v3.py
+        run: python -m unittest -v test_signal_system_v3.py test_bitget_market_data.py
