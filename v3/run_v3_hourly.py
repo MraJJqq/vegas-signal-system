@@ -2,18 +2,21 @@
 import argparse
 import os
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from bitget_market_data import fetch_v3_inputs
+from bitget_market_data import build_v3_inputs, fetch_closed_4h_candles
 from notification_digest import ConfirmedSignal, format_digest, load_daily_state, save_daily_state, send_ntfy, update_daily_digest
 from signal_system_v3 import WatchState, evaluate_candle
 
 
 def scan_symbol(symbol, limit):
-    rows = fetch_v3_inputs(symbol, timeframe="4H", limit_4h=limit)
+    candles = fetch_closed_4h_candles(symbol, limit=limit)
+    rows = build_v3_inputs(candles)
     if not rows:
-        raise RuntimeError(f"{symbol}: insufficient closed 4H candles for EMA676")
+        raise RuntimeError(
+            f"{symbol}: only {len(candles)} closed 4H candles returned; "
+            "EMA676 needs at least 676 closed candles. Check symbol listing and API history."
+        )
     watch = WatchState()
     events = []
     for row in rows:
@@ -25,14 +28,15 @@ def scan_symbol(symbol, limit):
                 candle_time=ts, close=event.close))
     last = rows[-1]
     ts = datetime.fromtimestamp(last.timestamp_ms / 1000, tz=ZoneInfo("UTC")).isoformat()
-    return events, (f"{symbol}: closed_4h={len(rows)} latest={ts} close={last.candle.close:g} "
-        f"EMA12={last.ema12:g} EMA144={last.ema144:g} EMA169={last.ema169:g} "
+    return events, (f"{symbol}: raw_closed_4h={len(candles)} rows_with_emas={len(rows)} "
+        f"latest={ts} close={last.candle.close:g} EMA12={last.ema12:g} "
+        f"EMA144={last.ema144:g} EMA169={last.ema169:g} "
         f"EMA576={last.ema576:g} EMA676={last.ema676:g}")
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--symbols", default=os.getenv("V3_SYMBOLS", "XAUUSDT,CLUUSDT,HYPEUSDT"))
+    p.add_argument("--symbols", default=os.getenv("V3_SYMBOLS", "XAUUSDT,CLUSDT,HYPEUSDT"))
     p.add_argument("--limit", type=int, default=1000)
     p.add_argument("--state", default=os.getenv("V3_STATE_FILE", ".state/notifications.json"))
     p.add_argument("--timezone", default=os.getenv("V3_TIMEZONE", "Asia/Shanghai"))
