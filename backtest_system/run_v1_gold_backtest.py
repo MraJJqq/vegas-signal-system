@@ -197,6 +197,7 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
         "limitations": [
             "Direction is operationalized as close relative to EMA144 because the prior V1 notes do not define a separate direction formula in the codebase.",
             "Liquidation events are not inferred from OHLC because leverage and liquidation prices are not specified; positions remain open unless liquidation is verified.",
+            "Bitget public market liquidation history is available only for the latest 3 days, so it cannot verify liquidation events across this 365-day backtest window.",
             "No fees, slippage, funding, account return, or unrealized PnL are calculated."
         ]
     }
