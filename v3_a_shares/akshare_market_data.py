@@ -82,7 +82,9 @@ def get_main_board_universe(
     """
     import math
 
-    ak = _akshare()
+    ak = None
+    if spot_df is None or stock_info_df is None:
+        ak = _akshare()
     if spot_df is None:
         spot_df = ak.stock_zh_a_spot_em()
     if stock_info_df is None:
