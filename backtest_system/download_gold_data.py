@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from bitget_market_data import HistoricalCandle, candles_to_csv_rows, fetch_history_candles
+from bitget_market_data import BitgetMarketDataError, HistoricalCandle, candles_to_csv_rows, fetch_history_candles
 
 TIMEFRAMES = {"1H": 1, "2H": 2, "4H": 4, "8H": 8}
 
@@ -45,25 +45,40 @@ def aggregate_hourly(hourly: list[HistoricalCandle], timeframe: str) -> list[His
     return result
 
 
+def fetch_preferred_timeframe(symbol: str, timeframe: str, start: datetime, end: datetime, hourly: list[HistoricalCandle] | None = None) -> tuple[list[HistoricalCandle], str]:
+    """Prefer Bitget's native timeframe; aggregate only when it is unavailable."""
+    try:
+        native = fetch_history_candles(symbol=symbol, timeframe=timeframe, start=start, end=end)
+        if native:
+            return native, "Bitget native"
+    except (BitgetMarketDataError, ValueError):
+        pass
+    if timeframe == "1H":
+        raise RuntimeError(f"Bitget returned no native 1H candles for {symbol}")
+    base = hourly if hourly is not None else fetch_history_candles(
+        symbol=symbol, timeframe="1H", start=start, end=end
+    )
+    aggregated = aggregate_hourly(base, timeframe)
+    if not aggregated:
+        raise RuntimeError(f"Neither native nor aggregated {timeframe} candles available for {symbol}")
+    return aggregated, "aggregated from complete contiguous 1H candles (native unavailable)"
+
+
 def download(symbol: str, days: int, output_dir: Path) -> dict:
     if days < 30 or days > 730:
         raise ValueError("--days must be between 30 and 730")
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
-    # 1H bars are the base for 2H/8H aggregation; 4H is fetched directly.
+    # Every timeframe is requested natively first. Hourly bars are used only as fallback.
     hourly = fetch_history_candles(symbol=symbol, timeframe="1H", start=start, end=end)
-    four_hour = fetch_history_candles(symbol=symbol, timeframe="4H", start=start, end=end)
     if not hourly:
         raise RuntimeError(f"Bitget returned no closed 1H candles for {symbol}")
-    if not four_hour:
-        raise RuntimeError(f"Bitget returned no closed 4H candles for {symbol}")
-
-    series = {
-        "1H": hourly,
-        "2H": aggregate_hourly(hourly, "2H"),
-        "4H": four_hour,
-        "8H": aggregate_hourly(hourly, "8H"),
-    }
+    series = {"1H": hourly}
+    source_by_timeframe = {"1H": "Bitget native"}
+    for timeframe in ("2H", "4H", "8H"):
+        candles, source = fetch_preferred_timeframe(symbol, timeframe, start, end, hourly)
+        series[timeframe] = candles
+        source_by_timeframe[timeframe] = source
     output_dir.mkdir(parents=True, exist_ok=True)
     all_rows = []
     counts = {}
@@ -89,7 +104,8 @@ def download(symbol: str, days: int, output_dir: Path) -> dict:
         "timeframes": counts,
         "total_candles": len(all_rows),
         "closed_candles_only": True,
-        "aggregation": "2H and 8H aggregated from complete contiguous 1H bars; 4H fetched directly",
+        "timeframe_source": source_by_timeframe,
+        "aggregation_policy": "Prefer Bitget native candles for every timeframe; aggregate from complete contiguous 1H bars only when native candles are unavailable",
         "signals_generated": False,
         "note": "This validates market-data connectivity only; Vegas signal generation and trade backtesting are separate steps.",
     }
