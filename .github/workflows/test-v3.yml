@@ -22,4 +22,6 @@ jobs:
           python-version: "3.12"
       - name: Run V3 signal and market-data tests
         working-directory: v3
-        run: python -m unittest -v test_signal_system_v3.py test_bitget_market_data.py
+        run: |
+          python -m unittest -v test_signal_system_v3.py test_bitget_market_data.py
+          python -m py_compile signal_system_v3.py bitget_market_data.py run_v3_scan.py
