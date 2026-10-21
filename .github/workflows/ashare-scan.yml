@@ -42,7 +42,7 @@ jobs:
           restore-keys: |
             vegas-v3-ashare-digest-
       - name: Install scan dependencies
-        run: python -m pip install --upgrade pip akshare pandas
+        run: python -m pip install --upgrade pip baostock pandas
       - name: Scan fixed A-share pool using shared V3 rules
         working-directory: v3_a_shares
         run: python run_ashare_scan.py
