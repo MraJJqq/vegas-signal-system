@@ -4,18 +4,15 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from bitget_market_data_v5 import build_v5_inputs, fetch_closed_4h_candles
+from bitget_market_data_v5 import build_v5_inputs, discover_v5_symbols, fetch_closed_4h_candles
 from notification_digest_v4 import (
     ConfirmedSignal, format_digest, load_daily_state, save_daily_state,
     send_ntfy, update_daily_digest,
 )
 from signal_system_v5 import V5WatchStates, evaluate_candle
 
-DEFAULT_SYMBOLS = (
-    "SPYUSDT,QQQUSDT,SNDKUSDT,NVDAUSDT,AMDUSDT,AVGOUSDT,MUUSDT,TSMUSDT,"
-    "MSFTUSDT,AAPLUSDT,TSLAUSDT,ARMUSDT,AMZNUSDT,METAUSDT,GOOGLUSDT,"
-    "ORCLUSDT,PLTRUSDT,COINUSDT,MSTRUSDT,HOODUSDT"
-)
+# Optional manual override via --symbols or V5_SYMBOLS; default is live Bitget discovery.
+DEFAULT_SYMBOLS = ""
 
 
 def scan_symbol(symbol: str, limit: int):
@@ -53,17 +50,22 @@ def scan_symbol(symbol: str, limit: int):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS))
+    parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS), help="Optional comma-separated override; default discovers all active Bitget USDT contracts")
     parser.add_argument("--limit", type=int, default=1000)
     parser.add_argument("--state", default=os.getenv("V5_STATE_FILE", ".state/v5_notifications.json"))
     parser.add_argument("--timezone", default=os.getenv("V5_TIMEZONE", "Asia/Shanghai"))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-    symbols = list(dict.fromkeys(
-        x.strip().upper() for x in args.symbols.split(",") if x.strip()
-    ))
-    excluded = {"XAUUSDT", "CLUSDT", "BTCUSDT", "HYPEUSDT"}
-    symbols = [symbol for symbol in symbols if symbol not in excluded]
+    if args.symbols.strip():
+        symbols = list(dict.fromkeys(
+            x.strip().upper() for x in args.symbols.split(",") if x.strip()
+        ))
+        # Exclude only gold and crude oil; crypto assets including BTC/HYPE are in scope.
+        symbols = [symbol for symbol in symbols if symbol not in {"XAUUSDT", "CLUSDT"}]
+        universe_source = "manual override"
+    else:
+        symbols = discover_v5_symbols()
+        universe_source = "Bitget live contract discovery"
     if not symbols:
         raise SystemExit("No symbols configured after exclusions")
     if not 1 <= args.limit <= 1000:
@@ -71,7 +73,7 @@ def main() -> int:
     tz = ZoneInfo(args.timezone)
     today = datetime.now(tz).date()
     found, errors = [], []
-    print(f"V5 local_day={today.isoformat()} timezone={args.timezone} symbols={len(symbols)} timeframe=4H")
+    print(f"V5 local_day={today.isoformat()} timezone={args.timezone} symbols={len(symbols)} universe={universe_source} timeframe=4H")
     for symbol in symbols:
         try:
             events, status = scan_symbol(symbol, args.limit)
