@@ -293,11 +293,26 @@ class VegasBacktestV2:
 
             existing = [
                 p for p in self.report.positions
-                if p.symbol == signal.symbol and p.is_open and p.kind == "main"
+                if p.symbol == signal.symbol and p.is_open
+                and p.kind in {"main", "addon"} and p.exposure_fraction > 0
             ]
             if existing:
-                # Every add-on requires a new valid signal. This event is a new
-                # valid signal; budgets halve with each successive add-on.
+                # An add-on is permitted only when the new signal agrees with
+                # the direction of every remaining original-trend position.
+                # Opposite signals are not silently converted into add-ons;
+                # reversal requires its separately confirmed structure event.
+                if any(p.direction is not signal.direction for p in existing):
+                    self.report.trades.append(TradeRecord(
+                        event="opposite_signal_ignored",
+                        timestamp=signal.timestamp,
+                        symbol=signal.symbol,
+                        details="Opposite-direction signal is not an add-on; no unconfirmed reversal inferred.",
+                        price=signal.signal_close,
+                        synthetic_data_involved=signal.is_synthetic_source,
+                    ))
+                    continue
+                # Every same-direction add-on requires a new valid signal;
+                # budgets halve with each successive add-on.
                 count = self._addon_count.get(signal.symbol, 0) + 1
                 margin = BASE_MARGIN / (2 ** count)
                 position = self._new_position(
