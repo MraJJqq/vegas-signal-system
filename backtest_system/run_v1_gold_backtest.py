@@ -16,7 +16,7 @@ from pathlib import Path
 
 from bitget_market_data import fetch_history_candles, candles_to_csv_rows
 from download_gold_data import fetch_preferred_timeframe
-from v1_trading_system import Candle, Direction, SignalEvent, VegasBacktestV2
+from v1_trading_system import (\n    Candle, Direction, SignalEvent, VegasBacktestV2, prioritize_same_symbol_signals,\n)
 
 HOURS = {"1H": 1, "2H": 2, "4H": 4, "8H": 8}
 
