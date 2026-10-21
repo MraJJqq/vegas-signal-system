@@ -14,7 +14,7 @@ class V6Tests(unittest.TestCase):
 
     def test_touch_candle_only_starts_observation(self):
         states = V6WatchStates.fresh()
-        events = evaluate_candle("4H", Candle(120, 125, 95, True), 110, 100, 105, 70, 65, states)
+        events = evaluate_candle("4H", Candle(120, 125, 60, True), 110, 100, 105, 70, 65, states)
         self.assertEqual(events, [])
         self.assertTrue(states.midline.active)
         self.assertTrue(states.red_peak.active)
