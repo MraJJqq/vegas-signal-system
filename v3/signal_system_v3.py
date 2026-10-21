@@ -119,13 +119,20 @@ def evaluate_candle(
 
 def scan_closed_candles(
     timeframe: str,
-    candles: Iterable[tuple[Candle, float, float, float]],
+    candles: Iterable[tuple],
 ) -> list[SignalEvent]:
-    """Process chronological (candle, EMA12, EMA144, EMA169) tuples."""
+    """Process chronological (candle, EMA12, EMA144, EMA169[, EMA576, EMA676]) tuples."""
     state = WatchState()
     events: list[SignalEvent] = []
-    for candle, ema12, ema144, ema169 in candles:
-        event = evaluate_candle(timeframe, candle, ema12, ema144, ema169, state)
+    for row in candles:
+        if len(row) == 4:
+            candle, ema12, ema144, ema169 = row
+            ema576 = ema676 = None
+        elif len(row) == 6:
+            candle, ema12, ema144, ema169, ema576, ema676 = row
+        else:
+            raise ValueError("Each scan row must contain 4 legacy fields or 6 fields including EMA576/EMA676")
+        event = evaluate_candle(timeframe, candle, ema12, ema144, ema169, state, ema576, ema676)
         if event is not None:
             events.append(event)
     return events
