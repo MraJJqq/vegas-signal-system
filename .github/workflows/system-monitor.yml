@@ -1,19 +1,24 @@
-name: V1 V3 System Monitor
+name: V3 Runtime Monitor
 
 on:
-  # Intentionally manual-only until both V1 and V3 are completed and approved for monitoring.
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
   actions: read
   contents: read
 
+concurrency:
+  group: v3-runtime-monitor
+  cancel-in-progress: false
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Check recent V1 and V3 test workflow failures
+      - name: Check V3 scan workflow health
         env:
           GH_TOKEN: ${{ github.token }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
@@ -46,39 +51,36 @@ jobs:
               print(f"Unable to query GitHub Actions: {exc}", file=sys.stderr)
               sys.exit(1)
 
-          targets = {
-              "V1 Trading System Tests": "V1 交易系统测试",
-              "Vegas Signal System V3 Tests": "V3 信号系统测试",
-          }
-          now = datetime.now(timezone.utc)
-          cutoff = now - timedelta(minutes=20)
+          target = "Vegas V3 Hourly Market Scan"
+          matching = [r for r in runs if r.get("name") == target]
+          matching.sort(key=lambda r: r.get("run_number", 0), reverse=True)
           alerts = []
+          now = datetime.now(timezone.utc)
 
-          for workflow_name, label in targets.items():
-              matching = [r for r in runs if r.get("name") == workflow_name]
-              matching.sort(key=lambda r: r.get("run_number", 0), reverse=True)
-              if not matching:
-                  alerts.append(f"{label}：未找到测试工作流记录。")
-                  continue
+          if not matching:
+              alerts.append("V3 运行异常：没有找到扫描工作流运行记录。")
+          else:
               run = matching[0]
-              updated = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
-              conclusion = run.get("conclusion")
               status = run.get("status")
-              if status == "in_progress":
-                  print(f"{label}: workflow is running ({run['html_url']})")
-              elif updated >= cutoff and conclusion in ("failure", "cancelled", "timed_out", "action_required"):
-                  alerts.append(f"{label}异常：{conclusion}。查看：{run['html_url']}")
+              conclusion = run.get("conclusion")
+              url = run.get("html_url", "")
+              created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+              if status == "completed" and conclusion != "success":
+                  alerts.append(f"V3 扫描失败：{conclusion or 'unknown'}。查看：{url}")
+              elif status != "completed" and now - created > timedelta(minutes=90):
+                  alerts.append(f"V3 扫描运行超过 90 分钟仍未完成。查看：{url}")
+              elif status == "completed" and now - created > timedelta(minutes=90):
+                  alerts.append(f"V3 超过 90 分钟没有新的扫描运行。最近一次：{conclusion}。查看：{url}")
               else:
-                  print(f"{label}: latest run status={status}, conclusion={conclusion}, updated={run['updated_at']}")
+                  print(f"V3 monitor OK: status={status}, conclusion={conclusion}, run={url}")
 
           if not alerts:
-              print("Monitor check complete: no recent V1/V3 test failures detected.")
               sys.exit(0)
 
           message = "\n".join(alerts)
           print("ALERT:\n" + message)
           if not topic:
-              print("NTFY_TOPIC secret is not configured; cannot send ntfy notification.", file=sys.stderr)
+              print("NTFY_TOPIC is missing; unable to send alert.", file=sys.stderr)
               sys.exit(2)
 
           url = base.rstrip("/") + "/" + urllib.parse.quote(topic, safe="")
@@ -86,7 +88,7 @@ jobs:
               url,
               data=message.encode("utf-8"),
               headers={
-                  "Title": "VEGAS V1/V3 运行监控告警",
+                  "Title": "VEGAS V3 运行监控",
                   "Priority": "high",
                   "Tags": "warning",
                   "Content-Type": "text/plain; charset=utf-8",
@@ -95,11 +97,8 @@ jobs:
           )
           try:
               with urllib.request.urlopen(request, timeout=20) as response:
-                  print(f"ntfy notification sent; HTTP {response.status}")
-          except urllib.error.HTTPError as exc:
-              print(f"ntfy notification failed: HTTP {exc.code}", file=sys.stderr)
-              sys.exit(3)
+                  print(f"ntfy alert sent; HTTP {response.status}")
           except Exception as exc:
-              print(f"ntfy notification failed: {exc}", file=sys.stderr)
+              print(f"ntfy alert failed: {exc}", file=sys.stderr)
               sys.exit(3)
           PY
