@@ -67,5 +67,21 @@ class SignalSystemV3Tests(unittest.TestCase):
         self.assertEqual(event.direction, "LONG")
 
 
+    def test_ema12_equality_does_not_confirm_signal(self):
+        state = WatchState()
+        evaluate_candle("4H", Candle(101, 103, 99), 105, 100, 102, state)
+        # Price is above the midline band, but close equals EMA12.
+        event = evaluate_candle("4H", Candle(103, 104, 102.5), 103, 100, 102, state)
+        self.assertIsNone(event)
+        self.assertTrue(state.active)
+
+    def test_close_exactly_on_band_edge_starts_observation_without_direction(self):
+        state = WatchState()
+        event = evaluate_candle("8H", Candle(102, 102.5, 101.5), 101, 100, 102, state)
+        self.assertIsNone(event)
+        self.assertTrue(state.active)
+        self.assertIsNone(state.direction)
+
+
 if __name__ == "__main__":
     unittest.main()
