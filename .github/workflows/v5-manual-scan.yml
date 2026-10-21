@@ -31,6 +31,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Test V5 modules
+        run: python -m unittest discover -s v5 -p "test_*.py" -v
+
       - name: Run V5 scan and send Server酱 WeChat digest
         env:
           PYTHONPATH: v5
