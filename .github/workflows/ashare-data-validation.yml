@@ -28,6 +28,7 @@ jobs:
 
   live-data-smoke-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -60,7 +61,7 @@ jobs:
           end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
           history = ak.stock_zh_a_hist_min_em(
               symbol="000001",
-              start_date="2018-01-01 09:30:00",
+              start_date="2023-01-01 09:30:00",
               end_date=end,
               period="60",
               adjust="qfq",
