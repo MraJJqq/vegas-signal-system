@@ -16,7 +16,8 @@ from pathlib import Path
 
 from bitget_market_data import fetch_history_candles, candles_to_csv_rows
 from download_gold_data import fetch_preferred_timeframe
-from v1_trading_system import (\n    Candle, Direction, SignalEvent, VegasBacktestV2, prioritize_same_symbol_signals,\n)
+from v1_trading_system import Candle, Direction, SignalEvent, VegasBacktestV2, prioritize_same_symbol_signals
+from historical_reversal import bullish_reversal_indices
 
 HOURS = {"1H": 1, "2H": 2, "4H": 4, "8H": 8}
 
@@ -188,7 +189,8 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
         "direction_alignment_passes": direction_passes,
         "recognized_signals_before_priority": len(signals),
         "signals_after_same_symbol_time_priority": len(prioritized_signals),
-        "signals_removed_by_same_symbol_time_priority": len(signals) - len(prioritized_signals),\n        "confirmed_bullish_reversal_patterns": len(reversal_events),
+        "signals_removed_by_same_symbol_time_priority": len(signals) - len(prioritized_signals),
+        "confirmed_bullish_reversal_patterns": len(reversal_events),
         "positions_opened": report["summary"]["positions_opened"],
         "positions_closed": report["summary"]["positions_closed"],
         "entry_rule": "4H/8H close-vs-EMA144 directions agree; 1H/2H range touches EMA144; same closed candle closes on agreed side of EMA12",
@@ -198,7 +200,8 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
             "No fees, slippage, funding, account return, or unrealized PnL are calculated."
         ]
     }
-    (output_dir / "gold_backtest_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (output_dir / "gold_backtest_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "
+", encoding="utf-8")
     return report
 
 
