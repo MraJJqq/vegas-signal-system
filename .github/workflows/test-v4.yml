@@ -1,0 +1,26 @@
+name: Vegas Signal System V4 Tests
+
+on:
+  push:
+    paths:
+      - "v4/**"
+      - ".github/workflows/test-v4.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run V4 unit tests
+        working-directory: v4
+        run: python -m unittest -v test_signal_system_v4.py
+      - name: Compile V4 modules
+        working-directory: v4
+        run: python -m py_compile signal_system_v4.py bitget_market_data_v4.py notification_digest_v4.py run_v4_hourly.py
