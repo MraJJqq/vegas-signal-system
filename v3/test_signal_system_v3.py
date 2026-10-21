@@ -49,6 +49,15 @@ class SignalSystemV3Tests(unittest.TestCase):
             self.assertIsNone(event)
         self.assertTrue(state.active)
 
+    def test_red_peak_touch_starts_observation_but_does_not_signal(self):
+        state = WatchState()
+        event = evaluate_candle(
+            "4H", Candle(201, 203, 199), 190, 100, 102, state,
+            ema576=200, ema676=202,
+        )
+        self.assertIsNone(event)
+        self.assertTrue(state.active)
+
     def test_touch_alone_is_not_a_signal(self):
         state = WatchState()
         event = evaluate_candle("4H", Candle(101, 103, 99), 100, 100, 102, state)
