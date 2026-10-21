@@ -110,7 +110,7 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
                 continue
             seen.add(key)
             direction_line = "🟢  ▲ LONG  ·  做多" if direction == "LONG" else "🔴  ▼ SHORT  ·  做空"
-            sections.extend((symbol, direction_line, "4H 正式信号", divider))
+            sections.extend((symbol, direction_line, divider))
         if sections[-1] == divider:
             sections.pop()
 
