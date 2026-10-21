@@ -31,15 +31,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run V5 scan and send ntfy digest
+      - name: Run V5 scan and send Server酱 WeChat digest
         env:
           PYTHONPATH: v5
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-          NTFY_BASE_URL: ${{ vars.NTFY_BASE_URL }}
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
         run: |
           set -o pipefail
-          if [ -z "$NTFY_TOPIC" ]; then
-            echo "::error::Repository secret NTFY_TOPIC is not configured."
+          if [ -z "$SERVERCHAN_SENDKEY" ]; then
+            echo "::error::Repository secret SERVERCHAN_SENDKEY is not configured."
+            exit 1
+          fi
+          if [[ "$SERVERCHAN_SENDKEY" != SCT* ]]; then
+            echo "::error::SERVERCHAN_SENDKEY must be a Server酱 Turbo key starting with SCT."
             exit 1
           fi
           python v5/run_v5_hourly.py --limit 1000 --state .state/v5_notifications.json
