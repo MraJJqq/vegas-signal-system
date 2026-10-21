@@ -93,10 +93,9 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
     """Format the daily digest in a polished, compact trading-terminal style."""
     daily = state.get("signals", [])
     new_events = list(new_events)
-    header = "VEGAS | V3 SIGNAL"
     divider = "━━━━━━━━━━━━━━━━"
 
-    sections = [header, divider]
+    sections = [divider]
     if not daily:
         sections.append("当前无正式信号")
     else:
@@ -131,7 +130,7 @@ def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://
         headers={
             "Title": "Vegas V3 Signal",
             "Priority": "high",
-            "Tags": "chart_with_upwards_trend,green_circle,red_circle",
+            "Tags": "green_circle,red_circle",
             "Content-Type": "text/plain; charset=utf-8",
         },
         method="POST",
