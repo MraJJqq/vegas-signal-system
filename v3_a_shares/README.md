@@ -49,3 +49,8 @@ python -m unittest -v
 
 A successful unit test run validates code behavior with mocked data only. A
 separate live-data test is still required before enabling full-market scans.
+
+
+## Automated validation
+
+The isolated workflow `.github/workflows/ashare-data-validation.yml` runs offline unit tests and a live-data smoke test. It does not enable scheduled scanning or send notifications.
