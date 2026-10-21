@@ -16,7 +16,7 @@ class V5Tests(unittest.TestCase):
                 {"symbol": "CLUSDT", "quoteCoin": "USDT", "symbolStatus": "normal", "isRwa": "YES"},
                 {"symbol": "OFFUSDT", "quoteCoin": "USDT", "symbolStatus": "offline", "isRwa": "NO"},
             ]}
-        self.assertEqual(discover_v5_symbols(fake_request), ["AAPLUSDT", "BTCUSDT", "HYPEUSDT"])
+        self.assertEqual(discover_v5_symbols(fake_request), ["AAPLUSDT", "BTCUSDT", "CLUSDT", "HYPEUSDT", "XAUUSDT"])
 
     def test_discovery_fails_on_invalid_contract_list(self):
         with self.assertRaises(BitgetAPIError):
