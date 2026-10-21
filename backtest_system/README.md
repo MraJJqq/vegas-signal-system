@@ -8,6 +8,8 @@
 ## 主程序
 
 - `v1_trading_system.py` — V1 交易执行与风险框架
+- `bitget_market_data.py` — Bitget USDT 合约历史 K 线下载器（当前默认黄金 `XAUUSDT`）
+- `run_backtest.py` — 待补：历史回测主程序
 
 ## 规则边界
 
