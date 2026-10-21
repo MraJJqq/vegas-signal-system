@@ -18,6 +18,16 @@ class V5Tests(unittest.TestCase):
             ]}
         self.assertEqual(discover_v5_symbols(fake_request), ["AAPLUSDT", "BTCUSDT", "CLUSDT", "HYPEUSDT", "XAUUSDT"])
 
+    def test_removed_stock_categories_are_not_in_scan_universe(self):
+        removed = {"JPMUSDT", "BACUSDT", "GSUSDT", "MSUSDT", "VUSDT", "MAUSDT",
+                   "WMTUSDT", "COSTUSDT", "HDUSDT", "LOWUSDT", "NKEUSDT", "MCDUSDT",
+                   "SBUXUSDT", "KOUSDT", "PEPUSDT", "DISUSDT", "ABNBUSDT", "SHOPUSDT",
+                   "UBERUSDT", "XOMUSDT", "CVXUSDT", "COPUSDT", "CATUSDT", "GEUSDT",
+                   "BAUSDT", "LMTUSDT", "RTXUSDT"}
+        from bitget_market_data_v5 import TARGET_SYMBOLS, V5_STOCK_SYMBOLS
+        self.assertEqual(len(V5_STOCK_SYMBOLS), 23)
+        self.assertTrue(removed.isdisjoint(TARGET_SYMBOLS))
+
     def test_discovery_fails_on_invalid_contract_list(self):
         with self.assertRaises(BitgetAPIError):
             discover_v5_symbols(lambda url: {"code": "00000", "data": None})
