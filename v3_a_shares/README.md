@@ -1,62 +1,25 @@
-# V3 A-share data-source pilot (not enabled)
+# V3 A股扫描
 
-This folder is intentionally separate from `v3/`. It does not change the
-existing Bitget scan, V3 Vegas rules, notification settings, or GitHub Actions
-configuration.
+A股与美股使用同一套 Vegas V3 信号判断逻辑，策略唯一来源是 `../v3/signal_system_v3.py`，规则说明见 `../v3/VEGAS_SIGNAL_SYSTEM_V3.md`。A股模块只负责行情适配、固定股票池和调用共享引擎，不维护另一套策略判断。
 
-## Current implementation
+## 统一规则
 
-- AKShare + Eastmoney 60-minute history, requested with `adjust="qfq"`.
-- Main-board code-prefix screening for Shanghai/Shenzhen only.
-- Excludes stocks whose live snapshot price is missing, invalid, or non-positive.
-- Aggregates four 60-minute bars into one four-trading-hour session candle:
-  09:30-11:30 and 13:00-15:00, with lunch break excluded.
-- Uses completed sessions only; incomplete sessions are discarded.
-- Fails closed if fewer than 676 complete session candles are available, because
-  V3 computes EMA676. It never invents candles or evaluates signals without
-  sufficient history.
+- 周期：4H；所有判断只使用已收盘K线。
+- 中锋：EMA144、EMA169；方向由价格相对中锋区域的位置决定。
+- 红峰：EMA576、EMA676；触碰/进入红峰区域也会启动观察。
+- 过滤线：EMA12。
+- 触碰中锋或红峰只启动观察，不立即发正式信号。
+- 观察期无时间限制。只有价格处于中锋上方且收盘在EMA12上方才确认LONG；价格处于中锋下方且收盘在EMA12下方才确认SHORT。
+- 使用与美股相同的EMA算法、观察状态机、正式信号事件和ntfy每日摘要/去重逻辑。
+- A股行情仍由AKShare/东方财富提供，前复权；固定扫描池为 `universe.json` 中的24只沪深主板股票。
+- A股交易时段每日合并为一根完整交易时段K线（上午和下午合计4小时，午休不计入）。这属于A股行情适配方式，不改变共享信号引擎规则。
 
-## Important limitations to validate before enabling
+## 行情历史限制
 
-1. The AKShare/Eastmoney 60-minute endpoint may not provide 676 complete
-   historical sessions for every symbol. The adapter deliberately reports this
-   instead of falling back to daily bars.
-2. Forward-adjusted historical minute bars and their long-term coverage must
-   be verified against live responses. This code requests qfq but does not
-   claim the provider has passed validation.
-3. A zero/missing live price is treated as inactive and excluded. The snapshot
-   alone cannot distinguish suspension from all other data-quality problems;
-   provider failures raise errors rather than counting as a successful scan.
-4. Main-board code prefixes are an initial universe filter; validate against
-   official exchange classifications before production.
-5. No workflow was added and no GitHub configuration was changed. This pilot
-   is not yet running on a schedule and sends no notifications.
+共享V3逻辑要求EMA676可用，因此至少需要676根完整A股交易时段K线。当前AKShare 60分钟接口在最近一次实际运行中每只股票只返回约31根完整交易时段K线，无法计算EMA576/EMA676。扫描程序会明确报告历史不足并拒绝生成信号；不得降级成只算EMA12/144/169，也不得用日线冒充4H。需要接入能提供足够历史的A股行情来源后，才能完整运行同一套规则。
 
-## Local test
+## 运行
 
-Install dependencies:
+GitHub Actions workflow: `.github/workflows/ashare-scan.yml`
 
-```bash
-python -m pip install akshare pandas
-```
-
-Run offline unit tests:
-
-```bash
-cd v3_a_shares
-python -m unittest -v
-```
-
-A successful unit test run validates code behavior with mocked data only. A
-separate live-data test is still required before enabling full-market scans.
-
-
-## Focused scan pool
-
-The initial watchlist is defined in `universe.json` and contains 12 liquid Shanghai/Shenzhen main-board candidates across consumer, banking, metals, utilities, manufacturing, semiconductors, pharmaceuticals, and industrial equipment. It excludes ChiNext, STAR Market, and Beijing-listed stocks. This is a candidate universe, not a claim that each stock currently has a clear Vegas trend. The Vegas rules must decide whether a formal signal exists.
-
-The pool remains `pilot_not_enabled` until live-data validation confirms sufficient complete 4H session candles for EMA676 and suspension handling. No A-share signal is sent by this configuration alone.
-
-## Automated validation
-
-The isolated workflow `.github/workflows/ashare-data-validation.yml` runs offline unit tests and a live-data smoke test. It does not enable scheduled scanning or send notifications.
+需要仓库 Actions secret `NTFY_TOPIC`。正式扫描运行时会逐只报告成功/错误，并发送与V3相同的每日摘要。行情错误会使任务最终标记失败，避免把不完整扫描误报为成功。
