@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      V3_SYMBOLS: ${{ vars.V3_SYMBOLS || 'XAUUSDT,CLUUSDT,HYPEUSDT' }}
+      V3_SYMBOLS: ${{ vars.V3_SYMBOLS || 'XAUUSDT,CLUSDT,HYPEUSDT' }}
       V3_TIMEZONE: ${{ vars.V3_TIMEZONE || 'Asia/Shanghai' }}
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       V3_STATE_FILE: v3-state/notifications.json
