@@ -1,0 +1,138 @@
+"""V3 ntfy delivery and same-local-day signal digest.
+
+This module is transport/state plumbing only; it does not evaluate or alter
+Vegas rules. The caller must pass only formally confirmed signals.
+"""
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import asdict, dataclass
+from datetime import date, datetime
+from pathlib import Path
+from typing import Iterable
+from urllib.request import Request, urlopen
+
+
+@dataclass(frozen=True)
+class ConfirmedSignal:
+    signal_id: str
+    symbol: str
+    direction: str
+    timeframe: str
+    candle_time: str
+    close: float
+
+    @classmethod
+    def from_closed_candle(
+        cls, *, symbol: str, direction: str, timeframe: str,
+        candle_time: str, close: float,
+    ) -> "ConfirmedSignal":
+        normalized_symbol = symbol.strip().upper()
+        normalized_direction = direction.strip().upper()
+        normalized_timeframe = timeframe.strip().upper()
+        if not normalized_symbol:
+            raise ValueError("symbol must not be empty")
+        if normalized_direction not in {"LONG", "SHORT"}:
+            raise ValueError("direction must be LONG or SHORT")
+        if normalized_timeframe != "4H":
+            raise ValueError("V3 signals must use 4H")
+        if close <= 0:
+            raise ValueError("close must be positive")
+        # Stable across repeated hourly scans of the same confirmed candle.
+        signal_id = "|".join((normalized_symbol, normalized_timeframe, candle_time, normalized_direction))
+        return cls(signal_id, normalized_symbol, normalized_direction,
+                   normalized_timeframe, candle_time, float(close))
+
+
+def load_daily_state(path: str | Path, local_day: date) -> dict:
+    """Load today's signal IDs; discard yesterday's digest after date rollover."""
+    state_path = Path(path)
+    if not state_path.exists():
+        return {"local_day": local_day.isoformat(), "signals": []}
+    try:
+        loaded = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read V3 notification state: {exc}") from exc
+    if loaded.get("local_day") != local_day.isoformat():
+        return {"local_day": local_day.isoformat(), "signals": []}
+    signals = loaded.get("signals")
+    if not isinstance(signals, list):
+        raise ValueError("V3 notification state signals must be a list")
+    return {"local_day": local_day.isoformat(), "signals": signals}
+
+
+def update_daily_digest(
+    state: dict, confirmed_signals: Iterable[ConfirmedSignal], local_day: date
+) -> tuple[dict, list[ConfirmedSignal]]:
+    """Merge confirmed signals by stable ID and return only genuinely new events."""
+    if state.get("local_day") != local_day.isoformat():
+        state = {"local_day": local_day.isoformat(), "signals": []}
+    existing = {item["signal_id"] for item in state.get("signals", [])}
+    new_events: list[ConfirmedSignal] = []
+    signals = list(state.get("signals", []))
+    for signal in confirmed_signals:
+        if signal.signal_id in existing:
+            continue
+        record = asdict(signal)
+        signals.append(record)
+        existing.add(signal.signal_id)
+        new_events.append(signal)
+    signals.sort(key=lambda item: (item["candle_time"], item["symbol"], item["direction"]))
+    return {"local_day": local_day.isoformat(), "signals": signals}, new_events
+
+
+def save_daily_state(path: str | Path, state: dict) -> None:
+    state_path = Path(path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = state_path.with_suffix(state_path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(state_path)
+
+
+def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
+    new_events = list(new_events)
+    lines = [f"Vegas V3 信号汇总（{state['local_day']}）"]
+    if new_events:
+        lines.append(f"本次新增正式信号：{len(new_events)}")
+        for item in new_events:
+            lines.append(
+                f"新信号：{item.symbol} {item.direction} {item.timeframe} "
+                f"收盘价={item.close:g} K线时间={item.candle_time}"
+            )
+    else:
+        lines.append("本次没有新信号。")
+    daily = state.get("signals", [])
+    lines.append(f"当天已确认正式信号：{len(daily)}")
+    for item in daily:
+        lines.append(
+            f"- {item['symbol']} {item['direction']} {item['timeframe']} "
+            f"收盘价={item['close']:g} K线时间={item['candle_time']}"
+        )
+    return "\n".join(lines)
+
+
+def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://ntfy.sh") -> None:
+    """Send a message to ntfy. Topic must come from the configured secret/env."""
+    topic = topic or os.environ.get("NTFY_TOPIC")
+    if not topic:
+        raise RuntimeError("NTFY_TOPIC is not configured")
+    if "/" in topic or topic.strip() != topic:
+        raise ValueError("NTFY_TOPIC must be a topic name, not a URL or padded value")
+    request = Request(
+        f"{server.rstrip('/')}/{topic}",
+        data=message.encode("utf-8"),
+        headers={
+            "Title": "Vegas V3 信号提醒",
+            "Priority": "high",
+            "Tags": "chart_with_upwards_trend",
+            "Content-Type": "text/plain; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=15) as response:
+            if not 200 <= response.status < 300:
+                raise RuntimeError(f"ntfy returned HTTP {response.status}")
+    except Exception as exc:
+        raise RuntimeError(f"ntfy delivery failed: {exc}") from exc
