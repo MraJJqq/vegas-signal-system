@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
@@ -135,9 +136,17 @@ def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://
         },
         method="POST",
     )
-    try:
-        with urlopen(request, timeout=15) as response:
-            if not 200 <= response.status < 300:
-                raise RuntimeError(f"ntfy returned HTTP {response.status}")
-    except Exception as exc:
-        raise RuntimeError(f"ntfy delivery failed: {exc}") from exc
+    # ntfy.sh can rate-limit repeated manual test pushes. Retry HTTP 429
+    # with bounded backoff rather than failing immediately.
+    for attempt in range(4):
+        try:
+            with urlopen(request, timeout=15) as response:
+                if not 200 <= response.status < 300:
+                    raise RuntimeError(f"ntfy returned HTTP {response.status}")
+            return
+        except Exception as exc:
+            status = getattr(exc, "code", None)
+            if status == 429 and attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise RuntimeError(f"ntfy delivery failed: {exc}") from exc
