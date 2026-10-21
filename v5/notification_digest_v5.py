@@ -1,4 +1,4 @@
-"""V5 ntfy delivery and same-local-day signal digest; isolated from prior versions."""
+"""V5 Server酱 personal-WeChat delivery and same-local-day signal digest."""
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
@@ -111,34 +112,36 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
     return "\n".join(sections)
 
 
-def send_ntfy(message: str, *, topic: str | None = None, server: str | None = None) -> None:
-    """Send a message to ntfy using the configured topic and optional base URL."""
-    topic = topic or os.environ.get("NTFY_TOPIC")
-    if not topic:
-        raise RuntimeError("NTFY_TOPIC is not configured")
-    if "/" in topic or topic.strip() != topic:
-        raise ValueError("NTFY_TOPIC must be a topic name, not a URL or padded value")
-    server = server or os.environ.get("NTFY_BASE_URL") or "https://ntfy.sh"
+def send_serverchan(message: str, *, sendkey: str | None = None) -> None:
+    """Send the V5 digest to personal WeChat through Server酱 Turbo."""
+    sendkey = sendkey or os.environ.get("SERVERCHAN_SENDKEY")
+    if not sendkey:
+        raise RuntimeError("SERVERCHAN_SENDKEY is not configured")
+    if not sendkey.startswith("SCT") or any(ch.isspace() for ch in sendkey):
+        raise ValueError("SERVERCHAN_SENDKEY must be a valid Server酱 Turbo key starting with SCT")
+    data = urlencode({
+        "title": "VEGAS V5 信号通知",
+        "desp": message,
+    }).encode("utf-8")
     request = Request(
-        f"{server.rstrip('/')}/{topic}",
-        data=message.encode("utf-8"),
-        headers={
-            "Title": "VEGAS V5 SIGNAL",
-            "Priority": "high",
-            "Tags": "green_circle,red_circle",
-            "Content-Type": "text/plain; charset=utf-8",
-        },
+        f"https://sctapi.ftqq.com/{sendkey}.send",
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
         method="POST",
     )
     for attempt in range(4):
         try:
             with urlopen(request, timeout=15) as response:
+                body = response.read().decode("utf-8")
                 if not 200 <= response.status < 300:
-                    raise RuntimeError(f"ntfy returned HTTP {response.status}")
+                    raise RuntimeError(f"Server酱 returned HTTP {response.status}")
+            result = json.loads(body)
+            if result.get("code") != 0:
+                raise RuntimeError(f"Server酱 rejected notification (code={result.get('code')})")
             return
         except Exception as exc:
             status = getattr(exc, "code", None)
             if status == 429 and attempt < 3:
                 time.sleep(5 * (attempt + 1))
                 continue
-            raise RuntimeError(f"ntfy delivery failed: {exc}") from exc
+            raise RuntimeError(f"Server酱微信推送失败: {exc}") from exc
