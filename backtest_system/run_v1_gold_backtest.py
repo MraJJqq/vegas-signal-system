@@ -114,8 +114,9 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
                 elif d4 is Direction.SHORT and c.close < filt:
                     signals.append(SignalEvent(symbol.upper(), tf, close_time, Direction.SHORT, c.close))
 
-    # Deduplicate same symbol/time: engine prioritizes the higher timeframe.
+    # Count signals after the confirmed same-symbol/same-timeframe-priority rule.
     signals.sort(key=lambda s: (s.timestamp, s.timeframe))
+    prioritized_signals = prioritize_same_symbol_signals(signals)
     engine = VegasBacktestV2()
     for tf, candles in data.items():
         engine.record_candles([
@@ -145,7 +146,11 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
         "candles_exported_target_window": len(all_candles),
         "ema144_touch_candidates": touches,
         "direction_alignment_passes": direction_passes,
-        "recognized_signals": len(signals),
+        "recognized_signals_before_priority": len(signals),
+        "signals_after_same_symbol_time_priority": len(prioritized_signals),
+        "signals_removed_by_same_symbol_time_priority": len(signals) - len(prioritized_signals),
+        "positions_opened": report["summary"]["positions_opened"],
+        "positions_closed": report["summary"]["positions_closed"],
         "entry_rule": "4H/8H close-vs-EMA144 directions agree; 1H/2H range touches EMA144; same closed candle closes on agreed side of EMA12",
         "limitations": [
             "Direction is operationalized as close relative to EMA144 because the prior V1 notes do not define a separate direction formula in the codebase.",
