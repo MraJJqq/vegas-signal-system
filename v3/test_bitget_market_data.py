@@ -67,15 +67,17 @@ class BitgetMarketDataTests(unittest.TestCase):
         self.assertAlmostEqual(result[2], 2.0)
         self.assertAlmostEqual(result[3], 3.0)
 
-    def test_v3_inputs_wait_until_ema169_exists(self):
+    def test_v3_inputs_wait_until_ema676_exists(self):
         bars = [
             candle(i * FOUR_HOURS_MS, 100 + i, 101 + i, 99 + i, 100 + i)
-            for i in range(180)
+            for i in range(700)
         ]
         result = build_v3_inputs(bars)
-        self.assertEqual(len(result), 180 - 168)
-        self.assertEqual(result[0].timestamp_ms, 168 * FOUR_HOURS_MS)
+        self.assertEqual(len(result), 700 - 675)
+        self.assertEqual(result[0].timestamp_ms, 675 * FOUR_HOURS_MS)
         self.assertTrue(result[0].candle.closed)
+        self.assertGreater(result[0].ema576, 0)
+        self.assertGreater(result[0].ema676, 0)
 
     def test_fetch_v3_inputs_rejects_8h_and_2h(self):
         for timeframe in ("8H", "2H", "1H"):
