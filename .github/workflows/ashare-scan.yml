@@ -1,0 +1,37 @@
+name: V3 A-share 4H Vegas Scan
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "v3_a_shares/run_ashare_scan.py"
+      - "v3_a_shares/akshare_market_data.py"
+      - "v3_a_shares/universe.json"
+      - ".github/workflows/ashare-scan.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v3-ashare-4h-scan
+  cancel-in-progress: false
+
+jobs:
+  scan-and-notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONUNBUFFERED: "1"
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install scan dependencies
+        run: python -m pip install --upgrade pip akshare pandas
+      - name: Scan fixed A-share pool and push formal signals
+        working-directory: v3_a_shares
+        run: python run_ashare_scan.py
