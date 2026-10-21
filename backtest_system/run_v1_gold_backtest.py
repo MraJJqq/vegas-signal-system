@@ -200,8 +200,7 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
             "No fees, slippage, funding, account return, or unrealized PnL are calculated."
         ]
     }
-    (output_dir / "gold_backtest_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "
-", encoding="utf-8")
+    (output_dir / "gold_backtest_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return report
 
 
