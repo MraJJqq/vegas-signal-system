@@ -3,13 +3,11 @@ name: Vegas Signal System V3 Tests
 on:
   push:
     paths:
-      - "signal_system_v3.py"
-      - "test_signal_system_v3.py"
+      - "v3/**"
       - ".github/workflows/test-v3.yml"
   pull_request:
     paths:
-      - "signal_system_v3.py"
-      - "test_signal_system_v3.py"
+      - "v3/**"
       - ".github/workflows/test-v3.yml"
 
 jobs:
@@ -23,4 +21,5 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run V3 unit tests
+        working-directory: v3
         run: python -m unittest -v test_signal_system_v3.py
