@@ -46,13 +46,16 @@ def aggregate_hourly(hourly: list[HistoricalCandle], timeframe: str) -> list[His
 
 
 def fetch_preferred_timeframe(symbol: str, timeframe: str, start: datetime, end: datetime, hourly: list[HistoricalCandle] | None = None) -> tuple[list[HistoricalCandle], str]:
-    """Prefer Bitget's native timeframe; aggregate only when it is unavailable."""
-    try:
-        native = fetch_history_candles(symbol=symbol, timeframe=timeframe, start=start, end=end)
-        if native:
-            return native, "Bitget native"
-    except (BitgetMarketDataError, ValueError):
-        pass
+    """Prefer supported native candles; aggregate unsupported 2H/8H from closed 1H bars."""
+    # Bitget v2 history-candles documents 1H and 4H but not 2H or 8H.
+    # Do not deliberately issue requests known to return HTTP 400.
+    if timeframe not in {"2H", "8H"}:
+        try:
+            native = fetch_history_candles(symbol=symbol, timeframe=timeframe, start=start, end=end)
+            if native:
+                return native, "Bitget native"
+        except (BitgetMarketDataError, ValueError):
+            pass
     if timeframe == "1H":
         raise RuntimeError(f"Bitget returned no native 1H candles for {symbol}")
     base = hourly if hourly is not None else fetch_history_candles(
