@@ -1,0 +1,31 @@
+name: V1 Trading System Tests
+
+on:
+  push:
+    paths:
+      - "backtest_system/**"
+      - ".github/workflows/test-v1.yml"
+  pull_request:
+    paths:
+      - "backtest_system/**"
+      - ".github/workflows/test-v1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run V1 rule and risk tests
+        working-directory: backtest_system
+        run: |
+          python -m unittest -v test_v1_trading_system.py
+          python -m py_compile v1_trading_system.py test_v1_trading_system.py
