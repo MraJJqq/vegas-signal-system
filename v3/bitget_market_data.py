@@ -1,6 +1,6 @@
 """Public Bitget USDT-futures market data adapter for Vegas Signal System V3.
 
-This module fetches closed 4H candles and computes the V3 EMA12/EMA144/EMA169
+This module fetches closed 4H candles and computes the V3 EMA12/EMA144/EMA169/EMA576/EMA676
 inputs. It does not change signal rules or send notifications.
 """
 from __future__ import annotations
@@ -51,6 +51,8 @@ class V3Input:
     ema12: float
     ema144: float
     ema169: float
+    ema576: float
+    ema676: float
 
 
 def _http_get_json(url: str, timeout: float = 10.0) -> dict:
@@ -153,15 +155,17 @@ def ema(values: list[float], period: int) -> list[float | None]:
 
 
 def build_v3_inputs(candles: Iterable[MarketCandle]) -> list[V3Input]:
-    """Attach EMA12/144/169 to candles; discard rows before all EMAs exist."""
+    """Attach EMA12/144/169/576/676; discard rows before all EMAs exist."""
     ordered = sorted(candles, key=lambda candle: candle.timestamp_ms)
     closes = [c.close for c in ordered]
     ema12 = ema(closes, 12)
     ema144 = ema(closes, 144)
     ema169 = ema(closes, 169)
+    ema576 = ema(closes, 576)
+    ema676 = ema(closes, 676)
     result: list[V3Input] = []
     for index, candle in enumerate(ordered):
-        values = (ema12[index], ema144[index], ema169[index])
+        values = (ema12[index], ema144[index], ema169[index], ema576[index], ema676[index])
         if any(value is None for value in values):
             continue
         result.append(V3Input(
@@ -175,6 +179,8 @@ def build_v3_inputs(candles: Iterable[MarketCandle]) -> list[V3Input]:
             ema12=float(values[0]),
             ema144=float(values[1]),
             ema169=float(values[2]),
+            ema576=float(values[3]),
+            ema676=float(values[4]),
         ))
     return result
 
