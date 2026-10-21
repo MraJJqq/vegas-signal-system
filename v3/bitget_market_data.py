@@ -1,7 +1,7 @@
 """Public Bitget USDT-futures market data adapter for Vegas Signal System V3.
 
-This module fetches closed 4H candles and computes the V3 EMA12/EMA144/EMA169/EMA576/EMA676
-inputs. It does not change signal rules or send notifications.
+Fetches closed 4H candles and computes V3 EMA inputs. This module does not
+change signal rules or send notifications.
 """
 from __future__ import annotations
 
@@ -11,13 +11,14 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Iterable
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from signal_system_v3 import Candle
 
 BASE_URL = "https://api.bitget.com"
-CANDLES_PATH = "/api/v2/mix/market/candles"
+CANDLES_PATH = "/api/v3/market/candles"
 PRODUCT_TYPE = "USDT-FUTURES"
 FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 ALLOWED_TIMEFRAMES = ("4H",)
@@ -60,6 +61,9 @@ def _http_get_json(url: str, timeout: float = 10.0) -> dict:
     try:
         with urlopen(request, timeout=timeout) as response:
             body = response.read().decode("utf-8")
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise BitgetAPIError(f"Bitget HTTP {exc.code}: {detail[:500]}") from exc
     except Exception as exc:
         raise BitgetAPIError(f"Bitget request failed: {exc}") from exc
     try:
@@ -111,7 +115,7 @@ def fetch_closed_4h_candles(
     now_ms: int | None = None,
     request_json: Callable[[str], dict] | None = None,
 ) -> list[MarketCandle]:
-    """Fetch recent 4H candles and exclude the currently forming candle."""
+    """Fetch up to 1000 recent 4H candles and exclude the forming candle."""
     normalized_symbol = symbol.strip().upper()
     if not normalized_symbol:
         raise ValueError("symbol must not be empty")
@@ -119,9 +123,10 @@ def fetch_closed_4h_candles(
         raise ValueError("limit must be between 1 and 1000")
     now_ms = int(time.time() * 1000) if now_ms is None else int(now_ms)
     query = urlencode({
+        "category": PRODUCT_TYPE,
         "symbol": normalized_symbol,
-        "productType": PRODUCT_TYPE,
-        "granularity": "4H",
+        "interval": "4H",
+        "type": "market",
         "limit": str(limit),
     })
     fetch_json = request_json or _http_get_json
@@ -192,7 +197,7 @@ def fetch_v3_inputs(
     now_ms: int | None = None,
     request_json: Callable[[str], dict] | None = None,
 ) -> list[V3Input]:
-    """Fetch 4H Bitget data and return inputs ready for V3 evaluation."""
+    """Fetch Bitget 4H data and return inputs ready for V3 evaluation."""
     if timeframe not in ALLOWED_TIMEFRAMES:
         raise ValueError("V3 only supports 4H")
     candles = fetch_closed_4h_candles(
