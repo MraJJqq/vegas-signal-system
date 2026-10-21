@@ -21,7 +21,9 @@ PRODUCT_TYPE = "USDT-FUTURES"
 # Bitget granularity names; values are milliseconds.
 TIMEFRAME_MS = {
     "1H": 60 * 60 * 1000,
+    "2H": 2 * 60 * 60 * 1000,
     "4H": 4 * 60 * 60 * 1000,
+    "8H": 8 * 60 * 60 * 1000,
     "6H": 6 * 60 * 60 * 1000,
     "12H": 12 * 60 * 60 * 1000,
     "1D": 24 * 60 * 60 * 1000,
