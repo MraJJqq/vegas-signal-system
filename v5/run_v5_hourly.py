@@ -1,6 +1,7 @@
 """Run V5 over 50 selected stocks plus BTC, HYPE, gold and crude oil."""
 import argparse
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -52,6 +53,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS), help="Optional override; default uses 50 selected stocks plus BTC/HYPE/XAU/CL")
     parser.add_argument("--limit", type=int, default=1000)
+    parser.add_argument("--workers", type=int, default=4, help="Concurrent symbols; keep low to respect Bitget rate limits")
     parser.add_argument("--state", default=os.getenv("V5_STATE_FILE", ".state/v5_notifications.json"))
     parser.add_argument("--timezone", default=os.getenv("V5_TIMEZONE", "Asia/Shanghai"))
     parser.add_argument("--dry-run", action="store_true")
@@ -68,21 +70,33 @@ def main() -> int:
         raise SystemExit("No symbols configured after exclusions")
     if not 1 <= args.limit <= 1000:
         raise SystemExit("--limit must be between 1 and 1000")
+    if not 1 <= args.workers <= 8:
+        raise SystemExit("--workers must be between 1 and 8")
     tz = ZoneInfo(args.timezone)
     today = datetime.now(tz).date()
     found, errors = [], []
-    print(f"V5 local_day={today.isoformat()} timezone={args.timezone} symbols={len(symbols)} universe={universe_source} timeframe=4H")
-    for symbol in symbols:
+    workers = min(args.workers, len(symbols))
+    print(f"V5 local_day={today.isoformat()} timezone={args.timezone} symbols={len(symbols)} workers={workers} universe={universe_source} timeframe=4H")
+
+    def scan_one(symbol: str):
         try:
             events, status = scan_symbol(symbol, args.limit)
+            return symbol, events, status, None
+        except Exception as exc:
+            return symbol, [], None, str(exc)
+
+    # Bounded concurrency speeds up the scan without flooding Bitget with requests.
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        for symbol, events, status, error in executor.map(scan_one, symbols):
+            if error is not None:
+                errors.append(f"{symbol}: {error}")
+                print(f"FAIL {symbol}: {error}")
+                continue
             print("PASS " + status)
             found.extend(
                 e for e in events
                 if datetime.fromisoformat(e.candle_time).astimezone(tz).date() == today
             )
-        except Exception as exc:
-            errors.append(f"{symbol}: {exc}")
-            print(f"FAIL {symbol}: {exc}")
     state = load_daily_state(args.state, today)
     state, new_events = update_daily_digest(state, found, today)
     message = format_digest(state, new_events)
