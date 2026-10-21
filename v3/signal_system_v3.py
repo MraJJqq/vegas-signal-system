@@ -12,6 +12,7 @@ from typing import Iterable, Optional
 
 ALLOWED_TIMEFRAMES = ("4H",)
 MIDLINE_PERIODS = (144, 169)
+RED_PEAK_PERIODS = (576, 676)
 FILTER_PERIOD = 12
 
 
@@ -48,6 +49,11 @@ def _touches_midline(candle: Candle, ema144: float, ema169: float) -> bool:
     return candle.high >= lower and candle.low <= upper
 
 
+def _inside_or_touches_band(candle: Candle, ema_a: float, ema_b: float) -> bool:
+    lower, upper = min(ema_a, ema_b), max(ema_a, ema_b)
+    return candle.low <= upper and candle.high >= lower or lower <= candle.close <= upper
+
+
 def _direction(close: float, ema144: float, ema169: float) -> Optional[str]:
     lower, upper = _midline_bounds(ema144, ema169)
     if close > upper:
@@ -64,11 +70,14 @@ def evaluate_candle(
     ema144: float,
     ema169: float,
     state: WatchState,
+    ema576: Optional[float] = None,
+    ema676: Optional[float] = None,
 ) -> Optional[SignalEvent]:
     """Update observation state and emit a signal only on a closed 4H candle.
 
-    Observation starts when the candle range touches the midline band or its
-    close lies inside that band. While observing, a close above EMA12 confirms
+    Observation starts when the candle touches/closes inside either the midline
+    band (EMA144/169) or, when supplied, the red-peak band (EMA576/676).
+    Direction remains determined by the midline as previously defined. While observing, a close above EMA12 confirms
     LONG only when price is above the band; a close below EMA12 confirms SHORT
     only when price is below the band. No timeout is applied.
     """
@@ -80,7 +89,11 @@ def evaluate_candle(
     lower, upper = _midline_bounds(ema144, ema169)
     was_observing = state.active
     close_inside = lower <= candle.close <= upper
-    if _touches_midline(candle, ema144, ema169) or close_inside:
+    touches_red_peak = (
+        ema576 is not None and ema676 is not None
+        and _inside_or_touches_band(candle, ema576, ema676)
+    )
+    if _touches_midline(candle, ema144, ema169) or close_inside or touches_red_peak:
         state.active = True
         state.direction = _direction(candle.close, ema144, ema169) or state.direction
 
