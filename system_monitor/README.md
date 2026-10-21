@@ -1,16 +1,19 @@
-# V1 / V3 运行状态监控
+# V4 运行状态监控
 
-本模块只监控 V1、V3 的 GitHub Actions 自动测试结果，不修改两个系统的交易规则或业务代码。
+本模块监控 **V4 信号系统** 的 GitHub Actions 每小时扫描工作流，不修改 V4 信号判断、Vegas 规则或 V1 交易系统代码。
 
-- 每 10 分钟检查 V1、V3 测试工作流最近是否失败。
-- 发现最近 20 分钟内的失败/取消结果时，通过 ntfy 发出告警。
-- ntfy topic 从 GitHub Actions secret `NTFY_TOPIC` 读取；另需配置 `NTFY_BASE_URL`（可选，默认 `https://ntfy.sh`）。
-- 本监控反映的是自动测试工作流健康状态，不等于 V1/V3 已部署为持续运行的生产进程。当前 V3 扫描入口仍是单次扫描，V1 完整回测流程也尚未端到端完成。
+- 每 3 天检查一次 V4 扫描工作流最近运行状态，也支持手动触发。
+- 如果找不到 V4 扫描记录、最近一次扫描失败、运行超过 90 分钟仍未完成，或超过 90 分钟没有新的扫描运行，则通过 ntfy 发出告警。
+- 监控 workflow：`.github/workflows/system-monitor.yml`。
+- 被监控的扫描 workflow：`.github/workflows/v4-hourly-scan.yml`，名称为 `Vegas V4 Hourly Market Scan`。
+- ntfy topic 从 GitHub Actions secret `NTFY_TOPIC` 读取；另需配置 repository variable `NTFY_BASE_URL`（可选，默认 `https://ntfy.sh`）。
+- 本监控反映的是 GitHub Actions 扫描工作流健康状态，不等于独立验证手机端每条 ntfy 通知均已送达。
 
 ## 配置
 
-在仓库 Settings → Secrets and variables → Actions → New repository secret 中设置：
+在仓库 Settings → Secrets and variables → Actions 中设置：
 
-- `NTFY_TOPIC`: 已订阅的 ntfy topic 名称。
+- `NTFY_TOPIC`：已订阅的 ntfy topic 名称。
+- `NTFY_BASE_URL`：可选；使用自托管 ntfy 时配置服务地址。
 
-未配置 topic 时，监控会在 GitHub Actions 日志中明确报错，不会假装告警成功。
+未配置 topic 时，监控会明确报错，不会假装告警成功。
