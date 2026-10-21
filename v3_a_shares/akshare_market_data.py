@@ -7,8 +7,8 @@ The provider's 60-minute bars are aggregated into one four-trading-hour
 session candle per trading day (09:30-11:30 plus 13:00-15:00). This is
 intentional for the selected A-share 4H scan setting: lunch break is not
 counted as trading time. The output is not a conventional 4-hour wall-clock
-bar. Every symbol must have enough valid history for EMA676 before signals
-can be evaluated.
+bar. The A-share scan uses the EMA144/EMA169 midline and EMA12 filter only;
+red-peak indicators are not calculated in this module's scan path.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 MAIN_BOARD_PREFIXES = ("000", "001", "002", "003", "600", "601", "603", "605")
-REQUIRED_EMA_HISTORY = 676
+REQUIRED_EMA_HISTORY = 169
 REQUIRED_60M_BARS_PER_SESSION = 4
 
 
@@ -177,12 +177,8 @@ def aggregate_session_4h(
     for session_day, group in frame.groupby(frame["时间"].dt.date, sort=True):
         if session_day > today or (session_day == today and not include_today):
             continue
-        # Exclude weekends/holiday-like rows with timestamps outside regular
-        # continuous trading. Auction bars are not accepted as session bars.
         times = [ts.time() for ts in group["时间"]]
         expected = {time(10, 30), time(11, 30), time(14, 0), time(15, 0)}
-        # Providers may label bars by start time instead of end time. Support
-        # either common convention, but never accept a mixed/partial session.
         expected_start = {time(9, 30), time(10, 30), time(13, 0), time(14, 0)}
         if len(group) != REQUIRED_60M_BARS_PER_SESSION:
             continue
@@ -211,7 +207,6 @@ def aggregate_session_4h(
             closed=True,
         ))
 
-    # Deduplicate by date defensively and keep chronological order.
     unique = {bar.session_date: bar for bar in result}
     return [unique[day] for day in sorted(unique)]
 
@@ -224,11 +219,7 @@ def fetch_symbol_4h_history(
     ak_module=None,
     now: datetime | None = None,
 ) -> list[AShareCandle]:
-    """Fetch forward-adjusted 60m bars and aggregate to session 4H candles.
-
-    Provider must be chosen explicitly and consistently; no silent fallback
-    or mixing of sources is performed.
-    """
+    """Fetch forward-adjusted 60m bars and aggregate to session 4H candles."""
     end_date = end_date or datetime.now(SHANGHAI).strftime("%Y-%m-%d")
     if provider == "baostock":
         try:
@@ -278,7 +269,6 @@ def fetch_symbol_4h_history(
         finally:
             bs.logout()
     elif provider == "eastmoney":
-        # Explicit diagnostic fallback only; production defaults to BaoStock.
         ak = ak_module or _akshare()
         start = f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]} 09:30:00"
         df = ak.stock_zh_a_hist_min_em(
@@ -294,7 +284,7 @@ def fetch_symbol_4h_history(
     if len(candles) < REQUIRED_EMA_HISTORY:
         raise AShareDataError(
             f"{_clean_symbol(symbol)}: only {len(candles)} complete session bars "
-            f"available; V3 EMA676 requires at least {REQUIRED_EMA_HISTORY}. "
+            f"available; A-share EMA169 midline requires at least {REQUIRED_EMA_HISTORY}. "
             "No signal evaluation performed."
         )
     return candles
