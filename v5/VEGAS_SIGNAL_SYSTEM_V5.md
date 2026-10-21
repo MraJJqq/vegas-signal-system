@@ -23,11 +23,11 @@
 - 中锋与红峰可分别产生信号，同一根 K 线可能同时确认两个独立观察的信号。
 
 ## 3. 扫描池与调度
-- 扫描范围扩大为 Bitget 实际挂牌的全部正常状态 USDT 永续合约：包括可用的美股/RWA 合约与加密货币合约；不运行 A 股扫描。
-- 每次扫描启动时通过 Bitget 合约列表接口动态发现交易对，不再依赖固定的 20 个股票/代币名单。
-- BTCUSDT、HYPEUSDT 现纳入加密货币扫描范围。
-- 仅排除 XAUUSDT（黄金）与 CLUSDT（原油）这两个非目标大宗商品；其他符合条件且由 Bitget 返回的正常 USDT 合约均进入扫描候选池。
-- “全部美股”以 Bitget 实际挂牌并提供可用 4H 行情的股票/RWA 合约为边界；未在 Bitget 挂牌、无可用行情或历史 K 线不足的品种不能伪造数据，必须在扫描结果中报告错误。
+- 扫描池固定为 50 个主要美股候选 + BTCUSDT、HYPEUSDT、XAUUSDT（黄金）、CLUSDT（原油）；不运行 A 股扫描，也不扫描其他加密货币。
+- 50 个美股候选：AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, AVGO, AMD, NFLX, ORCL, CRM, PLTR, INTC, QCOM, MU, ARM, TSM, COIN, MSTR, HOOD, JPM, BAC, GS, MS, V, MA, WMT, COST, HD, LOW, XOM, CVX, COP, CAT, GE, BA, LMT, RTX, NKE, MCD, SBUX, KO, PEP, DIS, UBER, ABNB, SHOP, ADBE, IBM。
+- 每次扫描启动时通过 Bitget 合约列表接口动态核验候选品种是否为正常状态的 USDT 合约；只扫描 Bitget 实际挂牌且可用的目标合约，不会把未挂牌的股票假装成可扫描。
+- 启动日志报告 50 个美股候选中实际挂牌的数量、固定资产中实际挂牌的品种，以及不可用的目标品种。若黄金或原油当前未被 Bitget 以正常 USDT 合约挂牌，会在不可用目标中显示，不会伪造行情。
+- 美股候选覆盖大型科技、芯片、金融、消费、能源、工业等高关注度/通常流动性较高的公司；固定候选名单不保证每只股票每个时段都走势清晰或成交量达标。
 - 每小时扫描一次。行情缺失、历史 K 线不足或交易所报错必须显式报告，不得静默跳过或伪造信号。
 - EMA676 计算须有足够历史数据。
 
