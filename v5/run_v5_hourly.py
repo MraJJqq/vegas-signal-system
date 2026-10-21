@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from bitget_market_data_v5 import build_v5_inputs, discover_v5_symbols, fetch_closed_4h_candles
 from notification_digest_v5 import (
     ConfirmedSignal, format_digest, load_daily_state, save_daily_state,
-    send_ntfy, update_daily_digest,
+    send_serverchan, update_daily_digest,
 )
 from signal_system_v5 import V5WatchStates, evaluate_candle
 
@@ -105,8 +105,8 @@ def main() -> int:
     if args.dry_run:
         print("\n" + message)
     else:
-        send_ntfy(message)
-        print("PASS: V5 ntfy digest sent")
+        send_serverchan(message)
+        print("PASS: V5 Server酱 personal-WeChat digest sent")
     save_daily_state(args.state, state)
     return 1 if errors else 0
 
