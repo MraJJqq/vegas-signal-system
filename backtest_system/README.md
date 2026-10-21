@@ -47,3 +47,24 @@ python run_backtest.py \
 ## 当前状态
 
 V1 的规则文档已记录上述确认内容。代码执行和完整历史盈亏回测仍须以实际测试及端到端回测结果为准；规则写入文档不代表所有执行逻辑已经实现或验证通过。
+
+## 历史强平数据核查（2026-10-21）
+
+**结论：当前无法可靠验证 365 天黄金模拟仓位的历史强平事件。** 本结论只描述数据可用性，不改变 V1 的交易或退出规则。
+
+### 已核对的官方资料
+
+- Bitget 公共合约强平历史接口：`GET /api/v3/market/liquidations`。官方文档说明只提供最近 3 天数据，且可能延迟；返回的是市场强平订单记录（如合约、方向、价格、数量、时间），不是这套回测中模拟仓位的专属强平记录。官方文档：https://www.bitget.com/docs/catalog/market/derivatives
+- Bitget 合约历史订单接口：`GET /api/v2/mix/order/orders-history`，官方文档注明 API 仅支持最近 90 天；这是账户订单历史，不是任意模拟交易的强平标签。官方文档：https://www.bitget.com/docs/catalog/classic-contract-trade/classic-contract-trade
+- Bitget 合约历史持仓接口：`GET /api/v2/mix/position/history-position`，官方文档注明只查询最近 3 个月的账户持仓历史。官方文档：https://www.bitget.com/docs/catalog/classic-contract-position/classic-contract-position
+- Bitget 的数据导出中心可导出更久的个人账户订单、成交和持仓等记录，但这些仍是实际账户记录，不能直接证明未真实下单的历史模拟仓位何时强平。官方文档：https://www.bitget.com/legacy-docs/uta/data-download-center
+
+### 代码检查结果
+
+- `v1_trading_system.py` 的 `mark_liquidated(..., liquidation_verified=True)` 只在调用方提供已验证强平确认后才平仓；引擎没有自行推导强平价或根据 OHLC 猜测强平。
+- `test_v1_trading_system.py` 的 `test_liquidation_requires_external_verification` 只验证未确认时拒绝平仓、显式确认后允许记账；它不验证外部强平数据源的完整性或历史覆盖率。
+- `run_v1_gold_backtest.py` 没有接入强平数据适配器。现有黄金回测的 365 天窗口超出公共强平接口的 3 天保留范围。
+
+### 阻塞原因与处理边界
+
+缺少能覆盖整个回测窗口、并能与每一笔模拟仓位可靠对应的历史强平事件数据。市场级强平记录不能证明某笔模拟仓位被强平；K 线高低价也不能在未定义杠杆和强平价的情况下作为可靠强平确认。因此不补造强平事件、不推测杠杆或强平价，也不新增退出规则。问题三可继续核对统计与现有执行逻辑，但强平相关统计必须明确标为未验证，不能当作完整历史盈亏结果。
