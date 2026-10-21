@@ -1,7 +1,7 @@
 """Public Bitget USDT-futures market data adapter for Vegas Signal System V5.
 
 Fetches closed 4H candles, including older history required for EMA676, and
-computes V3 EMA inputs. This module does not change signal rules or notify.
+computes V5 EMA inputs. This module does not change signal rules or notify.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ HISTORY_CANDLES_PATH = "/api/v3/market/history-candles"
 PRODUCT_TYPE = "USDT-FUTURES"
 FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 ALLOWED_TIMEFRAMES = ("4H",)
-V5_STOCK_SYMBOLS = ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","AVGO","AMD","NFLX","ORCL","CRM","PLTR","INTC","QCOM","MU","ARM","TSM","COIN","MSTR","HOOD","JPM","BAC","GS","MS","V","MA","WMT","COST","HD","LOW","XOM","CVX","COP","CAT","GE","BA","LMT","RTX","NKE","MCD","SBUX","KO","PEP","DIS","UBER","ABNB","SHOP","ADBE","IBM"]
+V5_STOCK_SYMBOLS = ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","AVGO","AMD","NFLX","ORCL","CRM","PLTR","INTC","QCOM","MU","ARM","TSM","COIN","MSTR","HOOD","ADBE","IBM"]
 V5_FIXED_SYMBOLS = {"BTCUSDT", "HYPEUSDT", "XAUUSDT", "CLUSDT"}
 TARGET_SYMBOLS = {f"{ticker}USDT" for ticker in V5_STOCK_SYMBOLS} | V5_FIXED_SYMBOLS
 HISTORY_PAGE_SIZE = 100
@@ -107,7 +107,7 @@ def _http_get_json(url: str, timeout: float = 10.0) -> dict:
 
 
 def discover_v5_symbols(request_json: Callable[[str], dict] | None = None) -> list[str]:
-    """Discover the configured 50-stock shortlist plus BTC, HYPE, gold and crude oil."""
+    """Discover the configured 23-stock shortlist plus BTC, HYPE, gold and crude oil."""
     fetch_json = request_json or _http_get_json
     url = f"{BASE_URL}{CONTRACTS_PATH}?{urlencode({'productType': PRODUCT_TYPE})}"
     payload = fetch_json(url)
