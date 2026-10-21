@@ -1,6 +1,10 @@
 name: V1 GOLD End-to-End Backtest
 
 on:
+  push:
+    paths:
+      - "backtest_system/run_v1_gold_backtest.py"
+      - ".github/workflows/run-v1-gold-backtest.yml"
   workflow_dispatch:
     inputs:
       days:
