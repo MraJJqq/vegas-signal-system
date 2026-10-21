@@ -1,7 +1,10 @@
-name: V5 One-Time Market Scan
+name: V5 Hourly Market Scan
 
 on:
   workflow_dispatch:
+  schedule:
+    # Run once per hour. GitHub Actions cron is evaluated in UTC.
+    - cron: "7 * * * *"
   push:
     branches: [main]
     paths:
@@ -12,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: v5-one-time-scan
+  group: v5-hourly-scan
   cancel-in-progress: false
 
 jobs:
@@ -30,7 +33,7 @@ jobs:
 
       - name: Run V5 scan and send ntfy digest
         env:
-          PYTHONPATH: v5:v4
+          PYTHONPATH: v5
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_BASE_URL: ${{ vars.NTFY_BASE_URL }}
         run: |
