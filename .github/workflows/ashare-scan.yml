@@ -1,4 +1,5 @@
 name: V3 A-share 4H Vegas Scan
+# One-off A-share scan requested on 2026-10-21; Vegas rules unchanged.
 
 on:
   workflow_dispatch:
