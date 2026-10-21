@@ -1,109 +1,96 @@
-"""One-shot A-share 4H Vegas scan for the fixed 24-symbol pool."""
+"""Run the shared V3 Vegas engine over the fixed A-share 4H session candles."""
 from __future__ import annotations
 
 import json
-import os
-import urllib.request
+import sys
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import pandas as pd
-import akshare as ak
-
-from akshare_market_data import AShareDataError, aggregate_session_4h
-
 ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent
+sys.path.insert(0, str(REPO / "v3"))
+
+import pandas as pd
+from akshare_market_data import AShareDataError, fetch_symbol_4h_history
+from bitget_market_data import ema
+from notification_digest import ConfirmedSignal, format_digest, load_daily_state, save_daily_state, send_ntfy, update_daily_digest
+from signal_system_v3 import Candle, WatchState, evaluate_candle
+
 TZ = ZoneInfo("Asia/Shanghai")
 
 
-def fetch_history(code: str):
-    end = datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
-    # The 4H Vegas scan only needs EMA12/144/169 history, not EMA676.
-    df = ak.stock_zh_a_hist_min_em(
-        symbol=code,
-        start_date="2020-01-01 09:30:00",
-        end_date=end,
-        period="60",
-        adjust="qfq",
+def scan_symbol(name: str, code: str):
+    # Same history requirement, EMA calculation, state machine, red-peak
+    # observation trigger, midline direction, and EMA12 confirmation as V3.
+    bars = fetch_symbol_4h_history(code)
+    closes = [bar.close for bar in bars]
+    ema12 = ema(closes, 12)
+    ema144 = ema(closes, 144)
+    ema169 = ema(closes, 169)
+    ema576 = ema(closes, 576)
+    ema676 = ema(closes, 676)
+    watch = WatchState()
+    events = []
+    for index, bar in enumerate(bars):
+        values = (ema12[index], ema144[index], ema169[index], ema576[index], ema676[index])
+        if any(value is None for value in values):
+            continue
+        candle = Candle(close=bar.close, high=bar.high, low=bar.low, closed=bar.closed)
+        event = evaluate_candle(
+            "4H", candle, float(values[0]), float(values[1]), float(values[2]),
+            watch, float(values[3]), float(values[4])
+        )
+        if event:
+            candle_time = datetime.combine(bar.session_date, datetime.min.time(), TZ).isoformat()
+            events.append(ConfirmedSignal.from_closed_candle(
+                symbol=f"{name}({code})",
+                direction=event.direction,
+                timeframe="4H",
+                candle_time=candle_time,
+                close=event.close,
+            ))
+    last = bars[-1]
+    print(
+        f"PASS {code} {name}: session_bars={len(bars)} "
+        f"latest={last.session_date} close={last.close:g} "
+        f"EMA12={ema12[-1]:g} EMA144={ema144[-1]:g} EMA169={ema169[-1]:g} "
+        f"EMA576={ema576[-1]:g} EMA676={ema676[-1]:g}"
     )
-    bars = aggregate_session_4h(code, df)
-    if len(bars) < 200:
-        raise AShareDataError(f"{code}: usable 4H session bars insufficient ({len(bars)})")
-    return bars
-
-
-def evaluate(name: str, code: str):
-    bars = fetch_history(code)
-    frame = pd.DataFrame([{
-        "date": b.session_date,
-        "open": b.open,
-        "high": b.high,
-        "low": b.low,
-        "close": b.close,
-    } for b in bars]).sort_values("date").reset_index(drop=True)
-    # EMA values use only closed 4H session candles.
-    for period in (12, 144, 169):
-        frame[f"ema{period}"] = frame["close"].ewm(span=period, adjust=False).mean()
-    last = frame.iloc[-1]
-    # Formal signal only when the latest completed 4H candle touches either
-    # midline (EMA144 or EMA169) and closes on a defined EMA12 side.
-    touched = any(float(last["low"]) <= float(last[f"ema{p}"]) <= float(last["high"])
-                  for p in (144, 169))
-    if not touched:
-        return None
-    close, filter_line = float(last["close"]), float(last["ema12"])
-    if close > filter_line:
-        direction = "▲"
-    elif close < filter_line:
-        direction = "▼"
-    else:
-        return None
-    return {"code": code, "name": name, "direction": direction,
-            "date": str(last["date"]), "close": close}
-
-
-def notify(signals):
-    topic = os.environ.get("NTFY_TOPIC", "").strip()
-    if not signals:
-        print("SCAN_RESULT=NO_FORMAL_SIGNALS")
-        return
-    if not topic:
-        raise RuntimeError("NTFY_TOPIC secret is missing; cannot send signal notification")
-    body = "\n".join(f"{s['name']} {s['direction']}" for s in signals)
-    req = urllib.request.Request(
-        f"https://ntfy.sh/{topic}",
-        data=body.encode("utf-8"),
-        headers={"Title": "VEGAS V3 A股", "Content-Type": "text/plain; charset=utf-8"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=20) as response:
-        print(f"NTFY_HTTP_STATUS={response.status}")
-        if not 200 <= response.status < 300:
-            raise RuntimeError(f"ntfy returned HTTP {response.status}")
-    print("PUSHED_SIGNALS=" + json.dumps(signals, ensure_ascii=False))
+    return events
 
 
 def main():
     universe = json.loads((ROOT / "universe.json").read_text(encoding="utf-8"))
-    signals, errors = [], []
-    print(f"SCAN_STARTED={datetime.now(TZ).isoformat()}")
+    timezone = TZ
+    today = datetime.now(timezone).date()
+    found, errors = [], []
+    print(f"V3 A-share scan local_day={today.isoformat()} timezone=Asia/Shanghai timeframe=4H")
     for item in universe["symbols"]:
         code, name = item["code"], item["name"]
         try:
-            result = evaluate(name, code)
-            print(f"{code} {name}: " + ("SIGNAL " + result["direction"] if result else "NO_SIGNAL"))
-            if result:
-                signals.append(result)
+            events = scan_symbol(name, code)
+            found.extend(event for event in events
+                         if datetime.fromisoformat(event.candle_time).date() == today)
         except Exception as exc:
-            errors.append((code, str(exc)))
-            print(f"{code} {name}: ERROR {type(exc).__name__}: {exc}")
+            errors.append(f"{code} {name}: {type(exc).__name__}: {exc}")
+            print(f"FAIL {code} {name}: {type(exc).__name__}: {exc}")
+
+    state_path = ROOT / ".state" / "notifications.json"
+    state = load_daily_state(state_path, today)
+    state, new_events = update_daily_digest(state, found, today)
+    message = format_digest(state, new_events)
+    if errors:
+        message += "\n\n行情扫描错误：\n" + "\n".join(errors)
+    send_ntfy(message)
+    save_daily_state(state_path, state)
     print(f"SCAN_TOTAL={len(universe['symbols'])}")
     print(f"SCAN_ERRORS={len(errors)}")
-    print(f"SCAN_SIGNAL_COUNT={len(signals)}")
-    notify(signals)
+    print(f"SCAN_SIGNALS_TODAY={len(found)}")
+    print(f"SCAN_NEW_SIGNALS={len(new_events)}")
+    print("PASS: shared V3 engine notification sent")
     if errors:
-        print("SCAN_ERRORS_DETAIL=" + json.dumps(errors, ensure_ascii=False))
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
