@@ -40,7 +40,6 @@ def scan_symbol(symbol: str, limit: int):
                 symbol=symbol, direction=event.direction, timeframe="4H",
                 candle_time=stamp,
                 close=event.close,
-                signal_type=event.observation,
             ))
     last = rows[-1]
     stamp = datetime.fromtimestamp(last.timestamp_ms / 1000, tz=ZoneInfo("UTC")).isoformat()
