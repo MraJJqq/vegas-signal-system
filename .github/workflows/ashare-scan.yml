@@ -1,7 +1,9 @@
 name: V3 A-share 4H Vegas Scan
-# One-off A-share scan requested on 2026-10-21; Vegas rules unchanged.
+# Schedule rule: scan the fixed A-share pool daily at 09:00 Asia/Shanghai (01:00 UTC). Vegas rules unchanged.
 
 on:
+  schedule:
+    - cron: "0 1 * * *" # 09:00 Asia/Shanghai daily
   workflow_dispatch:
   push:
     paths:
