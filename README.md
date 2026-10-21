@@ -1,39 +1,33 @@
-# VEGAS AI TRADING — V1 交易系统与 V5 信号系统
+# VEGAS AI TRADING
 
-本仓库当前的正式系统为两个相互隔离的子系统：
+仓库只保留当前正式组件：
 
-- **V1：交易系统** — `backtest_system/`，负责按明确的 Vegas 信号模拟入场、加仓、反转、风险记录和历史回测。
-- **V5：信号系统** — `v5/`，负责读取 Bitget USDT 合约行情、按 V5 规则判断信号并通过 ntfy 通知。
-- **V4：已删除** — V4 目录、规则文档、测试 workflow 和每小时扫描 workflow 已从当前分支删除。
-- **A 股扫描模块** — `v3_a_shares/`，独立历史模块，当前暂停使用，不属于 V5。
+- **V1 交易/回测系统**：`backtest_system/`
+- **V5 信号系统**：`v5/`
+- **监控系统说明与后续监控配置**：`system_monitor/`
+- **推送机制**：V5 内的 `v5/notification_digest_v5.py`，通过 ntfy 发送通知
+- **必要的 GitHub Actions**：V1 测试/黄金回测、V5 扫描，以及必要的连接验证工作流
 
-## 命名与规则保护
+## 规则保护
 
-- V1 与 V5 的代码和运行流程独立；不要将 V1 的回测执行逻辑混入 V5。
-- Vegas 规则未经用户明确批准不得修改、放宽、替代或重新解释。
+- V1 与 V5 代码和运行流程隔离。
+- 未经用户明确批准，不得修改、放宽、替代或重新解释已确认的 Vegas 规则。
 - V5 规则基准：`v5/VEGAS_SIGNAL_SYSTEM_V5.md`。
-- V1 交易框架说明：`backtest_system/README.md`。
-- 统一命名与运行状态：`SYSTEMS.md`。
-- `v3_a_shares/` 是暂停使用的旧 A 股扫描模块；未经明确授权，不删除或重新启用该模块。
+- V1 说明：`backtest_system/README.md`。
+- 系统命名与状态：`SYSTEMS.md`。
 
-## V5 当前状态
+## 当前状态说明
 
-- V5 代码和手动扫描 workflow 已建立。
-- 用户已确认收到一次 ntfy 推送，这验证了本次通知送达；不代表所有扫描规则和边界情况均已完成端到端验证。
-- 自动扫描调度状态以 GitHub Actions 实际配置和运行记录为准。
+- V5 通知渠道为 ntfy；每次发送是否成功必须以实际运行日志为准。
+- V5 扫描调度及运行状态以 GitHub Actions 配置和运行记录为准。
+- V1 的端到端回测结果必须以实际数据和真实运行输出为准。
+- `system_monitor/` 当前保留监控说明；监控是否实际运行以对应 workflow 是否存在及运行记录为准。
 
-## V1 当前状态
+## 保留的工作流
 
-- 已建立交易执行、风险记录与回测驱动框架。
-- 完整历史回测仍需以符合已确认 Vegas 规则的历史信号生成层进行端到端验证；不得把缺少信号误称为已完成回测。
-- 初始资金、收益率等统计按 V1 规则文档所列范围处理。
-
-## 自动化工作流
-
-- V5 手动扫描：`.github/workflows/v5-manual-scan.yml`
+- V5 扫描：`.github/workflows/v5-manual-scan.yml`
 - V1 测试：`.github/workflows/test-v1.yml`
-- V1 黄金数据与回测：查看 `.github/workflows/` 下以 `v1-gold` 命名的 workflow。
-- V4 测试与每小时扫描 workflow 已删除。
-- A 股 workflow 仍可能存在于仓库中；A 股扫描模块当前暂停使用，需将其工作流状态与代码状态区分看待。
+- V1 黄金数据/回测：`.github/workflows/download-v1-gold.yml`、`.github/workflows/run-v1-gold-backtest.yml`
+- Bitget 行情连接验证：`.github/workflows/verify-bitget-connection.yml`
 
-所有验证结论以实际工作流结果和真实回测输出为准。
+其他旧版本目录和 A 股扫描组件已清理。
