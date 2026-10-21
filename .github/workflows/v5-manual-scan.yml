@@ -1,0 +1,42 @@
+name: V5 One-Time Market Scan
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "v5/**"
+      - ".github/workflows/v5-manual-scan.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v5-one-time-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run V5 scan and send ntfy digest
+        env:
+          PYTHONPATH: v5:v4
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_BASE_URL: ${{ vars.NTFY_BASE_URL }}
+        run: |
+          set -o pipefail
+          if [ -z "$NTFY_TOPIC" ]; then
+            echo "::error::Repository secret NTFY_TOPIC is not configured."
+            exit 1
+          fi
+          python v5/run_v5_hourly.py --limit 1000 --state .state/v5_notifications.json
