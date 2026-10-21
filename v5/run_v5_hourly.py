@@ -1,4 +1,4 @@
-"""Run V5 over all active Bitget USDT contracts: crypto plus listed stock/RWA contracts."""
+"""Run V5 over 50 selected stocks plus BTC, HYPE, gold and crude oil."""
 import argparse
 import os
 from datetime import datetime
@@ -50,7 +50,7 @@ def scan_symbol(symbol: str, limit: int):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS), help="Optional comma-separated override; default discovers all active Bitget USDT contracts")
+    parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS), help="Optional override; default uses 50 selected stocks plus BTC/HYPE/XAU/CL")
     parser.add_argument("--limit", type=int, default=1000)
     parser.add_argument("--state", default=os.getenv("V5_STATE_FILE", ".state/v5_notifications.json"))
     parser.add_argument("--timezone", default=os.getenv("V5_TIMEZONE", "Asia/Shanghai"))
@@ -60,8 +60,6 @@ def main() -> int:
         symbols = list(dict.fromkeys(
             x.strip().upper() for x in args.symbols.split(",") if x.strip()
         ))
-        # Exclude only gold and crude oil; crypto assets including BTC/HYPE are in scope.
-        symbols = [symbol for symbol in symbols if symbol not in {"XAUUSDT", "CLUSDT"}]
         universe_source = "manual override"
     else:
         symbols = discover_v5_symbols()
