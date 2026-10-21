@@ -118,6 +118,27 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
     # Count signals after the confirmed same-symbol/same-timeframe-priority rule.
     signals.sort(key=lambda s: (s.timestamp, s.timeframe))
     prioritized_signals = prioritize_same_symbol_signals(signals)
+
+    # Persist the exact historical signals produced by the rule evaluator so
+    # the detection layer can be audited independently from execution results.
+    output_dir.mkdir(parents=True, exist_ok=True)
+    signal_rows = [
+        {
+            "symbol": s.symbol,
+            "timeframe": s.timeframe,
+            "timestamp": s.timestamp.isoformat(),
+            "direction": s.direction.value,
+            "signal_close": s.signal_close,
+            "valid": s.valid,
+            "is_synthetic_source": s.is_synthetic_source,
+        }
+        for s in prioritized_signals
+    ]
+    (output_dir / "recognized_signals.json").write_text(
+        json.dumps(signal_rows, ensure_ascii=False, indent=2) + "\\n",
+        encoding="utf-8",
+    )
+
     engine = VegasBacktestV2()
     for tf, candles in data.items():
         engine.record_candles([
@@ -190,6 +211,7 @@ def run(symbol: str, days: int, output_dir: Path) -> dict:
         "recognized_signals_before_priority": len(signals),
         "signals_after_same_symbol_time_priority": len(prioritized_signals),
         "signals_removed_by_same_symbol_time_priority": len(signals) - len(prioritized_signals),
+        "recognized_signals_file": str(output_dir / "recognized_signals.json"),
         "confirmed_bullish_reversal_patterns": len(reversal_events),
         "positions_opened": report["summary"]["positions_opened"],
         "positions_closed": report["summary"]["positions_closed"],
