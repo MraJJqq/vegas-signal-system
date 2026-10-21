@@ -1,4 +1,4 @@
-"""Run V5 over 50 selected stocks plus BTC, HYPE, gold and crude oil."""
+"""Run V5 over 23 selected stocks plus BTC, HYPE, gold and crude oil."""
 import argparse
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -51,7 +51,7 @@ def scan_symbol(symbol: str, limit: int):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS), help="Optional override; default uses 50 selected stocks plus BTC/HYPE/XAU/CL")
+    parser.add_argument("--symbols", default=os.getenv("V5_SYMBOLS", DEFAULT_SYMBOLS), help="Optional override; default uses 23 selected stocks plus BTC/HYPE/XAU/CL")
     parser.add_argument("--limit", type=int, default=1000)
     parser.add_argument("--workers", type=int, default=4, help="Concurrent symbols; keep low to respect Bitget rate limits")
     parser.add_argument("--state", default=os.getenv("V5_STATE_FILE", ".state/v5_notifications.json"))
