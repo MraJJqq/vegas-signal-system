@@ -24,8 +24,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run V1 rule and risk tests
+      - name: Run V1 rule, risk, and runner tests
         working-directory: backtest_system
         run: |
-          python -m unittest -v test_v1_trading_system.py
-          python -m py_compile v1_trading_system.py test_v1_trading_system.py
+          python -m unittest -v test_v1_trading_system.py test_run_backtest.py
+          python -m py_compile v1_trading_system.py bitget_market_data.py run_backtest.py test_v1_trading_system.py test_run_backtest.py
