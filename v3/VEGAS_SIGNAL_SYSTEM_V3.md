@@ -62,3 +62,10 @@
 ## 9. 当前范围说明
 
 本文件记录的是用户已确认的 V3 规则与通知要求。行情源、扫描品种、通知渠道、部署方式和自动运行配置属于工程实现；写入规则文件不代表相应功能已经完成或启用。
+
+## 10. 固定扫描池
+
+- V3 后续常规扫描固定使用以下 24 个品种，不得擅自删减或替换；如需调整，须先获得用户明确批准。
+- 美股相关 Bitget USDT 合约：SPYUSDT、QQQUSDT、SNDKUSDT、NVDAUSDT、AMDUSDT、AVGOUSDT、MUUSDT、TSMUSDT、MSFTUSDT、AAPLUSDT、TSLAUSDT、ARMUSDT、AMZNUSDT、METAUSDT、GOOGLUSDT、ORCLUSDT、PLTRUSDT、COINUSDT、MSTRUSDT、HOODUSDT。
+- 其他保留品种：XAUUSDT、CLUSDT、BTCUSDT、HYPEUSDT。
+- 某品种若交易所不支持或行情不可用，应明确报告该品种错误，不得静默跳过或伪造行情/信号。
