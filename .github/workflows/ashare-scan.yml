@@ -21,7 +21,7 @@ permissions:
 
 concurrency:
   group: v3-ashare-4h-scan
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   scan-and-notify:
