@@ -23,9 +23,11 @@
 - 中锋与红峰可分别产生信号，同一根 K 线可能同时确认两个独立观察的信号。
 
 ## 3. 扫描池与调度
-- 监控 Bitget USDT 合约的美股相关扫描池；不运行 A 股扫描。
-- 扫描池排除 XAUUSDT（黄金）、CLUSDT（石油）、BTCUSDT（比特币）、HYPEUSDT（HYPE），因为用户自行持续观察这些品种。
-- 保留其他扫描池品种：SPYUSDT、QQQUSDT、SNDKUSDT、NVDAUSDT、AMDUSDT、AVGOUSDT、MUUSDT、TSMUSDT、MSFTUSDT、AAPLUSDT、TSLAUSDT、ARMUSDT、AMZNUSDT、METAUSDT、GOOGLUSDT、ORCLUSDT、PLTRUSDT、COINUSDT、MSTRUSDT、HOODUSDT。
+- 扫描范围扩大为 Bitget 实际挂牌的全部正常状态 USDT 永续合约：包括可用的美股/RWA 合约与加密货币合约；不运行 A 股扫描。
+- 每次扫描启动时通过 Bitget 合约列表接口动态发现交易对，不再依赖固定的 20 个股票/代币名单。
+- BTCUSDT、HYPEUSDT 现纳入加密货币扫描范围。
+- 仅排除 XAUUSDT（黄金）与 CLUSDT（原油）这两个非目标大宗商品；其他符合条件且由 Bitget 返回的正常 USDT 合约均进入扫描候选池。
+- “全部美股”以 Bitget 实际挂牌并提供可用 4H 行情的股票/RWA 合约为边界；未在 Bitget 挂牌、无可用行情或历史 K 线不足的品种不能伪造数据，必须在扫描结果中报告错误。
 - 每小时扫描一次。行情缺失、历史 K 线不足或交易所报错必须显式报告，不得静默跳过或伪造信号。
 - EMA676 计算须有足够历史数据。
 
