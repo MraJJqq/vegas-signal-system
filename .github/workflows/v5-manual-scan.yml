@@ -3,7 +3,7 @@ name: V5 Hourly Market Scan
 on:
   workflow_dispatch:
   schedule:
-    # Run once per hour. GitHub Actions cron is evaluated in UTC.
+    # Run once per hour. GitHub Actions cron is evaluated in UTC. Manual runs are supported via workflow_dispatch.
     - cron: "0 * * * *"
   push:
     branches: [main]
