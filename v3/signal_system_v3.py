@@ -1,7 +1,7 @@
 """Vegas Signal System V3.
 
 The rule source of truth is VEGAS_SIGNAL_SYSTEM_V3.md.
-Only closed 4H/8H candles are eligible for signal confirmation.
+Only closed 4H candles are eligible for signal confirmation.
 This module deliberately does not include network fetching or notification
 transport; callers provide candles and consume returned signal events.
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-ALLOWED_TIMEFRAMES = ("4H", "8H")
+ALLOWED_TIMEFRAMES = ("4H",)
 MIDLINE_PERIODS = (144, 169)
 FILTER_PERIOD = 12
 
@@ -65,7 +65,7 @@ def evaluate_candle(
     ema169: float,
     state: WatchState,
 ) -> Optional[SignalEvent]:
-    """Update observation state and emit a signal only on a closed candle.
+    """Update observation state and emit a signal only on a closed 4H candle.
 
     Observation starts when the candle range touches the midline band or its
     close lies inside that band. While observing, a close above EMA12 confirms
@@ -73,7 +73,7 @@ def evaluate_candle(
     only when price is below the band. No timeout is applied.
     """
     if timeframe not in ALLOWED_TIMEFRAMES:
-        raise ValueError(f"Unsupported timeframe: {timeframe}. Use 4H or 8H.")
+        raise ValueError(f"Unsupported timeframe: {timeframe}. Use 4H only.")
     if not candle.closed:
         return None
 
