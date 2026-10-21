@@ -92,32 +92,31 @@ def save_daily_state(path: str | Path, state: dict) -> None:
 def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
     """Format the daily digest in a polished, compact trading-terminal style."""
     daily = state.get("signals", [])
+    new_events = list(new_events)
     header = "VEGAS  |  V3 SIGNAL"
     divider = "━━━━━━━━━━━━━━━━"
 
-    if not daily:
-        return f"{header}\n{divider}\n当前无正式信号"
-
-    # One section per unique symbol/direction, preserving the day's digest.
-    seen = set()
     sections = [header, divider]
-    for item in daily:
-        symbol = item["symbol"]
-        direction = item["direction"]
-        key = (symbol, direction)
-        if key in seen:
-            continue
-        seen.add(key)
-        if direction == "LONG":
-            direction_line = "▲  LONG  ·  做多"
-        else:
-            direction_line = "▼  SHORT  ·  做空"
-        sections.extend((symbol, direction_line, "4H 正式信号", divider))
+    if not daily:
+        sections.append("当前无正式信号")
+    else:
+        # One section per unique symbol/direction, preserving the day's digest.
+        seen = set()
+        for item in daily:
+            symbol = item["symbol"]
+            direction = item["direction"]
+            key = (symbol, direction)
+            if key in seen:
+                continue
+            seen.add(key)
+            direction_line = "▲  LONG  ·  做多" if direction == "LONG" else "▼  SHORT  ·  做空"
+            sections.extend((symbol, direction_line, "4H 正式信号", divider))
+        if sections[-1] == divider:
+            sections.pop()
 
-    # Avoid a trailing divider while retaining the visual hierarchy.
-    if sections[-1] == divider:
-        sections.pop()
-    return "\\n".join(sections)
+    if not new_events:
+        sections.extend((divider, "本次没有新信号"))
+    return "\n".join(sections)
 
 def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://ntfy.sh") -> None:
     """Send a message to ntfy. Topic must come from the configured secret/env."""
