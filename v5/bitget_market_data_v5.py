@@ -191,9 +191,10 @@ def fetch_closed_4h_candles(
     }
     recent = request_rows(CANDLES_PATH, {**common, "limit": str(limit)})
     by_timestamp = {c.timestamp_ms: c for c in recent}
-    # The recent-candles endpoint may only expose about 90 days. Pull older
-    # pages when it is near that boundary and EMA676 needs additional history.
-    if len(recent) >= min(limit, 500) and len(recent) < limit:
+    # The recent-candles endpoint may return fewer candles than requested.
+    # Page older history whenever the requested limit is not yet satisfied so
+    # EMA676 can be calculated consistently across newer and older contracts.
+    if len(by_timestamp) < limit:
         while len(by_timestamp) < limit:
             oldest = min(by_timestamp)
             params = {
