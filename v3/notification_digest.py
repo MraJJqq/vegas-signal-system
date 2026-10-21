@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Iterable
 from urllib.request import Request, urlopen
@@ -39,7 +39,6 @@ class ConfirmedSignal:
             raise ValueError("V3 signals must use 4H")
         if close <= 0:
             raise ValueError("close must be positive")
-        # Stable across repeated hourly scans of the same confirmed candle.
         signal_id = "|".join((normalized_symbol, normalized_timeframe, candle_time, normalized_direction))
         return cls(signal_id, normalized_symbol, normalized_direction,
                    normalized_timeframe, candle_time, float(close))
@@ -123,7 +122,7 @@ def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://
         f"{server.rstrip('/')}/{topic}",
         data=message.encode("utf-8"),
         headers={
-            "Title": "Vegas V3 信号提醒",
+            "Title": "Vegas V3 Signal",
             "Priority": "high",
             "Tags": "chart_with_upwards_trend",
             "Content-Type": "text/plain; charset=utf-8",
