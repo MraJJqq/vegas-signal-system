@@ -78,12 +78,18 @@ def evaluate_candle(
         return None
 
     lower, upper = _midline_bounds(ema144, ema169)
+    was_observing = state.active
     close_inside = lower <= candle.close <= upper
     if _touches_midline(candle, ema144, ema169) or close_inside:
         state.active = True
         state.direction = _direction(candle.close, ema144, ema169) or state.direction
 
     if not state.active:
+        return None
+
+    # A candle that starts observation only starts observation. It cannot
+    # also produce a formal signal on that same candle.
+    if not was_observing:
         return None
 
     direction = _direction(candle.close, ema144, ema169)
