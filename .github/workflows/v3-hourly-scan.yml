@@ -1,4 +1,5 @@
 name: Vegas V3 Hourly Market Scan
+# Manual one-off scan requested on 2026-10-21; no signal rules changed.
 
 on:
   schedule:
