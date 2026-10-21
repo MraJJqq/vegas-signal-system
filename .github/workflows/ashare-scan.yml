@@ -1,5 +1,6 @@
 name: V3 A-share 4H Vegas Scan
 # Schedule rule: scan the fixed A-share pool daily at 09:00 Asia/Shanghai (01:00 UTC). Vegas rules unchanged.
+# Manual one-time scan requested on 2026-10-21; this comment-only commit triggers the configured push scan.
 
 on:
   schedule:
