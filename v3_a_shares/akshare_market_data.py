@@ -1,7 +1,7 @@
-"""AKShare adapter for the V3 A-share pilot.
+"""A-share historical-data adapter for the V3 signal engine.
 
-This module is isolated from the existing Bitget V3 adapter and does not
-change the Vegas signal rules or GitHub Actions configuration.
+BaoStock is the primary historical 60-minute provider. This module remains
+isolated from the existing Bitget V3 adapter and does not change Vegas rules.
 
 The provider's 60-minute bars are aggregated into one four-trading-hour
 session candle per trading day (09:30-11:30 plus 13:00-15:00). This is
@@ -220,7 +220,7 @@ def fetch_symbol_4h_history(
     symbol: str,
     start_date: str = "20180101",
     end_date: str | None = None,
-    provider: str = "eastmoney",
+    provider: str = "baostock",
     ak_module=None,
     now: datetime | None = None,
 ) -> list[AShareCandle]:
@@ -229,18 +229,67 @@ def fetch_symbol_4h_history(
     Provider must be chosen explicitly and consistently; no silent fallback
     or mixing of sources is performed.
     """
-    if provider != "eastmoney":
-        raise ValueError("Supported provider is 'eastmoney' only for this pilot")
-    ak = ak_module or _akshare()
-    end_date = end_date or datetime.now(SHANGHAI).strftime("%Y-%m-%d %H:%M:%S")
-    start = f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]} 09:30:00"
-    df = ak.stock_zh_a_hist_min_em(
-        symbol=_clean_symbol(symbol),
-        start_date=start,
-        end_date=end_date,
-        period="60",
-        adjust="qfq",
-    )
+    end_date = end_date or datetime.now(SHANGHAI).strftime("%Y-%m-%d")
+    if provider == "baostock":
+        try:
+            import baostock as bs
+        except ImportError as exc:
+            raise AShareDataError(
+                "BaoStock is not installed. Install with: pip install baostock"
+            ) from exc
+        code = _clean_symbol(symbol)
+        market_code = ("sh." if code.startswith(("600", "601", "603", "605", "688")) else "sz.") + code
+        login = bs.login()
+        if getattr(login, "error_code", None) != "0":
+            raise AShareDataError(
+                f"BaoStock login failed: {getattr(login, 'error_msg', 'unknown error')}"
+            )
+        try:
+            rs = bs.query_history_k_data_plus(
+                market_code,
+                "date,time,code,open,high,low,close,volume,amount,adjustflag",
+                start_date=f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}",
+                end_date=end_date[:10],
+                frequency="60",
+                adjustflag="2",
+            )
+            if getattr(rs, "error_code", None) != "0":
+                raise AShareDataError(
+                    f"BaoStock 60m query failed for {market_code}: "
+                    f"{getattr(rs, 'error_msg', 'unknown error')}"
+                )
+            rows = []
+            while rs.next():
+                rows.append(rs.get_row_data())
+            import pandas as pd
+            raw = pd.DataFrame(
+                rows, columns=["date", "time", "code", "open", "high", "low",
+                               "close", "volume", "amount", "adjustflag"]
+            )
+            if raw.empty:
+                raise AShareDataError(f"BaoStock returned no 60m history for {market_code}")
+            raw["时间"] = pd.to_datetime(
+                raw["time"], format="%Y%m%d%H%M%S%f", errors="coerce"
+            )
+            df = raw.rename(columns={
+                "open": "开盘", "high": "最高", "low": "最低",
+                "close": "收盘", "volume": "成交量",
+            })[["时间", "开盘", "最高", "最低", "收盘", "成交量"]]
+        finally:
+            bs.logout()
+    elif provider == "eastmoney":
+        # Explicit diagnostic fallback only; production defaults to BaoStock.
+        ak = ak_module or _akshare()
+        start = f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]} 09:30:00"
+        df = ak.stock_zh_a_hist_min_em(
+            symbol=_clean_symbol(symbol),
+            start_date=start,
+            end_date=end_date,
+            period="60",
+            adjust="qfq",
+        )
+    else:
+        raise ValueError("Supported providers are 'baostock' and explicit 'eastmoney'")
     candles = aggregate_session_4h(symbol, df, now=now)
     if len(candles) < REQUIRED_EMA_HISTORY:
         raise AShareDataError(
