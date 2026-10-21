@@ -4,13 +4,12 @@ from urllib.parse import parse_qs, urlparse
 
 from bitget_market_data import (
     FOUR_HOURS_MS,
-    EIGHT_HOURS_MS,
     BitgetAPIError,
     MarketCandle,
-    aggregate_8h_from_4h,
     build_v3_inputs,
     ema,
     fetch_closed_4h_candles,
+    fetch_v3_inputs,
     parse_candle_rows,
 )
 
@@ -43,7 +42,7 @@ class BitgetMarketDataTests(unittest.TestCase):
             return {
                 "code": "00000",
                 "data": [
-                    [str(0), "100", "101", "99", "100", "1", "10"],
+                    ["0", "100", "101", "99", "100", "1", "10"],
                     [str(FOUR_HOURS_MS), "100", "102", "99", "101", "1", "10"],
                     [str(2 * FOUR_HOURS_MS), "101", "103", "100", "102", "1", "10"],
                     [str(3 * FOUR_HOURS_MS), "102", "104", "101", "103", "1", "10"],
@@ -59,22 +58,6 @@ class BitgetMarketDataTests(unittest.TestCase):
         self.assertEqual(query["granularity"], ["4H"])
         self.assertEqual([c.timestamp_ms for c in result],
                          [0, FOUR_HOURS_MS, 2 * FOUR_HOURS_MS])
-
-    def test_8h_aggregation_requires_two_aligned_consecutive_4h_bars(self):
-        bars = [
-            candle(0, 100, 104, 98, 102),
-            candle(FOUR_HOURS_MS, 102, 108, 101, 107),
-            candle(2 * FOUR_HOURS_MS, 107, 109, 105, 106),
-            # Missing the 12h bar means the next bucket is not aggregated.
-            candle(4 * FOUR_HOURS_MS, 106, 110, 104, 109),
-        ]
-        result = aggregate_8h_from_4h(bars)
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].timestamp_ms, 0)
-        self.assertEqual(result[0].open, 100)
-        self.assertEqual(result[0].high, 108)
-        self.assertEqual(result[0].low, 98)
-        self.assertEqual(result[0].close, 107)
 
     def test_ema_requires_full_warmup_and_uses_sma_seed(self):
         self.assertEqual(ema([1, 2, 3], 4), [None, None, None])
@@ -94,8 +77,11 @@ class BitgetMarketDataTests(unittest.TestCase):
         self.assertEqual(result[0].timestamp_ms, 168 * FOUR_HOURS_MS)
         self.assertTrue(result[0].candle.closed)
 
-    def test_8h_interval_constant_is_eight_hours(self):
-        self.assertEqual(EIGHT_HOURS_MS, 2 * FOUR_HOURS_MS)
+    def test_fetch_v3_inputs_rejects_8h_and_2h(self):
+        for timeframe in ("8H", "2H", "1H"):
+            with self.subTest(timeframe=timeframe):
+                with self.assertRaises(ValueError):
+                    fetch_v3_inputs("BTCUSDT", timeframe=timeframe)
 
 
 if __name__ == "__main__":
