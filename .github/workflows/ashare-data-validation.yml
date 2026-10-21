@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: python -m pip install --upgrade pip akshare pandas
+        run: python -m pip install --upgrade pip baostock pandas
       - name: Run offline unit tests
         working-directory: v3_a_shares
         run: python -m unittest -v
@@ -38,42 +38,19 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install --upgrade pip akshare pandas
-      - name: Probe live A-share snapshot and 60-minute qfq history
+      - name: Probe BaoStock historical 60-minute qfq data
         env:
           PYTHONUNBUFFERED: "1"
+        working-directory: v3_a_shares
         run: |
           python - <<'PY'
-          from datetime import datetime
-          import akshare as ak
-
+          from akshare_market_data import fetch_symbol_4h_history
           print("LIVE_TEST=START")
-          spot = ak.stock_zh_a_spot_em()
-          print(f"SNAPSHOT_ROWS={len(spot)}")
-          print(f"SNAPSHOT_COLUMNS={list(spot.columns)}")
-          if not {"代码", "名称", "最新价"}.issubset(spot.columns):
-              raise SystemExit("FAIL: snapshot schema missing required columns")
-          sample = spot.loc[spot["代码"].astype(str).str.zfill(6) == "000001"]
-          if sample.empty:
-              raise SystemExit("FAIL: sample stock 000001 not found in live snapshot")
-          print("SAMPLE_STOCK=" + str(sample.iloc[0]["名称"]))
-          print("SAMPLE_LAST_PRICE=" + str(sample.iloc[0]["最新价"]))
-
-          end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-          history = ak.stock_zh_a_hist_min_em(
-              symbol="000001",
-              start_date="2023-01-01 09:30:00",
-              end_date=end,
-              period="60",
-              adjust="qfq",
-          )
-          print(f"HISTORY_ROWS={len(history)}")
-          print(f"HISTORY_COLUMNS={list(history.columns)}")
-          if history.empty:
-              raise SystemExit("FAIL: provider returned empty 60-minute qfq history")
-          if "时间" in history.columns:
-              times = history["时间"].astype(str)
-              print(f"HISTORY_FIRST={times.iloc[0]}")
-              print(f"HISTORY_LAST={times.iloc[-1]}")
-          print("ADJUSTMENT_REQUEST=qfq")
+          bars = fetch_symbol_4h_history("000001", start_date="20180101")
+          print(f"SYMBOL=000001")
+          print(f"COMPLETE_SESSION_BARS={len(bars)}")
+          print(f"FIRST_SESSION={bars[0].session_date}")
+          print(f"LAST_SESSION={bars[-1].session_date}")
+          print("ADJUSTMENT_REQUEST=forward_adjusted")
           print("LIVE_TEST=PASS")
           PY
