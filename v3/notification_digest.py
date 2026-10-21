@@ -93,7 +93,7 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
     """Format the daily digest in a polished, compact trading-terminal style."""
     daily = state.get("signals", [])
     new_events = list(new_events)
-    header = "VEGAS  |  V3 SIGNAL"
+    header = "VEGAS | V3 SIGNAL"
     divider = "━━━━━━━━━━━━━━━━"
 
     sections = [header, divider]
