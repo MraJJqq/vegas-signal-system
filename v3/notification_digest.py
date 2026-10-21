@@ -95,7 +95,7 @@ def format_digest(state: dict, new_events: Iterable[ConfirmedSignal]) -> str:
     new_events = list(new_events)
     divider = "━━━━━━━━━━━━━━━━"
 
-    sections = [divider]
+    sections = ["🟢 🔴 VEGAS · V3 SIGNAL 🔴 🟢", divider]
     if not daily:
         sections.append("当前无正式信号")
     else:
@@ -128,7 +128,7 @@ def send_ntfy(message: str, *, topic: str | None = None, server: str = "https://
         f"{server.rstrip('/')}/{topic}",
         data=message.encode("utf-8"),
         headers={
-            "Title": "🟢 🔴 VEGAS · V3 SIGNAL 🔴 🟢",
+            "Title": "VEGAS · V3 SIGNAL",
             "Priority": "high",
             "Tags": "green_circle,red_circle",
             "Content-Type": "text/plain; charset=utf-8",
