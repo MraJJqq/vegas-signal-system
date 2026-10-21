@@ -63,7 +63,7 @@ class NotificationDigestTests(unittest.TestCase):
             message = format_digest(loaded, [])
             self.assertIn("本次没有新信号", message)
             self.assertIn("BTCUSDT", message)
-            self.assertIn("🟢  ▲ LONG  ·  做多", message)
+            self.assertIn("🟢 ▲ LONG · 做多", message)
             self.assertIn("4H 正式信号", message)
 
     def test_rejects_non_4h_signal(self):
