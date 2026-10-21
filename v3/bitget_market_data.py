@@ -1,7 +1,7 @@
 """Public Bitget USDT-futures market data adapter for Vegas Signal System V3.
 
-Fetches closed 4H candles and computes V3 EMA inputs. This module does not
-change signal rules or send notifications.
+Fetches closed 4H candles, including older history required for EMA676, and
+computes V3 EMA inputs. This module does not change signal rules or notify.
 """
 from __future__ import annotations
 
@@ -19,9 +19,11 @@ from signal_system_v3 import Candle
 
 BASE_URL = "https://api.bitget.com"
 CANDLES_PATH = "/api/v3/market/candles"
+HISTORY_CANDLES_PATH = "/api/v3/market/history-candles"
 PRODUCT_TYPE = "USDT-FUTURES"
 FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 ALLOWED_TIMEFRAMES = ("4H",)
+HISTORY_PAGE_SIZE = 100
 
 
 class BitgetAPIError(RuntimeError):
@@ -115,26 +117,50 @@ def fetch_closed_4h_candles(
     now_ms: int | None = None,
     request_json: Callable[[str], dict] | None = None,
 ) -> list[MarketCandle]:
-    """Fetch up to 1000 recent 4H candles and exclude the forming candle."""
+    """Fetch recent plus paged older 4H candles; exclude any forming candle."""
     normalized_symbol = symbol.strip().upper()
     if not normalized_symbol:
         raise ValueError("symbol must not be empty")
     if not 1 <= limit <= 1000:
         raise ValueError("limit must be between 1 and 1000")
     now_ms = int(time.time() * 1000) if now_ms is None else int(now_ms)
-    query = urlencode({
+    fetch_json = request_json or _http_get_json
+
+    def request_rows(path: str, params: dict) -> list[MarketCandle]:
+        query = urlencode(params)
+        payload = fetch_json(f"{BASE_URL}{path}?{query}")
+        data = payload.get("data")
+        if not isinstance(data, list):
+            raise BitgetAPIError("Bitget response data is not a list")
+        return parse_candle_rows(data)
+
+    common = {
         "category": PRODUCT_TYPE,
         "symbol": normalized_symbol,
         "interval": "4H",
         "type": "market",
-        "limit": str(limit),
-    })
-    fetch_json = request_json or _http_get_json
-    payload = fetch_json(f"{BASE_URL}{CANDLES_PATH}?{query}")
-    data = payload.get("data")
-    if not isinstance(data, list):
-        raise BitgetAPIError("Bitget response data is not a list")
-    candles = parse_candle_rows(data)
+    }
+    recent = request_rows(CANDLES_PATH, {**common, "limit": str(limit)})
+    by_timestamp = {c.timestamp_ms: c for c in recent}
+    # The recent-candles endpoint may only expose about 90 days. Pull older
+    # pages when it is near that boundary and EMA676 needs additional history.
+    if len(recent) >= min(limit, 500) and len(recent) < limit:
+        while len(by_timestamp) < limit:
+            oldest = min(by_timestamp)
+            params = {
+                **common,
+                "endTime": str(oldest - 1),
+                "limit": str(min(HISTORY_PAGE_SIZE, limit - len(by_timestamp))),
+            }
+            older = request_rows(HISTORY_CANDLES_PATH, params)
+            if not older:
+                break
+            previous_count = len(by_timestamp)
+            for candle in older:
+                by_timestamp[candle.timestamp_ms] = candle
+            if len(by_timestamp) == previous_count:
+                break
+    candles = [by_timestamp[t] for t in sorted(by_timestamp)]
     closed = [
         candle for candle in candles
         if candle.timestamp_ms + FOUR_HOURS_MS <= now_ms
