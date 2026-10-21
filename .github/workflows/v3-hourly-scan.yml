@@ -11,6 +11,7 @@ on:
       - "v3/signal_system_v3.py"
       - "v3/run_v3_hourly.py"
       - "v3/notification_digest.py"
+      - "v3/VEGAS_SIGNAL_SYSTEM_V3.md"
 
 permissions:
   contents: read
