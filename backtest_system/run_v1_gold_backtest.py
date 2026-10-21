@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from bitget_market_data import fetch_history_candles, candles_to_csv_rows
+from download_gold_data import fetch_preferred_timeframe
 from v1_trading_system import Candle, Direction, SignalEvent, VegasBacktestV2
 
 HOURS = {"1H": 1, "2H": 2, "4H": 4, "8H": 8}
@@ -41,12 +42,21 @@ def candle_close_time(c, timeframe: str) -> datetime:
 def run(symbol: str, days: int, output_dir: Path) -> dict:
     end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     start = end - timedelta(days=days)
-    data = {}
-    for tf in ("1H", "2H", "4H", "8H"):
-        # Request extra warm-up candles for EMA144, while reporting only target window.
-        candles = fetch_history_candles(symbol, tf, start=start - timedelta(days=70), end=end)
+    # Fetch native 1H candles once, then prefer native higher timeframes where
+    # Bitget supports them. Bitget's v2 history-candles endpoint does not list
+    # 2H or 8H granularity, so those series are built only from complete,
+    # contiguous closed 1H candles by the shared data-ingestion helper.
+    warmup_start = start - timedelta(days=70)
+    hourly = fetch_history_candles(symbol=symbol, timeframe="1H", start=warmup_start, end=end)
+    if not hourly:
+        raise RuntimeError(f"Bitget returned no closed 1H candles for {symbol}")
+    data = {"1H": hourly}
+    for tf in ("2H", "4H", "8H"):
+        candles, _source = fetch_preferred_timeframe(
+            symbol=symbol, timeframe=tf, start=warmup_start, end=end, hourly=hourly
+        )
         if not candles:
-            raise RuntimeError(f"Bitget returned no closed candles for {symbol} {tf}")
+            raise RuntimeError(f"Bitget returned no closed or aggregated candles for {symbol} {tf}")
         data[tf] = candles
 
     indicators = {}
