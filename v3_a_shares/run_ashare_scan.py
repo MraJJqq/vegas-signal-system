@@ -62,36 +62,41 @@ def scan_symbol(name: str, code: str):
 
 def main():
     universe = json.loads((ROOT / "universe.json").read_text(encoding="utf-8"))
-    timezone = TZ
-    today = datetime.now(timezone).date()
+    today = datetime.now(TZ).date()
     found, errors = [], []
+    scan_total = len(universe["symbols"])
+    scan_successes = 0
     print(f"V3 A-share scan local_day={today.isoformat()} timezone=Asia/Shanghai timeframe=4H")
     for item in universe["symbols"]:
         code, name = item["code"], item["name"]
         try:
             events = scan_symbol(name, code)
+            scan_successes += 1
             found.extend(event for event in events
                          if datetime.fromisoformat(event.candle_time).date() == today)
         except Exception as exc:
             errors.append(f"{code} {name}: {type(exc).__name__}: {exc}")
             print(f"FAIL {code} {name}: {type(exc).__name__}: {exc}")
 
+    print(f"SCAN_TOTAL={scan_total}")
+    print(f"SCAN_SUCCESSES={scan_successes}")
+    print(f"SCAN_ERRORS={len(errors)}")
+    print(f"SCAN_SIGNALS_TODAY={len(found)}")
+
+    # Never publish a formal-signal notification from an incomplete scan.
+    # Error details remain in the GitHub Actions log, not the signal channel.
+    if errors or scan_successes != scan_total:
+        print("SCAN_ABORTED_INCOMPLETE=1; no notification sent; digest state unchanged")
+        raise SystemExit(1)
+
     state_path = ROOT / ".state" / "notifications.json"
     state = load_daily_state(state_path, today)
     state, new_events = update_daily_digest(state, found, today)
     message = format_digest(state, new_events)
-    if errors:
-        message += "\n\n行情扫描错误：\n" + "\n".join(errors)
     send_ntfy(message)
     save_daily_state(state_path, state)
-    print(f"SCAN_TOTAL={len(universe['symbols'])}")
-    print(f"SCAN_ERRORS={len(errors)}")
-    print(f"SCAN_SIGNALS_TODAY={len(found)}")
     print(f"SCAN_NEW_SIGNALS={len(new_events)}")
-    print("PASS: shared V3 engine notification sent")
-    if errors:
-        raise SystemExit(1)
-
+    print("PASS: complete A-share scan finished and notification sent")
 
 if __name__ == "__main__":
     main()
