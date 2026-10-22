@@ -1,0 +1,43 @@
+name: VEGAS V8 Bitget Scan
+
+on:
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan Bitget USDT futures
+        env:
+          V8_REPORT_PATH: v8/scan-report.json
+        run: python v8/bitget_scanner.py
+
+      - name: Send V8 notification
+        if: success()
+        env:
+          V8_NTFY_TOPIC: ${{ secrets.V8_NTFY_TOPIC }}
+          V8_NTFY_TOKEN: ${{ secrets.V8_NTFY_TOKEN }}
+        run: python v8/ntfy_notifier.py v8/scan-report.json
+
+      - name: Upload scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vegas-v8-bitget-scan-report
+          path: v8/scan-report.json
+          if-no-files-found: warn
+          retention-days: 7
