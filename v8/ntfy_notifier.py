@@ -51,7 +51,7 @@ def send_notification(report_path: str) -> int:
             sections.append("数字资产 / 贵金属 / 原油\n" + " · ".join(core))
         if stocks:
             sections.append("美股\n" + " · ".join(stocks))
-        message = "━━━━━━━━━━━━\n━━━━━━━━━━━━\n\n" + "\n\n".join(sections) + "\n\n本轮扫描结束"
+        message = "━━━━━━━━━━━━\n\n" + "\n\n".join(sections) + "\n\n本轮扫描结束"
         priority = 4
     else:
         message = "━━━━━━━━━━━━\n━━━━━━━━━━━━\n\n本轮扫描结束，无新增符合条件的标的"
