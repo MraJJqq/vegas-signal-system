@@ -6,21 +6,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime
 from typing import Any
-
-MAX_SIGNAL_ROWS = 5
-
-
-def _scan_time(value: Any) -> str:
-    if not isinstance(value, str) or not value:
-        return "未提供"
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime(
-            "%Y-%m-%d %H:%M:%S UTC"
-        )
-    except ValueError:
-        return value
 
 
 def send_notification(report_path: str) -> int:
@@ -37,7 +23,6 @@ def send_notification(report_path: str) -> int:
         item for item in report.get("signals", [])
         if isinstance(item, dict) and item.get("formal_signal") is True
     ]
-    scan_time = _scan_time(report.get("started_at_utc"))
 
     if signals:
         symbols = []
@@ -48,17 +33,14 @@ def send_notification(report_path: str) -> int:
                 symbols.append(symbol)
                 seen.add(symbol)
         title = f"VEGAS V8｜正式交易信号（{len(symbols)}）"
-        shown = symbols[:MAX_SIGNAL_ROWS]
-        lines = ["VEGAS V8", "正式交易信号", "", *shown]
-        if len(symbols) > MAX_SIGNAL_ROWS:
-            lines.extend(["", f"另有 {len(symbols) - MAX_SIGNAL_ROWS} 个标的"])
+        lines = ["VEGAS V8", "正式交易信号", "", *symbols]
         priority = 4
     else:
         title = "VEGAS V8｜本轮无正式信号"
         lines = ["VEGAS V8", "正式交易信号", "", "本轮暂无符合信号的标的"]
         priority = 3
 
-    # Keep the notification payload small and free of icons, images, and extra fields.
+    # Text-only payload: no icons, images, or unrelated signal details.
     payload = json.dumps(
         {
             "topic": topic,
