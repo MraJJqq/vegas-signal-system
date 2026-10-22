@@ -41,25 +41,20 @@ def send_notification(report_path: str) -> int:
             symbols.append(symbol)
             seen.add(symbol)
 
-    title = "🔔 VEGAS V8 信号系统 🔔"
-    if symbols:
-        core_order = ["BTC", "HYPE", "XAU", "CL"]
-        core = [symbol for symbol in core_order if symbol in symbols]
-        stocks = [symbol for symbol in symbols if symbol not in core_order]
-        sections: list[str] = []
-        if core:
-            sections.append("🔔 核心能源\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core))
-        if stocks:
-            sections.append("🔔 美股巨头\n" + "\n".join("   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3]) for i in range(0, len(stocks), 3)))
-        message = "━━━━━━━━━━━━━━━━━━━━\n\n" + "\n\n".join(sections) + "\n\n━━━━━━━━━━━━━━━━━━━━\n本轮扫描结束"
-        priority = 4
-    else:
-        message = "━━━━━━━━━━━━━━━━━━━━\n\n本轮扫描结束，没有新符合品种"
-        priority = 3
+    core_order = ["BTC", "HYPE", "XAU", "CL"]
+    core = [symbol for symbol in core_order if symbol in symbols]
+    stocks = [symbol for symbol in symbols if symbol not in core_order]
+
+    # Keep both category headings on every push; empty categories show no symbols.
+    sections = ["🔔 核心能源" + ("\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "")]
+    stock_lines = ["   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3]) for i in range(0, len(stocks), 3)]
+    sections.append("🔔 美股巨头" + ("\n" + "\n".join(stock_lines) if stock_lines else ""))
+    message = "━━━━━━━━━━━━━━━━━━━━\n\n" + "\n\n".join(sections) + "\n\n━━━━━━━━━━━━━━━━━━━━\n本轮扫描结束"
+    priority = 4 if symbols else 3
 
     # Font, color, and background are controlled by the ntfy client/OS.
     payload = json.dumps(
-        {"topic": topic, "title": title, "message": message, "priority": priority},
+        {"topic": topic, "title": "🔔 VEGAS V8 信号系统 🔔", "message": message, "priority": priority},
         ensure_ascii=False,
     ).encode("utf-8")
     headers = {"Content-Type": "application/json; charset=utf-8"}
