@@ -22,8 +22,9 @@ jobs:
           python-version: "3.12"
 
       - name: Fetch Bitget USDT futures candles
-        run: |
-          python v7/bitget_scanner.py | tee v7/scan-report.json
+        env:
+          V7_REPORT_PATH: v7/scan-report.json
+        run: python v7/bitget_scanner.py
 
       - name: Send formal signals to ntfy only
         if: success()
