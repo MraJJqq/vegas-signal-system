@@ -19,10 +19,10 @@ CANDLE_LIMIT = 800
 REQUEST_TIMEOUT = 15
 
 # Final pool: core markets first, then selected US stock contracts.
-CORE_MARKETS = ("BTC", "HYPE", "XAU", "CLU")
+CORE_MARKETS = ("BTC", "HYPE", "XAU", "CLU", "SNDK")
 STOCKS = (
     "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
-    "TSLA", "AVGO", "AMD", "MU", "HOOD", "GLW",
+    "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX",
 )
 SYMBOLS = tuple(f"{ticker}USDT" for ticker in (*CORE_MARKETS, *STOCKS))
 
