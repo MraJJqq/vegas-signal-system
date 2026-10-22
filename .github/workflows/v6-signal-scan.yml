@@ -25,6 +25,6 @@ jobs:
       - name: Run V6 scan
         working-directory: v6
         env:
-          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           V6_STATE_FILE: .state/v6_daily_state.json
         run: python run_v6.py
