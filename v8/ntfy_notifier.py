@@ -1,4 +1,4 @@
-"""Send concise V8 scan notifications as native ntfy notification cards."""
+"""Send compact V8 notifications containing only the title and symbols."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ import urllib.request
 from datetime import datetime
 from typing import Any
 
-MAX_SIGNAL_ROWS = 12
+MAX_SIGNAL_ROWS = 5
 
 
 def _scan_time(value: Any) -> str:
@@ -34,48 +34,37 @@ def send_notification(report_path: str) -> int:
         report: dict[str, Any] = json.load(file)
 
     signals = [
-        item
-        for item in report.get("signals", [])
+        item for item in report.get("signals", [])
         if isinstance(item, dict) and item.get("formal_signal") is True
     ]
     scan_time = _scan_time(report.get("started_at_utc"))
-    total = report.get("symbols_total", 0)
-    ok = report.get("symbols_ok", 0)
-    excluded = report.get("symbols_excluded", 0)
 
     if signals:
-        title = f"VEGAS V8｜正式信号 {len(signals)} 条"
-        lines = [f"正式信号：{len(signals)} 条", "周期：4H｜数据源：Bitget"]
-        for signal in signals[:MAX_SIGNAL_ROWS]:
-            symbol = signal.get("symbol", "未知品种")
-            line = signal.get("line", "均线未知")
-            close = signal.get("close_price", "未提供")
-            timeframe = signal.get("timeframe", "4H")
-            lines.append(f"\n{symbol}｜{line}\n周期 {timeframe}｜收盘 {close}")
-        remaining = len(signals) - MAX_SIGNAL_ROWS
-        if remaining > 0:
-            lines.append(f"\n另有 {remaining} 条信号未在本条展开")
-        lines.append(f"\n扫描时间：{scan_time}")
+        symbols = []
+        seen = set()
+        for signal in signals:
+            symbol = str(signal.get("symbol", "未知品种")).strip()
+            if symbol and symbol not in seen:
+                symbols.append(symbol)
+                seen.add(symbol)
+        title = f"VEGAS V8｜正式交易信号（{len(symbols)}）"
+        shown = symbols[:MAX_SIGNAL_ROWS]
+        lines = ["VEGAS V8", "正式交易信号", "", *shown]
+        if len(symbols) > MAX_SIGNAL_ROWS:
+            lines.extend(["", f"另有 {len(symbols) - MAX_SIGNAL_ROWS} 个标的"])
         priority = 4
-        tags = ["chart_with_upwards_trend"]
     else:
-        title = "VEGAS V8｜扫描完成｜无正式信号"
-        lines = [
-            "本轮没有正式交易信号。",
-            f"扫描品种：{ok}/{total}",
-            f"数据异常：{excluded}",
-            f"扫描时间：{scan_time}",
-        ]
+        title = "VEGAS V8｜本轮无正式信号"
+        lines = ["VEGAS V8", "正式交易信号", "", "本轮暂无符合信号的标的"]
         priority = 3
-        tags = ["white_check_mark"]
 
+    # Keep the notification payload small and free of icons, images, and extra fields.
     payload = json.dumps(
         {
             "topic": topic,
             "title": title,
             "message": "\n".join(lines),
             "priority": priority,
-            "tags": tags,
         },
         ensure_ascii=False,
     ).encode("utf-8")
@@ -84,16 +73,13 @@ def send_notification(report_path: str) -> int:
         headers["Authorization"] = f"Bearer {token}"
 
     request = urllib.request.Request(
-        "https://ntfy.sh/",
-        data=payload,
-        headers=headers,
-        method="POST",
+        "https://ntfy.sh/", data=payload, headers=headers, method="POST"
     )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
-            print(f"ntfy accepted notification card (HTTP {response.status}).")
+            print(f"ntfy accepted compact notification (HTTP {response.status}).")
             return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError) as exc:
         print(f"ntfy notification failed: {exc}", file=sys.stderr)
