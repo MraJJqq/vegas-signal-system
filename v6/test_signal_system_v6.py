@@ -16,8 +16,9 @@ class V6Tests(unittest.TestCase):
 
     def test_midline_and_red_peak_are_independent(self):
         states = WatchStates(midline=True)
-        evaluate_candle(Candle(585, 591, 580), 590, 104, 106, 580, 590, states)
-        self.assertTrue(states.midline)
+        events = evaluate_candle(Candle(585, 591, 580), 590, 104, 106, 580, 590, states)
+        self.assertEqual([(e.observation, e.direction) for e in events], [("midline", "SHORT")])
+        self.assertFalse(states.midline)
         self.assertTrue(states.red_peak)
 
     def test_unclosed_candle_cannot_change_state(self):
