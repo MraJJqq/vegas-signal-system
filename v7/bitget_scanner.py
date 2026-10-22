@@ -15,11 +15,13 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
+from vegas_signals import detect_formal_signals
+
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
 # User-confirmed rule: scan 4H candles only. Do not add other timeframes without approval.
 GRANULARITIES = ("4H",)
-CANDLE_LIMIT = 200
+CANDLE_LIMIT = 800
 REQUEST_TIMEOUT = 15
 
 # User-confirmed final V7 scan pool: 23 US stocks plus BTC, HYPE, gold and crude oil.
@@ -139,6 +141,7 @@ def scan_market_data() -> dict[str, Any]:
             try:
                 candles = fetch_candles(symbol, timeframe)
                 closed = [c for c in candles if c["closed"]]
+                report["signals"].extend(detect_formal_signals(symbol, candles))
                 if not closed:
                     symbol_complete = False
                 closes = [c["close"] for c in closed]
