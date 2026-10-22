@@ -1,6 +1,6 @@
 """VEGAS V7 Bitget market-data scanner.
 
-This module only retrieves and validates Bitget USDT perpetual candles.
+This module only retrieves and validates Bitget USDT perpetual 4H candles.
 It deliberately does not emit trading signals until the approved V7 rule
 implementation is added; data availability is not a trading signal.
 """
@@ -17,7 +17,8 @@ from typing import Any
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
-GRANULARITIES = ("1H", "2H", "4H", "8H")
+# User-confirmed rule: scan 4H candles only. Do not add other timeframes without approval.
+GRANULARITIES = ("4H",)
 CANDLE_LIMIT = 200
 REQUEST_TIMEOUT = 15
 
@@ -106,12 +107,13 @@ def scan_market_data() -> dict[str, Any]:
     report: dict[str, Any] = {
         "started_at_utc": started,
         "source": "Bitget Mix USDT-FUTURES",
+        "scan_timeframes": list(GRANULARITIES),
         "symbols_total": len(SYMBOLS),
         "symbols_ok": 0,
         "symbols_excluded": 0,
         "results": [],
         "signals": [],
-        "note": "Market-data scan only; formal signal logic is not enabled in this build.",
+        "note": "4H market-data scan only; formal signal logic is not enabled in this build.",
     }
     for symbol in SYMBOLS:
         item: dict[str, Any] = {"symbol": symbol, "timeframes": {}}
@@ -132,7 +134,7 @@ def scan_market_data() -> dict[str, Any]:
                 symbol_complete = False
                 item["timeframes"][timeframe] = {"error": str(exc)}
         item["data_available"] = symbol_complete
-        item["excluded_reason"] = None if symbol_complete else "Missing/insufficient closed-candle data in one or more timeframes"
+        item["excluded_reason"] = None if symbol_complete else "Missing/insufficient closed 4H candle data"
         report["results"].append(item)
         if symbol_complete:
             report["symbols_ok"] += 1
