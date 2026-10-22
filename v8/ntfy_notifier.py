@@ -1,4 +1,4 @@
-"""Send compact V8 notifications containing only the title and symbols."""
+"""Send compact V8 notifications with a concise title and symbol list."""
 from __future__ import annotations
 
 import json
@@ -24,28 +24,30 @@ def send_notification(report_path: str) -> int:
         if isinstance(item, dict) and item.get("formal_signal") is True
     ]
 
-    if signals:
-        symbols = []
-        seen = set()
-        for signal in signals:
-            symbol = str(signal.get("symbol", "未知品种")).strip()
-            if symbol and symbol not in seen:
-                symbols.append(symbol)
-                seen.add(symbol)
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for signal in signals:
+        symbol = str(signal.get("symbol", "")).strip()
+        if symbol and symbol not in seen:
+            symbols.append(symbol)
+            seen.add(symbol)
+
+    if symbols:
         title = f"VEGAS V8｜正式交易信号（{len(symbols)}）"
-        lines = ["VEGAS V8", "正式交易信号", "", *symbols]
+        message = "\n".join(symbols)
         priority = 4
     else:
         title = "VEGAS V8｜本轮无正式信号"
-        lines = ["VEGAS V8", "正式交易信号", "", "本轮暂无符合信号的标的"]
+        message = "本轮暂无符合信号的标的"
         priority = 3
 
-    # Text-only payload: no icons, images, or unrelated signal details.
+    # Keep the body text-only and compact. Font, color, and background are
+    # controlled by the ntfy client/OS and cannot be set by this payload.
     payload = json.dumps(
         {
             "topic": topic,
             "title": title,
-            "message": "\n".join(lines),
+            "message": message,
             "priority": priority,
         },
         ensure_ascii=False,
