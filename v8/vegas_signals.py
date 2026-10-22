@@ -29,9 +29,9 @@ def ema(values: list[float], period: int) -> list[float | None]:
 
 
 def detect_formal_signals(symbol: str, candles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Touch a 4H 中锋/红峰 line to enter unlimited observation.
+    """Touch a 1H 中锋/红峰 line to enter unlimited observation.
 
-    A formal signal is emitted only on a later closed 4H candle whose close
+    A formal signal is emitted only on a later closed 1H candle whose close
     is strictly above or below EMA12. Touching and filter confirmation cannot
     occur on the same candle. After a formal signal, observation resets.
     """
@@ -62,7 +62,7 @@ def detect_formal_signals(symbol: str, candles: list[dict[str, Any]]) -> list[di
                     signals.append({
                         "formal_signal": True,
                         "symbol": symbol,
-                        "timeframe": "4H",
+                        "timeframe": "1H",
                         "line": ", ".join(touched_lines),
                         "touch_timestamp_ms": touch_timestamp_ms,
                         "filter_line": "EMA12",
