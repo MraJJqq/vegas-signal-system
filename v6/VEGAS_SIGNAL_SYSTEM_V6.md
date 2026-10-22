@@ -10,18 +10,19 @@
 - 观察期内，4H 已收盘价格位于过滤线下方为 SHORT，上方为 LONG；中锋、红峰采用相同方向定义。
 - 正式信号仅在触碰之后、后续已收盘 4H K 线满足过滤线方向条件时发送。
 - 每个品种当天的观察状态在中国时区日期切换时清空；第二天重新开始，不继承昨天的观察机会。
-- 通知沿用用户提供的 V5 样式：黑底、标题 `VEGAS V6 SIGNAL`、白色分隔线、品种代码、`▲ LONG 🟢` / `▼ SHORT 🔴`。只有正式信号进入通知；没有正式信号不发通知。
-- 通知渠道为 Server酱 Turbo 推送到微信，密钥从 GitHub Secret `SERVERCHAN_SENDKEY` 读取。
+- 通知沿用既定 V6 样式：标题 `VEGAS V6 SIGNAL`、白色分隔线、品种代码、`▲ LONG 🟢` / `▼ SHORT 🔴`。只有正式信号进入通知；没有正式信号不发通知。
+- 通知渠道为 ntfy，GitHub Secret `NTFY_TOPIC` 提供已订阅的 topic；不得使用微信/Server酱通知。
 
 ## 扫描池
 - 固定资产：BTCUSDT、HYPEUSDT、XAUUSDT（黄金）、CLUSDT（原油）。
 - 23 个美股候选：AAPL、MSFT、NVDA、AMZN、GOOGL、META、TSLA、AVGO、AMD、NFLX、ORCL、CRM、PLTR、INTC、QCOM、MU、ARM、TSM、COIN、MSTR、HOOD、ADBE、IBM。
 - 每次扫描从 Bitget 合约列表中筛选实际正常挂牌的 USDT 合约；不伪造不存在的合约。
+- 红峰 EMA676 历史数据不足的品种直接跳过，不影响其他品种扫描；不改变信号条件。
 
 ## 均线定义
 初始实现沿用 V5 已有 Vegas 参数：中锋 EMA144/EMA169，红峰 EMA576/EMA676，过滤线 EMA12。若用户后续明确指定其他参数，才可变更。
 
 ## 运行与验证
 - GitHub Actions 每 2 小时调度；也支持手动运行。
-- 未配置 `SERVERCHAN_SENDKEY` 时禁止声称微信通知已送达。
+- 必须配置 GitHub Secret `NTFY_TOPIC` 才能发送 ntfy 通知。
 - 代码测试、Bitget 联调、通知送达验证是不同的验证阶段；创建代码不等于已经完成端到端部署。
