@@ -127,10 +127,7 @@ def scan_market_data() -> dict[str, Any]:
         "symbols_excluded": 0,
         "results": [],
         "signals": [],
-        "note": (
-            "Formal V7 rule active: after price touches 中锋/红峰, observe closed "
-            "4H candles; a close above/below EMA12 produces a formal signal."
-        ),
+        "note": "Formal V7 rule active: a closed 4H candle touching 中锋/红峰 immediately produces a formal signal; EMA12 filter confirmation is disabled.",
     }
     for symbol in SYMBOLS:
         item: dict[str, Any] = {"symbol": symbol, "timeframes": {}}
