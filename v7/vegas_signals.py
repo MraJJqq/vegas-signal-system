@@ -1,4 +1,4 @@
-"""Approved V7 Vegas signal detection for closed 4H candles."""
+"""Approved V7 Vegas signal detection across the full returned 4H observation window."""
 from __future__ import annotations
 
 from typing import Any
@@ -20,7 +20,7 @@ def ema(values: list[float], period: int) -> list[float | None]:
 
 
 def detect_formal_signals(symbol: str, candles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Check the latest closed candle; each Vegas line is evaluated independently."""
+    """Scan every closed candle in the available observation window."""
     closed = sorted(
         (c for c in candles if c.get("closed")),
         key=lambda c: c["timestamp_ms"],
@@ -28,34 +28,40 @@ def detect_formal_signals(symbol: str, candles: list[dict[str, Any]]) -> list[di
     if not closed:
         return []
     closes = [float(c["close"]) for c in closed]
-    filters = ema(closes, 12)
-    last = closed[-1]
-    filter_value = filters[-1]
-    if filter_value is None:
-        return []
-    signals = []
-    for label, period in (("中锋EMA144", 144), ("中锋EMA169", 169),
-                          ("红峰EMA576", 576), ("红峰EMA676", 676)):
-        line_values = ema(closes, period)
-        line_value = line_values[-1]
-        if line_value is None or not (float(last["low"]) <= line_value <= float(last["high"])):
+    filter_values = ema(closes, 12)
+    lines = (
+        ("中锋EMA144", 144),
+        ("中锋EMA169", 169),
+        ("红峰EMA576", 576),
+        ("红峰EMA676", 676),
+    )
+    line_values = {label: ema(closes, period) for label, period in lines}
+    signals: list[dict[str, Any]] = []
+    for index, candle in enumerate(closed):
+        filter_value = filter_values[index]
+        if filter_value is None:
             continue
-        close = float(last["close"])
+        close = float(candle["close"])
         if close > filter_value:
             direction = "LONG"
         elif close < filter_value:
             direction = "SHORT"
         else:
             continue
-        signals.append({
-            "symbol": symbol,
-            "timeframe": "4H",
-            "direction": direction,
-            "line": label,
-            "line_value": line_value,
-            "filter": "EMA12",
-            "filter_value": filter_value,
-            "close": close,
-            "candle_timestamp_ms": last["timestamp_ms"],
-        })
+        for label, _period in lines:
+            line_value = line_values[label][index]
+            if line_value is None:
+                continue
+            if float(candle["low"]) <= line_value <= float(candle["high"]):
+                signals.append({
+                    "symbol": symbol,
+                    "timeframe": "4H",
+                    "direction": direction,
+                    "line": label,
+                    "line_value": line_value,
+                    "filter": "EMA12",
+                    "filter_value": filter_value,
+                    "close": close,
+                    "candle_timestamp_ms": candle["timestamp_ms"],
+                })
     return signals
