@@ -20,7 +20,6 @@ PRODUCT_TYPE = "USDT-FUTURES"
 GRANULARITIES = ("1H", "2H", "4H", "8H")
 CANDLE_LIMIT = 200
 REQUEST_TIMEOUT = 15
-RETRY_COUNT = 3
 
 # User-confirmed final V7 scan pool: 23 US stocks plus BTC, HYPE, gold and crude oil.
 # These are Bitget USDT contract symbols; do not expand or substitute the list.
@@ -43,22 +42,18 @@ def _get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
         url,
         headers={"User-Agent": "VEGAS-V7/1.0", "Accept": "application/json"},
     )
-    last_error: Exception | None = None
-    for attempt in range(RETRY_COUNT):
-        try:
-            with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            if payload.get("code") != "00000":
-                raise BitgetError(
-                    f"Bitget API error code={payload.get('code')}: "
-                    f"{payload.get('msg', 'unknown error')}"
-                )
-            return payload
-        except Exception as exc:
-            last_error = exc
-            if attempt + 1 < RETRY_COUNT:
-                time.sleep(1.5 * (attempt + 1))
-    raise BitgetError(f"Request failed: {last_error}") from last_error
+    # One request only: no automatic retries or repeated polling.
+    try:
+        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise BitgetError(f"Request failed (no retry): {exc}") from exc
+    if payload.get("code") != "00000":
+        raise BitgetError(
+            f"Bitget API error code={payload.get('code')}: "
+            f"{payload.get('msg', 'unknown error')}"
+        )
+    return payload
 
 
 def fetch_candles(symbol: str, granularity: str, limit: int = CANDLE_LIMIT) -> list[dict[str, Any]]:
@@ -113,20 +108,20 @@ def scan_market_data() -> dict[str, Any]:
         "source": "Bitget Mix USDT-FUTURES",
         "symbols_total": len(SYMBOLS),
         "symbols_ok": 0,
-        "symbols_failed": 0,
+        "symbols_excluded": 0,
         "results": [],
         "signals": [],
         "note": "Market-data scan only; formal signal logic is not enabled in this build.",
     }
     for symbol in SYMBOLS:
         item: dict[str, Any] = {"symbol": symbol, "timeframes": {}}
-        symbol_ok = False
+        symbol_complete = True
         for timeframe in GRANULARITIES:
             try:
                 candles = fetch_candles(symbol, timeframe)
                 closed = [c for c in candles if c["closed"]]
-                if closed:
-                    symbol_ok = True
+                if not closed:
+                    symbol_complete = False
                 item["timeframes"][timeframe] = {
                     "candles_received": len(candles),
                     "closed_candles": len(closed),
@@ -134,13 +129,15 @@ def scan_market_data() -> dict[str, Any]:
                     "latest_closed_price": closed[-1]["close"] if closed else None,
                 }
             except Exception as exc:
+                symbol_complete = False
                 item["timeframes"][timeframe] = {"error": str(exc)}
-        item["data_available"] = symbol_ok
+        item["data_available"] = symbol_complete
+        item["excluded_reason"] = None if symbol_complete else "Missing/insufficient closed-candle data in one or more timeframes"
         report["results"].append(item)
-        if symbol_ok:
+        if symbol_complete:
             report["symbols_ok"] += 1
         else:
-            report["symbols_failed"] += 1
+            report["symbols_excluded"] += 1
     return report
 
 
