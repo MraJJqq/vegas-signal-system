@@ -29,7 +29,7 @@ jobs:
       - name: Send formal signals to ntfy only
         if: success()
         env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          V7_NTFY_TOPIC: ${{ secrets.V7_NTFY_TOPIC }}
         run: python v7/ntfy_notifier.py v7/scan-report.json
 
       - name: Save scan report
