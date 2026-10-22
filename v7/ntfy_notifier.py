@@ -1,7 +1,7 @@
-"""Send approved formal V7 signal notifications to ntfy.
+"""Send V7 scan status and formal signal notifications to ntfy.
 
-This module intentionally refuses to send market scans, touches, or empty
-signal lists. Only records explicitly marked formal_signal=true are eligible.
+Formal signals are included when present. A successful scan with no formal
+signals still sends a status notification so the user knows the scan ran.
 """
 from __future__ import annotations
 
@@ -27,10 +27,13 @@ def send_formal_signals(report_path: str) -> int:
         if isinstance(signal, dict) and signal.get("formal_signal") is True
     ]
     if not signals:
-        print("No formal V7 signals; no notification sent.")
-        return 0
-
-    message_lines = ["VEGAS V7 正式信号"]
+        message_lines = ["VEGAS V7 扫描完成", "本轮没有正式交易信号。"]
+        title = "VEGAS V7 扫描完成：无正式信号"
+        tags = "white_check_mark"
+    else:
+        message_lines = ["VEGAS V7 正式信号"]
+        title = "VEGAS V7 正式信号"
+        tags = "chart_with_upwards_trend"
     for signal in signals:
         symbol = str(signal.get("symbol", "未知品种"))
         direction = str(signal.get("direction", "方向待确认"))
@@ -45,9 +48,9 @@ def send_formal_signals(report_path: str) -> int:
         f"https://ntfy.sh/{topic}",
         data=body,
         headers={
-            "Title": "VEGAS V7 正式信号",
-            "Priority": "high",
-            "Tags": "chart_with_upwards_trend",
+            "Title": title,
+            "Priority": "default" if not signals else "high",
+            "Tags": tags,
             "Content-Type": "text/plain; charset=utf-8",
         },
         method="POST",
