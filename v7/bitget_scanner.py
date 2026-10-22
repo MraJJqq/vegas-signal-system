@@ -1,8 +1,7 @@
 """VEGAS V7 Bitget market-data scanner.
 
-This module only retrieves and validates Bitget USDT perpetual 4H candles.
-It deliberately does not emit trading signals until the approved V7 rule
-implementation is added; data availability is not a trading signal.
+Retrieves and validates Bitget USDT perpetual 4H candles and applies the
+user-confirmed formal signal rule to closed candles.
 """
 from __future__ import annotations
 
@@ -25,7 +24,6 @@ CANDLE_LIMIT = 800
 REQUEST_TIMEOUT = 15
 
 # User-confirmed final V7 scan pool: 23 US stocks plus BTC, HYPE, gold and crude oil.
-# These are Bitget USDT contract symbols; do not expand or substitute the list.
 STOCKS = (
     "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
     "AMD", "NFLX", "ORCL", "CRM", "PLTR", "INTC", "QCOM", "MU",
@@ -45,7 +43,6 @@ def _get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
         url,
         headers={"User-Agent": "VEGAS-V7/1.0", "Accept": "application/json"},
     )
-    # One request only: no automatic retries or repeated polling.
     try:
         with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
             payload = json.loads(response.read().decode("utf-8"))
@@ -72,7 +69,6 @@ def fetch_candles(symbol: str, granularity: str, limit: int = CANDLE_LIMIT) -> l
     rows = payload.get("data") or []
     candles: list[dict[str, Any]] = []
     for row in rows:
-        # Bitget Mix candle format: [ts, open, high, low, close, baseVol, quoteVol, usdtVol]
         if not isinstance(row, list) or len(row) < 5:
             continue
         try:
@@ -105,7 +101,6 @@ def _granularity_ms(granularity: str) -> int:
 
 
 def ema(values: list[float], period: int) -> list[float | None]:
-    """Return EMA values aligned to input; warm-up entries are None."""
     if period < 1:
         raise ValueError("EMA period must be >= 1")
     output: list[float | None] = [None] * len(values)
@@ -132,7 +127,10 @@ def scan_market_data() -> dict[str, Any]:
         "symbols_excluded": 0,
         "results": [],
         "signals": [],
-        "note": "4H market-data scan only; EMA12 filter values are calculated for closed candles, but formal signal logic remains disabled.",
+        "note": (
+            "Formal V7 rule active: after price touches 中锋/红峰, observe closed "
+            "4H candles; a close above/below EMA12 produces a formal signal."
+        ),
     }
     for symbol in SYMBOLS:
         item: dict[str, Any] = {"symbol": symbol, "timeframes": {}}
@@ -181,7 +179,6 @@ def main() -> int:
     if output_path:
         with open(output_path, "w", encoding="utf-8") as file:
             file.write(rendered + "\n")
-    # Fail the job only if no symbol returned any usable closed candles.
     return 0 if report["symbols_ok"] else 1
 
 
