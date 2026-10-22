@@ -1,0 +1,35 @@
+name: VEGAS V7 Bitget Scan
+
+on:
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout V7
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch Bitget USDT futures candles
+        run: |
+          python v7/bitget_scanner.py | tee v7/scan-report.json
+
+      - name: Save scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vegas-v7-bitget-scan-report
+          path: v7/scan-report.json
+          if-no-files-found: warn
+          retention-days: 7
