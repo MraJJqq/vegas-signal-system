@@ -28,11 +28,11 @@ def send_formal_signals(report_path: str) -> int:
     ]
     if not signals:
         message_lines = ["VEGAS V7 扫描完成", "本轮没有正式交易信号。"]
-        title = "VEGAS V7 扫描完成：无正式信号"
+        title = "VEGAS V7 scan complete: no formal signal"
         tags = "white_check_mark"
     else:
         message_lines = ["VEGAS V7 正式信号"]
-        title = "VEGAS V7 正式信号"
+        title = "VEGAS V7 formal signal"
         tags = "chart_with_upwards_trend"
     for signal in signals:
         symbol = str(signal.get("symbol", "未知品种"))
