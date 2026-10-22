@@ -14,9 +14,9 @@ from typing import Any
 
 
 def send_formal_signals(report_path: str) -> int:
-    topic = os.environ.get("NTFY_TOPIC", "").strip()
+    topic = os.environ.get("V7_NTFY_TOPIC", "").strip()
     if not topic:
-        print("NTFY_TOPIC is not configured; no notification sent.")
+        print("V7_NTFY_TOPIC is not configured; no notification sent.")
         return 0
 
     with open(report_path, "r", encoding="utf-8") as file:
