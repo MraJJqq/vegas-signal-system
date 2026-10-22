@@ -23,7 +23,7 @@ def send_notification(report_path: str) -> int:
         if isinstance(item, dict) and item.get("formal_signal") is True
     ]
     if signals:
-        title = "VEGAS V8 正式信号"
+        title = "VEGAS V8 Signal"
         lines = ["VEGAS V8 正式信号"]
         for signal in signals:
             lines.append(
@@ -34,7 +34,7 @@ def send_notification(report_path: str) -> int:
             )
         priority, tags = "high", "chart_with_upwards_trend"
     else:
-        title = "VEGAS V8 扫描完成：无正式信号"
+        title = "VEGAS V8 Scan Complete: No Signal"
         lines = ["VEGAS V8 扫描完成", "本轮没有正式信号。"]
         priority, tags = "default", "white_check_mark"
 
