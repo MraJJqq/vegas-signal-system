@@ -58,5 +58,7 @@ def fetch_inputs(symbol, now_ms=None):
         vals=[s[i] for s in series]
         if all(v is not None for v in vals):
             result.append({**c,"ema12":vals[0],"ema144":vals[1],"ema169":vals[2],"ema576":vals[3],"ema676":vals[4]})
-    if not result: raise RuntimeError(f"{symbol}: insufficient 4H history for EMA676")
+    if not result:
+        print(f"SKIP {symbol}: insufficient 4H history for EMA676; incomplete-data symbol ignored")
+        return []
     return result
