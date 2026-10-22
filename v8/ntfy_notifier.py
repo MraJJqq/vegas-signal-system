@@ -1,4 +1,4 @@
-"""Send compact V8 notifications with a concise title and symbol list."""
+"""Send V8 notifications using the approved compact grouped layout."""
 from __future__ import annotations
 
 import json
@@ -7,6 +7,15 @@ import sys
 import urllib.error
 import urllib.request
 from typing import Any
+
+
+def display_symbol(symbol: str) -> str:
+    value = symbol.strip().upper()
+    if value.endswith("USDT"):
+        value = value[:-4]
+    if value == "CLU":
+        return "CL"
+    return value
 
 
 def send_notification(report_path: str) -> int:
@@ -27,29 +36,30 @@ def send_notification(report_path: str) -> int:
     symbols: list[str] = []
     seen: set[str] = set()
     for signal in signals:
-        symbol = str(signal.get("symbol", "")).strip()
+        symbol = display_symbol(str(signal.get("symbol", "")))
         if symbol and symbol not in seen:
             symbols.append(symbol)
             seen.add(symbol)
 
+    title = "VEGAS V8 信号系统"
     if symbols:
-        title = f"VEGAS V8｜正式交易信号（{len(symbols)}）"
-        message = "\n".join(symbols)
+        core_order = ["BTC", "HYPE", "XAU", "CL"]
+        core = [symbol for symbol in core_order if symbol in symbols]
+        stocks = [symbol for symbol in symbols if symbol not in core_order]
+        sections: list[str] = []
+        if core:
+            sections.append("数字资产 / 贵金属 / 原油\n" + " · ".join(core))
+        if stocks:
+            sections.append("美股\n" + " · ".join(stocks))
+        message = "\n\n".join(sections)
         priority = 4
     else:
-        title = "VEGAS V8｜本轮无正式信号"
         message = "本轮暂无符合信号的标的"
         priority = 3
 
-    # Keep the body text-only and compact. Font, color, and background are
-    # controlled by the ntfy client/OS and cannot be set by this payload.
+    # Font, color, and background are controlled by the ntfy client/OS.
     payload = json.dumps(
-        {
-            "topic": topic,
-            "title": title,
-            "message": message,
-            "priority": priority,
-        },
+        {"topic": topic, "title": title, "message": message, "priority": priority},
         ensure_ascii=False,
     ).encode("utf-8")
     headers = {"Content-Type": "application/json; charset=utf-8"}
@@ -63,7 +73,7 @@ def send_notification(report_path: str) -> int:
         with urllib.request.urlopen(request, timeout=20) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
-            print(f"ntfy accepted compact notification (HTTP {response.status}).")
+            print(f"ntfy accepted grouped notification (HTTP {response.status}).")
             return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError) as exc:
         print(f"ntfy notification failed: {exc}", file=sys.stderr)
