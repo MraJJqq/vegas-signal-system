@@ -14,7 +14,7 @@ from vegas_signals import detect_formal_signals
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
-GRANULARITY = "4H"
+GRANULARITY = "1H"
 CANDLE_LIMIT = 800
 REQUEST_TIMEOUT = 15
 
@@ -74,7 +74,7 @@ def fetch_candles(symbol: str) -> list[dict[str, Any]]:
             continue
     candles.sort(key=lambda c: c["timestamp_ms"])
     now_ms = int(time.time() * 1000)
-    interval_ms = 4 * 60 * 60 * 1000
+    interval_ms = 60 * 60 * 1000
     for candle in candles:
         candle["closed"] = candle["timestamp_ms"] + interval_ms <= now_ms
     return candles
@@ -97,8 +97,8 @@ def scan_market_data() -> dict[str, Any]:
             candles = fetch_candles(symbol)
             closed = [c for c in candles if c["closed"]]
             if not closed:
-                raise BitgetError("No closed 4H candles returned")
-            # Only keep signals from closed 4H candles dated today in China time.
+                raise BitgetError("No closed 1H candles returned")
+            # Only keep signals from closed 1H candles dated today in China time.
             china_tz = timezone(timedelta(hours=8))
             china_today = datetime.now(china_tz).date()
             daily_signals = detect_formal_signals(symbol, candles)
