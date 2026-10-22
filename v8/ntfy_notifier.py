@@ -75,9 +75,11 @@ def send_notification(report_path: str) -> int:
         previous_symbols = []
     previous_symbols = [str(symbol) for symbol in previous_symbols]
 
-    # Always list symbols on the first scan of a China-local day.
+    # Each China-local day starts a fresh comparison cycle; never compare across days.
     first_scan_today = previous_state.get("date") != today
-    # Later scans list the full current result only when at least one symbol is new.
+    if first_scan_today:
+        previous_symbols = []
+    # First scan of the day shows the full result; later scans do so only for new symbols.
     has_new_symbol = bool(set(symbols) - set(previous_symbols))
     show_symbols = first_scan_today or has_new_symbol
 
