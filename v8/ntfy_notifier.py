@@ -90,12 +90,19 @@ def send_notification(report_path: str) -> int:
     if show_symbols:
         if core:
             core_section += "\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core)
+        else:
+            core_section += "\n▰ No change ▰"
         if stocks:
             stock_lines = [
                 "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
                 for i in range(0, len(stocks), 3)
             ]
             stock_section += "\n" + "\n".join(stock_lines)
+        else:
+            stock_section += "\n▰ No change ▰"
+    else:
+        core_section += "\n▰ No change ▰"
+        stock_section += "\n▰ No change ▰"
 
     message = (
         "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -121,7 +128,7 @@ def send_notification(report_path: str) -> int:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
             # Save the latest result only after ntfy confirms the push succeeded.
             save_state(today, symbols)
-            mode = "full list" if show_symbols else "headings only"
+            mode = "full list" if show_symbols else "no change"
             print(f"ntfy accepted grouped notification (HTTP {response.status}; {mode}).")
             return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
