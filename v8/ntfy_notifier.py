@@ -41,7 +41,7 @@ def send_notification(report_path: str) -> int:
             symbols.append(symbol)
             seen.add(symbol)
 
-    title = "VEGAS V8 信号系统"
+    title = "🟢 VEGAS V8 信号系统"
     if symbols:
         core_order = ["BTC", "HYPE", "XAU", "CL"]
         core = [symbol for symbol in core_order if symbol in symbols]
