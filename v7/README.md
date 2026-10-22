@@ -14,3 +14,11 @@ V7 是当前唯一保留的信号系统版本，从独立的 `v7/` 目录重新�
 
 ## 当前状态
 V7 目录已建立。正式信号判定规则须严格按用户已确认的完整规则实现；在规则未核对完成前，不自行补充交易条件。
+
+## 最终扫描池（用户确认）
+
+固定共 27 个品种，不得擅自增删或替换：
+- 美股（23）：AAPL、MSFT、NVDA、AMZN、GOOGL、META、TSLA、ORCL、CRM、PLTR、NFLX、ADBE、IBM、AVGO、AMD、INTC、QCOM、MU、ARM、TSM、COIN、MSTR、HOOD。
+- 其他（4）：黄金 XAUUSDT、石油 CLUUSDT、BTC BTCUSDT、HYPE HYPEUSDT。
+
+扫描池以本节和用户最后确认的名单为准，不参考旧版本扫描池。
