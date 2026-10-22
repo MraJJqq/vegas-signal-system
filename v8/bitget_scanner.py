@@ -18,13 +18,13 @@ GRANULARITY = "4H"
 CANDLE_LIMIT = 800
 REQUEST_TIMEOUT = 15
 
+# Final pool: core markets first, then selected US stock contracts.
+CORE_MARKETS = ("BTC", "HYPE", "XAU", "CLU")
 STOCKS = (
-    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "ORCL",
-    "CRM", "PLTR", "NFLX", "ADBE", "IBM", "AVGO", "AMD", "INTC",
-    "QCOM", "MU", "ARM", "TSM", "COIN", "MSTR", "HOOD",
+    "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
+    "TSLA", "AVGO", "AMD", "MU", "HOOD", "GLW",
 )
-OTHER_MARKETS = ("BTC", "HYPE", "XAU", "CLU")
-SYMBOLS = tuple(f"{ticker}USDT" for ticker in (*STOCKS, *OTHER_MARKETS))
+SYMBOLS = tuple(f"{ticker}USDT" for ticker in (*CORE_MARKETS, *STOCKS))
 
 
 class BitgetError(RuntimeError):
