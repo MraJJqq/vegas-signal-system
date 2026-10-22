@@ -102,6 +102,23 @@ def _granularity_ms(granularity: str) -> int:
     raise ValueError(f"Unsupported candle granularity: {granularity}")
 
 
+def ema(values: list[float], period: int) -> list[float | None]:
+    """Return EMA values aligned to input; warm-up entries are None."""
+    if period < 1:
+        raise ValueError("EMA period must be >= 1")
+    output: list[float | None] = [None] * len(values)
+    if len(values) < period:
+        return output
+    seed = sum(values[:period]) / period
+    output[period - 1] = seed
+    alpha = 2.0 / (period + 1)
+    previous = seed
+    for index in range(period, len(values)):
+        previous = values[index] * alpha + previous * (1.0 - alpha)
+        output[index] = previous
+    return output
+
+
 def scan_market_data() -> dict[str, Any]:
     started = datetime.now(timezone.utc).isoformat()
     report: dict[str, Any] = {
@@ -113,7 +130,7 @@ def scan_market_data() -> dict[str, Any]:
         "symbols_excluded": 0,
         "results": [],
         "signals": [],
-        "note": "4H market-data scan only; formal signal logic is not enabled in this build.",
+        "note": "4H market-data scan only; EMA12 filter values are calculated for closed candles, but formal signal logic remains disabled.",
     }
     for symbol in SYMBOLS:
         item: dict[str, Any] = {"symbol": symbol, "timeframes": {}}
@@ -124,11 +141,21 @@ def scan_market_data() -> dict[str, Any]:
                 closed = [c for c in candles if c["closed"]]
                 if not closed:
                     symbol_complete = False
+                closes = [c["close"] for c in closed]
+                ema12_values = ema(closes, 12)
+                latest_ema12 = ema12_values[-1] if ema12_values else None
+                latest_close = closes[-1] if closes else None
                 item["timeframes"][timeframe] = {
                     "candles_received": len(candles),
                     "closed_candles": len(closed),
                     "latest_closed_candle_ms": closed[-1]["timestamp_ms"] if closed else None,
-                    "latest_closed_price": closed[-1]["close"] if closed else None,
+                    "latest_closed_price": latest_close,
+                    "ema12_filter": latest_ema12,
+                    "close_vs_ema12": (
+                        "above" if latest_close > latest_ema12 else
+                        "below" if latest_close < latest_ema12 else
+                        "equal" if latest_close == latest_ema12 else None
+                    ) if latest_close is not None and latest_ema12 is not None else None,
                 }
             except Exception as exc:
                 symbol_complete = False
