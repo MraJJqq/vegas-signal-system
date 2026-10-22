@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 from bitget_market_data_v6 import discover_symbols, fetch_inputs
 from signal_system_v6 import Candle, WatchStates, evaluate_candle
-from notification_v6 import format_signal_digest, send_wechat
+from notification_v6 import format_signal_digest, send_ntfy
 
 TZ=ZoneInfo("Asia/Shanghai")
 STATE_PATH=Path(os.getenv("V6_STATE_FILE",".state/v6_daily_state.json"))
@@ -51,9 +51,9 @@ def main():
                 print(f"FAIL {symbol}: {exc}")
     new_events=[event for _,events,_ in results for event in events]
     if new_events:
-        send_wechat(format_signal_digest(new_events))
+        send_ntfy(format_signal_digest(new_events))
         sent.update(event["id"] for event in new_events)
-        print(f"V6 formal signal notification sent: {len(new_events)} event(s)")
+        print(f"V6 formal signal notification sent via ntfy: {len(new_events)} event(s)")
     else:
         print("V6: no formal signals; no notification sent")
     STATE_PATH.parent.mkdir(parents=True,exist_ok=True)
