@@ -21,7 +21,7 @@ def fetch_period(symbol: str, period: str, start: date, end: date) -> dict:
     })
     with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         raw = response.read().decode("utf-8", errors="replace")
-    match = re.search(r"\\{.*\\}", raw, flags=re.S)
+    match = re.search(r"\{.*\}", raw, flags=re.S)
     if not match:
         raise ValueError(f"response is not JSON/JSONP (body length={len(raw)})")
     payload = json.loads(match.group(0))
