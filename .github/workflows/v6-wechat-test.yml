@@ -1,0 +1,32 @@
+name: V6 WeChat Test Notification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-wechat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Send test notification
+        working-directory: v6
+        env:
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+        run: |
+          python - <<'PY'
+          import os
+          from notification_v6 import send_wechat
+          key = os.environ.get("SERVERCHAN_SENDKEY", "")
+          if not key:
+              raise SystemExit("Missing GitHub Actions secret: SERVERCHAN_SENDKEY")
+          send_wechat("🟢 🔴 VEGAS V6 SIGNAL\n━━━━━━━━━━━━━━━━\n微信通知测试成功\n━━━━━━━━━━━━━━━━")
+          print("Server酱 accepted the test notification.")
+          PY
