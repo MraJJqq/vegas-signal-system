@@ -2,7 +2,7 @@ name: VEGAS V8 Bitget Scan
 
 on:
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: "0 0,2,4,6,8,10,12,14 * * *"
   workflow_dispatch:
 
 permissions:
