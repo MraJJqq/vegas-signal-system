@@ -22,8 +22,8 @@ CANDLE_LIMIT = 200
 REQUEST_TIMEOUT = 15
 RETRY_COUNT = 3
 
-# Confirmed V5 stock universe (Bitget USDT contract symbols), plus the
-# previously specified BTC, HYPE, gold and crude-oil markets.
+# User-confirmed final V7 scan pool: 23 US stocks plus BTC, HYPE, gold and crude oil.
+# These are Bitget USDT contract symbols; do not expand or substitute the list.
 STOCKS = (
     "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
     "AMD", "NFLX", "ORCL", "CRM", "PLTR", "INTC", "QCOM", "MU",
