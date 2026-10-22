@@ -1,4 +1,4 @@
-"""Send V8 scan notifications as native ntfy notification cards."""
+"""Send concise V8 scan notifications as native ntfy notification cards."""
 from __future__ import annotations
 
 import json
@@ -8,6 +8,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from typing import Any
+
+MAX_SIGNAL_ROWS = 12
 
 
 def _scan_time(value: Any) -> str:
@@ -42,39 +44,31 @@ def send_notification(report_path: str) -> int:
     excluded = report.get("symbols_excluded", 0)
 
     if signals:
-        title = f"VEGAS V8 | {len(signals)} Formal Signal(s)"
-        lines = ["VEGAS V8  |  正式交易信号", "BITGET PERPETUAL  ·  4H", ""]
-        for index, signal in enumerate(signals, 1):
-            lines.extend(
-                [
-                    f"{index:02d}  {signal.get('symbol', '未知品种')}",
-                    f"触碰均线  {signal.get('line', '均线未知')}",
-                    f"周期      {signal.get('timeframe', '4H')}",
-                    f"收盘价    {signal.get('close_price', '未提供')}",
-                    "",
-                ]
-            )
-        lines.extend(["VEGAS V8  ·  已收盘K线确认", f"扫描时间  {scan_time}"])
+        title = f"VEGAS V8｜正式信号 {len(signals)} 条"
+        lines = [f"正式信号：{len(signals)} 条", "周期：4H｜数据源：Bitget"]
+        for signal in signals[:MAX_SIGNAL_ROWS]:
+            symbol = signal.get("symbol", "未知品种")
+            line = signal.get("line", "均线未知")
+            close = signal.get("close_price", "未提供")
+            timeframe = signal.get("timeframe", "4H")
+            lines.append(f"\n{symbol}｜{line}\n周期 {timeframe}｜收盘 {close}")
+        remaining = len(signals) - MAX_SIGNAL_ROWS
+        if remaining > 0:
+            lines.append(f"\n另有 {remaining} 条信号未在本条展开")
+        lines.append(f"\n扫描时间：{scan_time}")
         priority = 4
         tags = ["chart_with_upwards_trend"]
     else:
-        title = "VEGAS V8 | Scan Complete"
+        title = "VEGAS V8｜扫描完成｜无正式信号"
         lines = [
-            "VEGAS V8  |  扫描完成",
-            "",
-            "本轮没有正式信号。",
-            "",
-            f"扫描品种  {ok}/{total}",
-            f"数据异常  {excluded}",
-            f"扫描时间  {scan_time}",
-            "",
-            "VEGAS V8  ·  BITGET PERPETUAL",
+            "本轮没有正式交易信号。",
+            f"扫描品种：{ok}/{total}",
+            f"数据异常：{excluded}",
+            f"扫描时间：{scan_time}",
         ]
         priority = 3
         tags = ["white_check_mark"]
 
-    # Use ntfy's JSON publish API. This creates a normal notification card;
-    # the message is sent as JSON metadata, never as an attachment or file.
     payload = json.dumps(
         {
             "topic": topic,
