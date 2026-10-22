@@ -1,0 +1,30 @@
+name: V6 VEGAS Signal Scan
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run V6 tests
+        working-directory: v6
+        run: python -m unittest -v
+      - name: Run V6 scan
+        working-directory: v6
+        env:
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          V6_STATE_FILE: .state/v6_daily_state.json
+        run: python run_v6.py
