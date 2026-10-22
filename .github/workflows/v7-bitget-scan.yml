@@ -30,6 +30,7 @@ jobs:
         if: success()
         env:
           V7_NTFY_TOPIC: ${{ secrets.V7_NTFY_TOPIC }}
+          V7_NTFY_TOKEN: ${{ secrets.V7_NTFY_TOKEN }}
         run: python v7/ntfy_notifier.py v7/scan-report.json
 
       - name: Save scan report
