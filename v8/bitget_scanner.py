@@ -7,7 +7,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from vegas_signals import detect_formal_signals
@@ -98,7 +98,16 @@ def scan_market_data() -> dict[str, Any]:
             closed = [c for c in candles if c["closed"]]
             if not closed:
                 raise BitgetError("No closed 4H candles returned")
-            report["signals"].extend(detect_formal_signals(symbol, candles))
+            # Only keep signals from closed 4H candles dated today in China time.
+            china_tz = timezone(timedelta(hours=8))
+            china_today = datetime.now(china_tz).date()
+            daily_signals = detect_formal_signals(symbol, candles)
+            report["signals"].extend(
+                signal for signal in daily_signals
+                if datetime.fromtimestamp(
+                    signal["candle_timestamp_ms"] / 1000, tz=china_tz
+                ).date() == china_today
+            )
             item["timeframes"][GRANULARITY] = {
                 "candles_received": len(candles),
                 "closed_candles": len(closed),
