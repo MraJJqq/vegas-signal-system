@@ -16,8 +16,10 @@ from typing import Any
 def send_formal_signals(report_path: str) -> int:
     topic = os.environ.get("V7_NTFY_TOPIC", "").strip()
     if not topic:
-        print("V7_NTFY_TOPIC is not configured; no notification sent.")
-        return 0
+        print("ERROR: V7_NTFY_TOPIC is not configured; no notification sent.", file=sys.stderr)
+        return 1
+
+    token = os.environ.get("V7_NTFY_TOKEN", "").strip()
 
     with open(report_path, "r", encoding="utf-8") as file:
         report: dict[str, Any] = json.load(file)
@@ -52,6 +54,7 @@ def send_formal_signals(report_path: str) -> int:
             "Priority": "default" if not signals else "high",
             "Tags": tags,
             "Content-Type": "text/plain; charset=utf-8",
+            **({"Authorization": f"Bearer {token}"} if token else {}),
         },
         method="POST",
     )
