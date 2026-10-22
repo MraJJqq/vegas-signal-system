@@ -41,20 +41,20 @@ def send_notification(report_path: str) -> int:
             symbols.append(symbol)
             seen.add(symbol)
 
-    title = "🟢 VEGAS V8 信号系统"
+    title = "🔔 VEGAS V8 信号系统 🔔"
     if symbols:
         core_order = ["BTC", "HYPE", "XAU", "CL"]
         core = [symbol for symbol in core_order if symbol in symbols]
         stocks = [symbol for symbol in symbols if symbol not in core_order]
         sections: list[str] = []
         if core:
-            sections.append("数字资产 / 贵金属 / 原油\n" + " · ".join(core))
+            sections.append("🔔 核心能源\n" + "   ".join(core))
         if stocks:
-            sections.append("美股\n" + " · ".join(stocks))
+            sections.append("🔔 美股巨头\n" + "\n".join("   ".join(stocks[i:i + 3]) for i in range(0, len(stocks), 3)))
         message = "━━━━━━━━━━━━\n\n" + "\n\n".join(sections) + "\n\n本轮扫描结束"
         priority = 4
     else:
-        message = "━━━━━━━━━━━━\n━━━━━━━━━━━━\n\n本轮扫描结束，无新增符合条件的标的"
+        message = "━━━━━━━━━━━━\n\n本轮扫描结束，没有新符合品种"
         priority = 3
 
     # Font, color, and background are controlled by the ntfy client/OS.
