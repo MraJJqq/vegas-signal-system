@@ -6,14 +6,8 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
-
-
-STATE_PATH = Path(os.environ.get("V8_SCAN_STATE_PATH", "v8/.scan-state.json"))
-CHINA_TZ = ZoneInfo("Asia/Shanghai")
 
 
 def display_symbol(symbol: str) -> str:
@@ -23,25 +17,6 @@ def display_symbol(symbol: str) -> str:
     if value == "CLU":
         return "CL"
     return value
-
-
-def read_state() -> dict[str, Any]:
-    try:
-        with STATE_PATH.open("r", encoding="utf-8") as file:
-            state = json.load(file)
-        return state if isinstance(state, dict) else {}
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
-
-
-def save_state(day: str, symbols: list[str]) -> None:
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = STATE_PATH.with_suffix(STATE_PATH.suffix + ".tmp")
-    temporary_path.write_text(
-        json.dumps({"date": day, "symbols": symbols}, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    temporary_path.replace(STATE_PATH)
 
 
 def send_notification(report_path: str) -> int:
@@ -72,21 +47,22 @@ def send_notification(report_path: str) -> int:
             seen.add(symbol)
 
     if not symbols:
-        print("No formal signals found; no Bark notification sent.")
+        print("No formal signals found; no notification sent.")
         return 0
 
-    # Every scan sends the formal signals found in that scan; no change-comparison rule.
+    # Every scan sends all formal signals found in that scan; no change comparison.
     core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
     stock_order = [
         "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
         "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX", "CRCL",
         "MSTR", "COIN", "PLTR", "ORCL", "INTC", "MU", "MRVL",
         "ASML", "ARM", "APP", "RDDT", "NFLX", "BABA", "JD",
-        "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "JPM", "GS", "BAC", "WFC", "XOM", "CVX", "CAT", "GE", "CEG", "UBER", "DASH", "SHOP", "CRM", "NOW", "PANW", "CRWD", "TSM"
+        "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "JPM", "GS", "BAC",
+        "WFC", "XOM", "CVX", "CAT", "GE", "CEG", "UBER", "DASH",
+        "SHOP", "CRM", "NOW", "PANW", "CRWD", "TSM"
     ]
     core = [symbol for symbol in core_order if symbol in seen]
     stocks = [symbol for symbol in stock_order if symbol in seen]
-    # Preserve any formal signal not yet listed in the display order.
     known = set(core_order) | set(stock_order)
     stocks.extend(symbol for symbol in symbols if symbol not in known)
 
@@ -127,11 +103,18 @@ def send_notification(report_path: str) -> int:
     else:
         ntfy_ok = True
 
+    # Bark already renders its title separately; omit the heading from its body.
+    bark_body = message
+    if test_mode and bark_body.startswith("【测试推送】\n"):
+        bark_body = bark_body[len("【测试推送】\n"):]
+    if bark_body.startswith("VEGAS V8 SIGNAL SYSTEM"):
+        bark_body = bark_body[len("VEGAS V8 SIGNAL SYSTEM"):].lstrip("\n")
+
     bark_payload = json.dumps(
         {
             "device_key": bark_key,
             "title": "【测试推送】VEGAS V8 SIGNAL SYSTEM" if test_mode else "VEGAS V8 SIGNAL SYSTEM",
-            "body": message,
+            "body": bark_body,
             "group": "VEGAS V8",
             "level": "active",
         },
@@ -158,6 +141,7 @@ def send_notification(report_path: str) -> int:
         return 0
     print("ERROR: one or more notification channels failed.", file=sys.stderr)
     return 1
+
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v8/scan-report.json"))
