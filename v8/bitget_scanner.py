@@ -27,6 +27,7 @@ STOCKS = (
     "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX", "CRCL",
     "MSTR", "COIN", "PLTR", "ORCL", "INTC", "MU", "MRVL",
     "ASML", "ARM", "APP", "RDDT", "NFLX", "BABA", "JD",
+    "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "JPM", "GS", "BAC", "WFC", "XOM", "CVX", "CAT", "GE", "CEG", "UBER", "DASH", "SHOP", "CRM", "NOW", "PANW", "CRWD", "TSM"
 )
 SYMBOLS = tuple(f"{ticker}USDT" for ticker in (*CORE_MARKETS, *STOCKS))
 
