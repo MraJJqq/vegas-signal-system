@@ -13,7 +13,7 @@ TIMEOUT = 15
 MIN_STOCK_TURNOVER_24H_USDT = 1_000_000
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
-STOCKS = ("NVDA","AAPL","MSFT","AMZN","GOOGL","META","TSLA","AVGO","AMD","HOOD","GLW","SPCX","CRCL","MSTR","COIN","PLTR","ORCL","INTC","MU","MRVL","ASML","ARM","APP","RDDT","NFLX","BABA","JD","QCOM","TXN","AMAT","LRCX","KLAC","JPM","GS","BAC","WFC","XOM","CVX","CAT","GE","CEG","UBER","DASH","SHOP","CRM","NOW","PANW","CRWD","TSM")
+STOCKS = ("AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA")
 SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 
 class BitgetError(RuntimeError):
