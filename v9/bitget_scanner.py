@@ -10,7 +10,6 @@ PRODUCT_TYPE = "USDT-FUTURES"
 GRANULARITY = "1H"
 CANDLE_LIMIT = 800
 TIMEOUT = 15
-MIN_STOCK_TURNOVER_24H_USDT = 1_000_000
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
 STOCKS = ("AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA")
@@ -30,30 +29,6 @@ def get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
     if payload.get("code") != "00000":
         raise BitgetError(f"Bitget API error {payload.get('code')}: {payload.get('msg', 'unknown')}")
     return payload
-
-def fetch_stock_turnovers() -> tuple[dict[str, float], str | None]:
-    """Return 24h USDT turnover for listed USDT futures tickers."""
-    try:
-        payload = get_json("/api/v2/mix/market/tickers", {"productType": PRODUCT_TYPE})
-        turnovers: dict[str, float] = {}
-        for ticker in payload.get("data") or []:
-            symbol = str(ticker.get("symbol", ""))
-            if symbol not in {f"{stock}USDT" for stock in STOCKS}:
-                continue
-            raw = ticker.get("quoteVolume")
-            if raw is None:
-                raw = ticker.get("usdtVolume")
-            if raw is None:
-                raw = ticker.get("turnover24h")
-            try:
-                value = float(raw)
-            except (TypeError, ValueError):
-                continue
-            if math.isfinite(value) and value >= 0:
-                turnovers[symbol] = value
-        return turnovers, None
-    except Exception as exc:
-        return {}, str(exc)
 
 def fetch_candles(symbol: str) -> list[dict[str, Any]]:
     payload = get_json("/api/v2/mix/market/candles", {"symbol": symbol, "productType": PRODUCT_TYPE, "granularity": GRANULARITY, "limit": str(CANDLE_LIMIT)})
@@ -113,32 +88,16 @@ def scan_market_data() -> dict[str, Any]:
         signal for signal in daily_state.get("signals", [])
         if isinstance(signal, dict) and str(signal.get("symbol", "")).upper() in SYMBOLS
     ]
-    turnovers, turnover_error = fetch_stock_turnovers()
-    scan_symbols = list(f"{x}USDT" for x in CORE_MARKETS)
-    excluded_by_turnover: list[dict[str, Any]] = []
-    if turnover_error:
-        excluded_by_turnover = [{"symbol": f"{stock}USDT", "reason": f"Unable to verify 24h turnover; excluded safely: {turnover_error}"} for stock in STOCKS]
-    else:
-        for stock in STOCKS:
-            symbol = f"{stock}USDT"
-            turnover = turnovers.get(symbol)
-            if turnover is None:
-                excluded_by_turnover.append({"symbol": symbol, "turnover24h_usdt": None, "reason": "No valid Bitget USDT-FUTURES ticker"})
-            elif turnover < MIN_STOCK_TURNOVER_24H_USDT:
-                excluded_by_turnover.append({"symbol": symbol, "turnover24h_usdt": turnover, "reason": f"24h turnover below {MIN_STOCK_TURNOVER_24H_USDT} USDT"})
-            else:
-                scan_symbols.append(symbol)
+    # The 19 selected markets are the fixed V9 core pool; do not filter by turnover.
+    scan_symbols = list(SYMBOLS)
 
     report = {
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": "Bitget Mix USDT-FUTURES",
         "scan_timeframes": [GRANULARITY],
-        "stock_min_turnover24h_usdt": MIN_STOCK_TURNOVER_24H_USDT,
-        "stock_turnover_api_error": turnover_error,
         "symbols_total": len(scan_symbols),
         "symbols_ok": 0,
-        "symbols_excluded": len(excluded_by_turnover),
-        "stock_symbols_excluded_by_turnover": excluded_by_turnover,
+        "symbols_excluded": 0,
         "results": [],
         "signals": [],
     }
