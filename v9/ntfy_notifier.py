@@ -33,12 +33,9 @@ def send_notification(report_path: str) -> int:
     stocks = [s for s in stock_order if s in seen]
     known = set(core_order) | set(stock_order)
     stocks.extend(s for s in symbols if s not in known)
-    parts = []
-    if stocks:
-        parts.append("🔔 美股巨头\n" + "\n".join("   ".join(f"▰ {s} ▰" for s in stocks[i:i+3]) for i in range(0, len(stocks), 3)))
-    if core:
-        parts.append("🔔 核心能源\n" + "   ".join(f"▰ {s} ▰" for s in core))
-    body = "\n\n".join(parts)
+    stock_line = "\n".join("   ".join(f"▰ {s} ▰" for s in stocks[i:i+3]) for i in range(0, len(stocks), 3)) if stocks else "▰ NOCHANGE ▰"
+    core_line = "   ".join(f"▰ {s} ▰" for s in core) if core else "▰ NOCHANGE ▰"
+    body = f"🔔 美股巨头\n{stock_line}\n\n🔔 核心能源\n{core_line}"
     test = os.environ.get("V9_NOTIFICATION_TEST_MODE") == "1"
     if test:
         body = "【测试推送】\n" + body
