@@ -21,7 +21,7 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
             symbols.append(symbol)
             seen.add(symbol)
     core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
-    stock_order = ["NVDA","AAPL","MSFT","AMZN","GOOGL","META","TSLA","AVGO","AMD","HOOD","GLW","SPCX","CRCL","MSTR","COIN","PLTR","ORCL","INTC","MU","MRVL","ASML","ARM","APP","RDDT","NFLX","BABA","JD","QCOM","TXN","AMAT","LRCX","KLAC","JPM","GS","BAC","WFC","XOM","CVX","CAT","GE","CEG","UBER","DASH","SHOP","CRM","NOW","PANW","CRWD","TSM"]
+    stock_order = ["AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA"]
     core = [symbol for symbol in core_order if symbol in seen]
     stocks = [symbol for symbol in stock_order if symbol in seen]
     known = set(core_order) | set(stock_order)
