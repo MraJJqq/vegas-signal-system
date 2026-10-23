@@ -1,0 +1,51 @@
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v9"))
+import ntfy_notifier
+
+
+class V9NotifierTests(unittest.TestCase):
+    def test_empty_report_has_both_nochange_groups(self):
+        body, symbols = ntfy_notifier.build_body({"signals": []})
+        self.assertEqual(symbols, [])
+        self.assertIn("🔔 美股巨头\n▰ NOCHANGE ▰", body)
+        self.assertIn("🔔 核心能源\n▰ NOCHANGE ▰", body)
+
+    def test_symbols_are_deduplicated_and_grouped(self):
+        body, symbols = ntfy_notifier.build_body({"signals": [
+            {"formal_signal": True, "symbol": "NVDAUSDT"},
+            {"formal_signal": True, "symbol": "BTCUSDT"},
+            {"formal_signal": True, "symbol": "NVDAUSDT"},
+            {"formal_signal": False, "symbol": "TSLAUSDT"},
+        ]})
+        self.assertEqual(symbols, ["NVDA", "BTC"])
+        self.assertIn("▰ NVDA ▰", body)
+        self.assertIn("▰ BTC ▰", body)
+        self.assertNotIn("▰ TSLA ▰", body)
+        self.assertNotIn("NOCHANGE", body)
+
+    def test_send_empty_report_posts_to_bark(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            path.write_text(json.dumps({"signals": []}), encoding="utf-8")
+            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False), \
+                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
+                self.assertEqual(urlopen.call_count, 1)
+                payload = json.loads(urlopen.call_args.args[0].data.decode())
+                self.assertIn("NOCHANGE", payload["body"])
+                self.assertEqual(payload["title"], "VEGAS V9 SIGNAL SYSTEM")
+
+    def test_missing_report_fails_cleanly(self):
+        with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False):
+            self.assertEqual(ntfy_notifier.send_notification("/path/that/does/not/exist.json"), 1)
+
+if __name__ == "__main__":
+    unittest.main()
