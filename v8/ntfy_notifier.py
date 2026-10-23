@@ -121,8 +121,7 @@ def send_notification(report_path: str) -> int:
 
     footer_title = "🔔 VEGAS V8 信号系统 🔔"
     message = (
-        "━━━━━━━━━━━━━━━━━━━━\n\n"
-        + core_section + "\n\n" + stock_section
+        core_section + "\n\n" + stock_section
         + "\n\n━━━━━━━━━━━━━━━━━━━━\n\n" + footer_title
     )
     priority = 4 if symbols else 3
