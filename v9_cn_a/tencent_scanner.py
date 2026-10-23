@@ -79,20 +79,31 @@ def fetch(code:str)->list[dict[str,Any]]:
     return out
 
 def send_bark(signals:list[dict[str,Any]])->dict[str,Any]:
+    """Send the A-share-only black-and-gold styled summary on every scan."""
     key=os.environ.get('BARK_KEY','').strip()
-    if not signals:
-        return {'status':'skipped','reason':'no_new_signals'}
     if not key:
         return {'status':'skipped','reason':'BARK_KEY_missing'}
-    title='VEGAS V9 A股新信号'
-    lines=[]
-    for s in signals:
-        side=str(s.get('filter_side',''))
-        symbol=str(s.get('symbol',''))
-        name=str(s.get('name',''))
-        ts=s.get('candle_timestamp_ms')
-        when=datetime.fromtimestamp(ts/1000,tz=TZ).strftime('%m-%d %H:%M') if isinstance(ts,(int,float)) else ''
-        lines.append(f"{name} {symbol} | {side} | {when}")
+    title='VEGAS V9｜A股扫描'
+    lines=[
+        '✦ VEGAS V9',
+        'A-SHARE SIGNAL SYSTEM',
+        '',
+        '🔔 A股 · 今日扫描结果',
+        f'正式信号：{len(signals)}只',
+        '',
+    ]
+    if signals:
+        for s in signals:
+            side=str(s.get('filter_side',''))
+            symbol=str(s.get('symbol',''))
+            name=str(s.get('name',''))
+            ts=s.get('candle_timestamp_ms')
+            when=datetime.fromtimestamp(ts/1000,tz=TZ).strftime('%m-%d %H:%M') if isinstance(ts,(int,float)) else ''
+            lines.append(f'▰ {name}（{symbol}）')
+            lines.append(f'   过滤线确认：{side}  {when}')
+    else:
+        lines.append('今日暂无符合条件的信号。')
+    lines.extend(['', '扫描状态：完成', 'VEGAS V9 · CN'])
     body='\n'.join(lines)
     url='https://api.day.app/'+urllib.parse.quote(key,safe='')+'/'+urllib.parse.quote(title,safe='')+'/'+urllib.parse.quote(body,safe='')
     req=urllib.request.Request(url,headers={'User-Agent':'VEGAS-V9-CN-A/1.0'})
@@ -131,7 +142,7 @@ def main()->int:
     os.makedirs(os.path.dirname(STATE_PATH),exist_ok=True); tmp=STATE_PATH+'.tmp'
     with open(tmp,'w',encoding='utf-8') as f: json.dump(state,f,ensure_ascii=False,indent=2)
     os.replace(tmp,STATE_PATH); os.makedirs(os.path.dirname(REPORT_PATH),exist_ok=True)
-    report['bark_notification']=send_bark(report['new_signals'])
+    report['bark_notification']=send_bark(report['signals'])
     with open(REPORT_PATH,'w',encoding='utf-8') as f: json.dump(report,f,ensure_ascii=False,indent=2)
     print(json.dumps({'date_beijing':today,'pool_size':len(POOL),'symbols_ok':report['symbols_ok'],'symbols_excluded':len(report['symbols_excluded']),'new_signals':len(report['new_signals']),'daily_signals':len(report['signals']),'bark_notification':report['bark_notification'],'report':REPORT_PATH},ensure_ascii=False,indent=2))
     return 0 if report['symbols_ok'] else 1
