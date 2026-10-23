@@ -20,8 +20,13 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
         if symbol and symbol not in seen:
             symbols.append(symbol)
             seen.add(symbol)
+    # Whitelist exactly the current approved 19-symbol pool. Ignore stale signals
+    # from previous pools even if they remain in a persisted report/state file.
     core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
     stock_order = ["AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA"]
+    allowed = set(core_order) | set(stock_order)
+    symbols = [symbol for symbol in symbols if symbol in allowed]
+    seen = set(symbols)
     core = [symbol for symbol in core_order if symbol in seen]
     stocks = [symbol for symbol in stock_order if symbol in seen]
     known = set(core_order) | set(stock_order)
