@@ -50,7 +50,40 @@ jobs:
             exit 0
           fi
           git commit -m "chore(v9): persist signal state"
-          git push
+          branch="${GITHUB_REF_NAME}"
+          # Rebase on the latest remote commit before pushing. If another
+          # commit also changed the state file, keep this run's freshly
+          # generated state while preserving all unrelated remote changes.
+          git fetch origin "$branch"
+          if ! git rebase "origin/$branch"; then
+            if git status --porcelain | grep -q 'v9/\.signal-state\.json'; then
+              git checkout --theirs -- v9/.signal-state.json
+              git add -f v9/.signal-state.json
+              GIT_EDITOR=true git rebase --continue
+            else
+              git rebase --abort
+              exit 1
+            fi
+          fi
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:$branch"; then
+              exit 0
+            fi
+            echo "Push attempt $attempt failed; refreshing remote and retrying."
+            git fetch origin "$branch"
+            if ! git rebase "origin/$branch"; then
+              if git status --porcelain | grep -q 'v9/\.signal-state\.json'; then
+                git checkout --theirs -- v9/.signal-state.json
+                git add -f v9/.signal-state.json
+                GIT_EDITOR=true git rebase --continue
+              else
+                git rebase --abort
+                exit 1
+              fi
+            fi
+          done
+          echo "Unable to push V9 state after 3 attempts."
+          exit 1
       - name: Sync sanitized V9 signals to Vegas Octopus
         if: success()
         env:
