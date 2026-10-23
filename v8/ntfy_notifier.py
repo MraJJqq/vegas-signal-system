@@ -98,31 +98,26 @@ def send_notification(report_path: str) -> int:
             daily_symbols.append(symbol)
             daily_seen.add(symbol)
 
-    display_symbols = daily_symbols if show_symbols else []
-    core_order = ["BTC", "HYPE", "XAU", "CL"]
-    core = [symbol for symbol in core_order if symbol in display_symbols]
-    stocks = [symbol for symbol in display_symbols if symbol not in core_order]
+    # Approved compact scan-pool layout. Signal detection and comparison state remain unchanged.
+    core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
+    stock_order = [
+        "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
+        "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX", "CRCL",
+        "MSTR", "COIN", "PLTR", "ORCL", "INTC", "MU", "MRVL",
+        "ASML", "ARM", "APP", "RDDT", "NFLX", "BABA", "JD",
+    ]
 
-    core_section = "🔔 核心能源"
-    if show_symbols and core:
-        core_section += "\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core)
-    else:
-        core_section += "\n▰ No change ▰"
-
-    stock_section = "🔔 美股巨头"
-    if show_symbols and stocks:
-        stock_lines = [
-            "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
-            for i in range(0, len(stocks), 3)
-        ]
-        stock_section += "\n" + "\n".join(stock_lines)
-    else:
-        stock_section += "\n▰ No change ▰"
+    core_section = "🔔 核心能源\\n" + "   ".join(
+        f"▰ {symbol} ▰" for symbol in core_order
+    )
+    stock_lines = [
+        "   ".join(f"▰ {symbol} ▰" for symbol in stock_order[i:i + 3])
+        for i in range(0, len(stock_order), 3)
+    ]
+    stock_section = "🔔 美股巨头\\n" + "\\n".join(stock_lines)
 
     footer_title = "VEGAS V8 SIGNAL SYSTEM"
-    message = (
-        footer_title + "\n\n" + stock_section + "\n\n" + core_section
-    )
+    message = footer_title + "\\n\\n" + stock_section + "\\n\\n" + core_section
     priority = 4 if symbols else 3
 
     ntfy_payload = json.dumps(
