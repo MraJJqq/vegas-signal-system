@@ -101,6 +101,9 @@ def send_notification(report_path: str) -> int:
             f"▰ {symbol} ▰" for symbol in core
         ))
     message = "\n\n".join(sections)
+    test_mode = os.environ.get("V8_NOTIFICATION_TEST_MODE") == "1"
+    if test_mode:
+        message = "【测试推送】\n" + message
 
     ntfy_payload = json.dumps(
         {"topic": topic, "message": message, "priority": 4},
@@ -126,7 +129,7 @@ def send_notification(report_path: str) -> int:
     bark_payload = json.dumps(
         {
             "device_key": bark_key,
-            "title": "VEGAS V8 SIGNAL SYSTEM",
+            "title": "【测试推送】VEGAS V8 SIGNAL SYSTEM" if test_mode else "VEGAS V8 SIGNAL SYSTEM",
             "body": message,
             "group": "VEGAS V8",
             "level": "active",
