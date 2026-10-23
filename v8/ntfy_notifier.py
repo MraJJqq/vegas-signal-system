@@ -107,17 +107,17 @@ def send_notification(report_path: str) -> int:
         "ASML", "ARM", "APP", "RDDT", "NFLX", "BABA", "JD",
     ]
 
-    core_section = "🔔 核心能源\\n" + "   ".join(
+    core_section = "🔔 核心能源\n" + "   ".join(
         f"▰ {symbol} ▰" for symbol in core_order
     )
     stock_lines = [
         "   ".join(f"▰ {symbol} ▰" for symbol in stock_order[i:i + 3])
         for i in range(0, len(stock_order), 3)
     ]
-    stock_section = "🔔 美股巨头\\n" + "\\n".join(stock_lines)
+    stock_section = "🔔 美股巨头\n" + "\n".join(stock_lines)
 
     footer_title = "VEGAS V8 SIGNAL SYSTEM"
-    message = footer_title + "\\n\\n" + stock_section + "\\n\\n" + core_section
+    message = footer_title + "\n\n" + stock_section + "\n\n" + core_section
     priority = 4 if symbols else 3
 
     ntfy_payload = json.dumps(
