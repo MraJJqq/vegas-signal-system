@@ -101,11 +101,18 @@ def save_state(state: dict[str, dict[str, Any]]) -> None:
 def scan_market_data() -> dict[str, Any]:
     tz = timezone(timedelta(hours=8))
     today = datetime.now(tz).date()
-    state = load_state()
+    # Keep only state for the approved current 19-symbol pool; discard legacy symbols.
+    loaded_state = load_state()
+    state = {key: value for key, value in loaded_state.items()
+             if key == "__daily_formal_signals__" or key in SYMBOLS}
     daily_state = state.get("__daily_formal_signals__", {})
     if daily_state.get("date") != today.isoformat():
         daily_state = {"date": today.isoformat(), "signals": []}
-    daily_signals = list(daily_state.get("signals", []))
+    # Old same-day signals from retired pools must never be carried into notifications.
+    daily_signals = [
+        signal for signal in daily_state.get("signals", [])
+        if isinstance(signal, dict) and str(signal.get("symbol", "")).upper() in SYMBOLS
+    ]
     turnovers, turnover_error = fetch_stock_turnovers()
     scan_symbols = list(f"{x}USDT" for x in CORE_MARKETS)
     excluded_by_turnover: list[dict[str, Any]] = []
