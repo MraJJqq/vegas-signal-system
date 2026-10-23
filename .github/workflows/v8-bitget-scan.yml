@@ -2,7 +2,9 @@ name: VEGAS V8 Bitget Scan
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    # China time (UTC+8): every hour from 07:00 through 22:00 inclusive.
+    - cron: "0 23 * * *"
+    - cron: "0 0-14 * * *"
   workflow_dispatch:
 
 permissions:
