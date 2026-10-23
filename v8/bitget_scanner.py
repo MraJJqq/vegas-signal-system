@@ -24,7 +24,7 @@ SIGNAL_STATE_PATH = os.environ.get("V8_SIGNAL_STATE_PATH", "v8/.signal-state.jso
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
 STOCKS = (
     "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
-    "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX",
+    "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX", "CRCL",
 )
 SYMBOLS = tuple(f"{ticker}USDT" for ticker in (*CORE_MARKETS, *STOCKS))
 
