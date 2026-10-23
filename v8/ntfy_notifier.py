@@ -119,7 +119,7 @@ def send_notification(report_path: str) -> int:
     else:
         stock_section += "\n▰ No change ▰"
 
-    footer_title = "🔔 VEGAS V8 信号系统 🔔"
+    footer_title = "VEGAS V8 SIGNAL SYSTEM"
     message = (
         footer_title + "\n\n" + stock_section + "\n\n" + core_section
     )
