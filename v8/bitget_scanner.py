@@ -115,11 +115,12 @@ def save_signal_state(state: dict[str, dict[str, Any]]) -> None:
     temporary_path = SIGNAL_STATE_PATH + ".tmp"
     with open(temporary_path, "w", encoding="utf-8") as file:
         json.dump(state, file, ensure_ascii=False, indent=2)
-        file.write("\\n")
+        file.write("\n")
     os.replace(temporary_path, SIGNAL_STATE_PATH)
 
 
-def scan_market_data() -> dict[str, Any]:    report: dict[str, Any] = {
+def scan_market_data() -> dict[str, Any]:
+    report: dict[str, Any] = {
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": "Bitget Mix USDT-FUTURES",
         "scan_timeframes": [GRANULARITY],
