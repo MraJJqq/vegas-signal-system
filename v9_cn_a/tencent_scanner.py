@@ -37,23 +37,45 @@ def fetch(code:str)->list[dict[str,Any]]:
     stock=(payload.get('data') or {}).get(code) or {}
     rows=stock.get('m60') or (stock.get('data') or {}).get('m60') or []
     out=[]
+    def parse_time(value:Any)->int:
+        # Tencent has returned both formatted dates and compact numeric timestamps.
+        if isinstance(value,(int,float)) or (isinstance(value,str) and value.strip().isdigit() and len(value.strip())>=10):
+            n=int(value)
+            if n>10**12: return n
+            if n>10**9: return n*1000
+        s=str(value).strip()
+        for fmt,nchars in (('%Y-%m-%d %H:%M:%S',19),('%Y-%m-%d %H:%M',16),('%Y/%m/%d %H:%M',16),('%Y-%m-%d',10),('%Y%m%d%H%M',12),('%Y%m%d',8)):
+            try: return int(datetime.strptime(s[:nchars],fmt).replace(tzinfo=TZ).timestamp()*1000)
+            except ValueError: pass
+        raise ValueError(f'Unsupported Tencent candle timestamp: {s[:50]!r}')
+
+    def number(value:Any)->float:
+        # Some Tencent responses encode numeric fields as strings with whitespace.
+        return float(str(value).strip().replace(',',''))
+
     for row in rows:
         try:
-            # Tencent hourly rows: datetime, open, close, high, low, volume, ...
-            date=str(row[0]).strip()
-            try:
-                dt=datetime.strptime(date[:16],'%Y-%m-%d %H:%M')
-            except ValueError:
-                dt=datetime.strptime(date[:10],'%Y-%m-%d')
-            ts=int(dt.replace(tzinfo=TZ).timestamp()*1000)
-            o,cl,hi,lo=map(float,row[1:5]); vol=float(row[5]) if len(row)>5 else 0
+            if isinstance(row,dict):
+                date=row.get('datetime',row.get('date',row.get('time')))
+                o=number(row.get('open')); cl=number(row.get('close'))
+                hi=number(row.get('high')); lo=number(row.get('low'))
+                vol=number(row.get('volume',0))
+            elif isinstance(row,(list,tuple)) and len(row)>=5:
+                date=row[0]
+                # Tencent standard order: time, open, close, high, low, volume, ...
+                o,cl,hi,lo=map(number,row[1:5]); vol=number(row[5]) if len(row)>5 else 0
+            else:
+                continue
+            ts=parse_time(date)
             if min(o,cl,hi,lo)<=0 or hi<max(o,cl) or lo>min(o,cl) or lo>hi: continue
             out.append({'timestamp_ms':ts,'open':o,'close':cl,'high':hi,'low':lo,'volume':vol,'closed':ts+3600000<=int(time.time()*1000)})
-        except (ValueError,TypeError,IndexError): continue
+        except (ValueError,TypeError,IndexError,OverflowError): continue
     out.sort(key=lambda x:x['timestamp_ms'])
     # Do not silently reject a symbol just because Tencent returns fewer bars:
     # the Vegas engine itself determines whether enough history exists.
-    if len(out)<1: raise ValueError(f'No valid hourly candles returned; raw m60 rows={len(rows)}')
+    if len(out)<1:
+        sample=repr(rows[0])[:240] if rows else '<empty>'
+        raise ValueError(f'No valid hourly candles returned; raw m60 rows={len(rows)}; first_row={sample}')
     return out
 
 def main()->int:
