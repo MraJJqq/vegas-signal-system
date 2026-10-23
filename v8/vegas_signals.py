@@ -59,8 +59,16 @@ def detect_formal_signals(
         high, low = float(candle["high"]), float(candle["low"])
         if observing and filter_value is not None:
             close_price = float(candle["close"])
-            if close_price > filter_value or close_price < filter_value:
-                side = "上方" if close_price > filter_value else "下方"
+            if close_price > filter_value:
+                side = "上方"
+            elif close_price < filter_value:
+                side = "下方"
+            else:
+                side = None
+
+            # EMA12 confirmation is a close-side check, not a crossover.
+            # An exact equality keeps the existing observation active.
+            if side is not None:
                 signals.append({
                     "formal_signal": True, "symbol": symbol, "timeframe": "1H",
                     "line": ", ".join(touched_lines),
