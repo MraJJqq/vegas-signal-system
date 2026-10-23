@@ -46,8 +46,12 @@ def save_state(day: str, symbols: list[str]) -> None:
 
 def send_notification(report_path: str) -> int:
     topic = os.environ.get("V8_NTFY_TOPIC", "").strip()
+    bark_key = os.environ.get("V8_BARK_KEY", "").strip()
     if not topic:
         print("ERROR: V8_NTFY_TOPIC is not configured.", file=sys.stderr)
+        return 1
+    if not bark_key:
+        print("ERROR: V8_BARK_KEY is not configured.", file=sys.stderr)
         return 1
 
     token = os.environ.get("V8_NTFY_TOKEN", "").strip()
@@ -79,7 +83,6 @@ def send_notification(report_path: str) -> int:
         if str(symbol).strip()
     ]
 
-    # A new China-local day starts a clean cumulative list.
     first_scan_today = previous_state.get("date") != today
     if first_scan_today:
         previous_symbols = []
@@ -88,7 +91,6 @@ def send_notification(report_path: str) -> int:
     has_new_symbol = bool(set(symbols) - previous_seen)
     show_symbols = first_scan_today or has_new_symbol
 
-    # Preserve the order in which symbols first appeared during the current day.
     daily_symbols = list(previous_symbols)
     daily_seen = set(daily_symbols)
     for symbol in symbols:
@@ -96,8 +98,6 @@ def send_notification(report_path: str) -> int:
             daily_symbols.append(symbol)
             daily_seen.add(symbol)
 
-    # Only display the day's cumulative list on the first scan or when a new
-    # symbol appears. Otherwise both categories show the exact No change text.
     display_symbols = daily_symbols if show_symbols else []
     core_order = ["BTC", "HYPE", "XAU", "CL"]
     core = [symbol for symbol in core_order if symbol in display_symbols]
@@ -125,31 +125,65 @@ def send_notification(report_path: str) -> int:
         + "\n\n━━━━━━━━━━━━━━━━━━━━\n本轮扫描结束"
     )
     priority = 4 if symbols else 3
+    title = "🔔 VEGAS V8 信号系统 🔔"
 
-    payload = json.dumps(
-        {"topic": topic, "title": "🔔 VEGAS V8 信号系统 🔔", "message": message, "priority": priority},
+    ntfy_payload = json.dumps(
+        {"topic": topic, "title": title, "message": message, "priority": priority},
         ensure_ascii=False,
     ).encode("utf-8")
-    headers = {"Content-Type": "application/json; charset=utf-8"}
+    ntfy_headers = {"Content-Type": "application/json; charset=utf-8"}
     if token:
-        headers["Authorization"] = f"Bearer {token}"
+        ntfy_headers["Authorization"] = f"Bearer {token}"
 
-    request = urllib.request.Request(
-        "https://ntfy.sh/", data=payload, headers=headers, method="POST"
-    )
+    ntfy_ok = False
+    bark_ok = False
     try:
+        request = urllib.request.Request(
+            "https://ntfy.sh/", data=ntfy_payload, headers=ntfy_headers, method="POST"
+        )
         with urllib.request.urlopen(request, timeout=20) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
-            # Save the cumulative daily list only after ntfy confirms success.
-            save_state(today, daily_symbols)
-            mode = "full daily list" if show_symbols else "no change"
-            print(f"ntfy accepted grouped notification (HTTP {response.status}; {mode}).")
-            return 0
+            ntfy_ok = True
+            print(f"ntfy accepted notification (HTTP {response.status}).")
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
         print(f"ntfy notification failed: {exc}", file=sys.stderr)
-        return 1
 
+    bark_payload = json.dumps(
+        {
+            "device_key": bark_key,
+            "title": title,
+            "body": message,
+            "group": "VEGAS V8",
+            "level": "active",
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    try:
+        request = urllib.request.Request(
+            "https://api.day.app/push",
+            data=bark_payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if not 200 <= response.status < 300:
+                raise RuntimeError(f"Bark returned HTTP {response.status}")
+            bark_ok = True
+            print(f"Bark accepted notification (HTTP {response.status}).")
+    except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
+        print(f"Bark notification failed: {exc}", file=sys.stderr)
+
+    # Only advance comparison state when both channels accepted this notification.
+    # If one channel fails, the next scheduled run retries the same daily list.
+    if ntfy_ok and bark_ok:
+        save_state(today, daily_symbols)
+        mode = "full daily list" if show_symbols else "no change"
+        print(f"Both notification channels succeeded ({mode}).")
+        return 0
+
+    print("ERROR: one or more notification channels failed; state was not advanced.", file=sys.stderr)
+    return 1
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v8/scan-report.json"))
