@@ -10,22 +10,50 @@ TZ=timezone(timedelta(hours=8)); STATE_PATH=os.environ.get('V9_CN_A_STATE_PATH',
 POOL=[('sh600036','招商银行'),('sh600519','贵州茅台'),('sh601318','中国平安'),('sh600030','中信证券'),('sh601166','兴业银行'),('sh600900','长江电力'),('sh600276','恒瑞医药'),('sh601888','中国中免'),('sh600887','伊利股份'),('sh600809','山西汾酒'),('sh601012','隆基绿能'),('sh600438','通威股份'),('sh601668','中国建筑'),('sh601398','工商银行'),('sh601288','农业银行'),('sh601988','中国银行'),('sh601939','建设银行'),('sh600000','浦发银行'),('sh600016','民生银行'),('sh601857','中国石油'),('sh600028','中国石化'),('sh600104','上汽集团'),('sh601766','中国中车'),('sh601601','中国太保'),('sh600050','中国联通'),('sz000001','平安银行'),('sz000333','美的集团'),('sz000651','格力电器'),('sz000858','五粮液'),('sz002415','海康威视'),('sz002594','比亚迪'),('sz000725','京东方A'),('sz002475','立讯精密'),('sz300750','宁德时代'),('sz300059','东方财富'),('sz300124','汇川技术'),('sz300760','迈瑞医疗'),('sz300015','爱尔眼科'),('sz300274','阳光电源'),('sz002714','牧原股份'),('sz002230','科大讯飞'),('sz002371','北方华创'),('sh688981','中芯国际'),('sh688041','海光信息'),('sh688111','金山办公'),('sh688008','澜起科技'),('sh688012','中微公司'),('sh688036','传音控股'),('sz300502','新易盛'),('sz300308','中际旭创')]
 
 def fetch(code:str)->list[dict[str,Any]]:
-    # Tencent's public minute-Kline endpoint; m60 is the hourly series.
-    url='https://web.ifzq.gtimg.cn/appstock/app/kline/mkline?'+urllib.parse.urlencode({'param':f'{code},m60,,800'})
-    req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Referer':'https://gu.qq.com/'})
-    with urllib.request.urlopen(req,timeout=15) as r: payload=json.loads(r.read().decode('utf-8','replace'))
-    stock=(payload.get('data') or {}).get(code) or {}; rows=stock.get('m60') or (stock.get('data') or {}).get('m60') or []
+    # Tencent mirrors differ in DNS reachability across hosted runners; try both.
+    params=urllib.parse.urlencode({'param':f'{code},m60,,800'})
+    errors=[]
+    payload=None
+    for host in ('ifzq.gtimg.cn','web.ifzq.gtimg.cn'):
+        url=f'https://{host}/appstock/app/kline/mkline?{params}'
+        req=urllib.request.Request(url,headers={
+            'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+            'Referer':'https://gu.qq.com/',
+            'Accept':'application/json,text/plain,*/*',
+            'Connection':'close',
+        })
+        try:
+            with urllib.request.urlopen(req,timeout=20) as r:
+                raw=r.read().decode('utf-8','replace')
+            candidate=json.loads(raw)
+            if not isinstance(candidate,dict) or not isinstance(candidate.get('data'),dict):
+                raise ValueError(f'Unexpected Tencent response from {host}')
+            payload=candidate
+            break
+        except Exception as e:
+            errors.append(f'{host}: {type(e).__name__}: {e}')
+    if payload is None:
+        raise RuntimeError('Tencent endpoints unavailable; '+' | '.join(errors))
+    stock=(payload.get('data') or {}).get(code) or {}
+    rows=stock.get('m60') or (stock.get('data') or {}).get('m60') or []
     out=[]
     for row in rows:
         try:
-            # Tencent minute Kline convention: date, open, close, high, low, volume, ...
-            date=str(row[0]); ts=int(datetime.strptime(date[:16],'%Y-%m-%d %H:%M').replace(tzinfo=TZ).timestamp()*1000)
+            # Tencent hourly rows: datetime, open, close, high, low, volume, ...
+            date=str(row[0]).strip()
+            try:
+                dt=datetime.strptime(date[:16],'%Y-%m-%d %H:%M')
+            except ValueError:
+                dt=datetime.strptime(date[:10],'%Y-%m-%d')
+            ts=int(dt.replace(tzinfo=TZ).timestamp()*1000)
             o,cl,hi,lo=map(float,row[1:5]); vol=float(row[5]) if len(row)>5 else 0
             if min(o,cl,hi,lo)<=0 or hi<max(o,cl) or lo>min(o,cl) or lo>hi: continue
             out.append({'timestamp_ms':ts,'open':o,'close':cl,'high':hi,'low':lo,'volume':vol,'closed':ts+3600000<=int(time.time()*1000)})
         except (ValueError,TypeError,IndexError): continue
     out.sort(key=lambda x:x['timestamp_ms'])
-    if len(out)<677: raise ValueError(f'Insufficient valid hourly candles: {len(out)}')
+    # Do not silently reject a symbol just because Tencent returns fewer bars:
+    # the Vegas engine itself determines whether enough history exists.
+    if len(out)<1: raise ValueError(f'No valid hourly candles returned; raw m60 rows={len(rows)}')
     return out
 
 def main()->int:
