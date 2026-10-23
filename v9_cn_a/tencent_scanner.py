@@ -93,7 +93,7 @@ def send_bark(signals:list[dict[str,Any]])->dict[str,Any]:
         ts=s.get('candle_timestamp_ms')
         when=datetime.fromtimestamp(ts/1000,tz=TZ).strftime('%m-%d %H:%M') if isinstance(ts,(int,float)) else ''
         lines.append(f"{name} {symbol} | {side} | {when}")
-    body='\\n'.join(lines)
+    body='\n'.join(lines)
     url='https://api.day.app/'+urllib.parse.quote(key,safe='')+'/'+urllib.parse.quote(title,safe='')+'/'+urllib.parse.quote(body,safe='')
     req=urllib.request.Request(url,headers={'User-Agent':'VEGAS-V9-CN-A/1.0'})
     try:
