@@ -28,7 +28,9 @@ jobs:
       - name: Restore V8 previous-scan state
         uses: actions/cache@v4
         with:
-          path: v8/.scan-state.json
+          path: |
+            v8/.scan-state.json
+            v8/.signal-state.json
           key: v8-scan-state-${{ steps.scan-date.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             v8-scan-state-${{ steps.scan-date.outputs.day }}-
