@@ -29,6 +29,21 @@ class V9NotifierTests(unittest.TestCase):
         self.assertNotIn("▰ TSLA ▰", body)
         self.assertNotIn("NOCHANGE", body)
 
+    def test_stale_symbols_from_previous_pool_are_ignored(self):
+        body, symbols = ntfy_notifier.build_body({"signals": [
+            {"formal_signal": True, "symbol": "NVDAUSDT"},
+            {"formal_signal": True, "symbol": "MSFTUSDT"},
+            {"formal_signal": True, "symbol": "CRCLUSDT"},
+            {"formal_signal": True, "symbol": "MSTRUSDT"},
+            {"formal_signal": True, "symbol": "SNDKUSDT"},
+        ]})
+        self.assertEqual(symbols, ["NVDA", "SNDK"])
+        self.assertIn("🔔 美股巨头", body)
+        self.assertIn("▰ NVDA ▰", body)
+        self.assertIn("🔔 核心能源\\n▰ SNDK ▰", body)
+        for stale in ("MSFT", "CRCL", "MSTR"):
+            self.assertNotIn(f"▰ {stale} ▰", body)
+
     def test_send_empty_report_posts_to_bark(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
