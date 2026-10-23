@@ -1,0 +1,52 @@
+name: VEGAS V9 A股 Tencent Scan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v9-cn-a-tencent-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate isolated A-share code
+        run: python -m compileall -q v9_cn_a
+      - name: Run Tencent A-share scan
+        env:
+          V9_CN_A_STATE_PATH: v9_cn_a/.signal-state.json
+          V9_CN_A_REPORT_PATH: v9_cn_a/scan-report.json
+        run: python v9_cn_a/tencent_scanner.py
+      - name: Persist A-share state only
+        if: always()
+        run: |
+          if [ -f v9_cn_a/.signal-state.json ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -f v9_cn_a/.signal-state.json
+            if ! git diff --cached --quiet; then
+              git commit -m 'chore(v9-cn-a): persist A-share signal state'
+              git push
+            fi
+          fi
+      - name: Upload A-share scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vegas-v9-cn-a-tencent-scan-report
+          path: v9_cn_a/scan-report.json
+          if-no-files-found: warn
+          retention-days: 7
