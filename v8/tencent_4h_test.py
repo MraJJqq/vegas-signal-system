@@ -5,14 +5,14 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 CONFIG = Path(__file__).with_name("ashare_universe.json")
-ENDPOINT = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+ENDPOINT = "https://ifzq.gtimg.cn/appstock/app/newfqkline/get"
 TIMEOUT_SECONDS = 15
 
 def market_symbol(code: str) -> str:
-    return ("sh" if code.startswith(("5", "6", "9")) else "sz") + code
+    return ("sh" if code.startswith(("5", "6", "9")) else "bj" if code.startswith(("4", "8")) else "sz") + code
 
 def fetch_period(symbol: str, period: str, start: date, end: date) -> dict:
-    params = {"param": f"{symbol},{period},{start.isoformat()},{end.isoformat()},200,qfq"}
+    params = {"param": f"{symbol},{period},{start.isoformat()},{end.isoformat()},500,qfq"}
     url = f"{ENDPOINT}?{urllib.parse.urlencode(params)}"
     request = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (compatible; VEGAS-V8-Tencent-4H-Test/1.0)",
@@ -28,7 +28,7 @@ def fetch_period(symbol: str, period: str, start: date, end: date) -> dict:
     node = (payload.get("data") or {}).get(symbol)
     if not isinstance(node, dict):
         raise ValueError(f"missing data node; API code={payload.get('code')}")
-    keys = (period, "m240", "240m") if period == "m240" else (period,)
+    keys = (f"{period}_qfq", period, "240m_qfq", "240m") if period == "m240" else (f"{period}_qfq", period)
     key = next((k for k in keys if node.get(k)), None)
     rows = node.get(key, []) if key else []
     if not rows:
