@@ -28,56 +28,50 @@ def ema(values: list[float], period: int) -> list[float | None]:
     return result
 
 
-def detect_formal_signals(symbol: str, candles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Touch a 1H 中锋/红峰 line to enter unlimited observation.
+def detect_formal_signals(
+    symbol: str,
+    candles: list[dict[str, Any]],
+    state: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Detect signals while carrying observation state across scanner runs.
 
-    A formal signal is emitted only on a later closed 1H candle whose close
-    is strictly above or below EMA12. Touching and filter confirmation cannot
-    occur on the same candle. After a formal signal, observation resets.
+    The state dictionary is updated in place so the caller can persist it
+    between scans and avoid losing long-lived observations or replaying bars.
     """
-    closed = sorted(
-        (c for c in candles if c.get("closed")),
-        key=lambda c: c["timestamp_ms"],
-    )
+    closed = sorted((c for c in candles if c.get("closed")), key=lambda c: c["timestamp_ms"])
     if not closed:
         return []
-
+    if state is None:
+        state = {}
+    observing = bool(state.get("observing", False))
+    touched_lines = [str(line) for line in state.get("touched_lines", [])]
+    touch_timestamp_ms = state.get("touch_timestamp_ms")
+    last_processed = int(state.get("last_processed_timestamp_ms", -1))
     closes = [float(c["close"]) for c in closed]
     values = {label: ema(closes, period) for label, period in LINES}
     filter_values = ema(closes, FILTER_PERIOD)
-    observing = False
-    touched_lines: list[str] = []
-    touch_timestamp_ms: int | None = None
     signals: list[dict[str, Any]] = []
-
     for index, candle in enumerate(closed):
+        timestamp_ms = int(candle["timestamp_ms"])
+        if timestamp_ms <= last_processed:
+            continue
         filter_value = filter_values[index]
         high, low = float(candle["high"]), float(candle["low"])
-
-        if observing:
-            if filter_value is not None:
-                close_price = float(candle["close"])
-                if close_price > filter_value or close_price < filter_value:
-                    side = "上方" if close_price > filter_value else "下方"
-                    signals.append({
-                        "formal_signal": True,
-                        "symbol": symbol,
-                        "timeframe": "1H",
-                        "line": ", ".join(touched_lines),
-                        "touch_timestamp_ms": touch_timestamp_ms,
-                        "filter_line": "EMA12",
-                        "filter_side": side,
-                        "filter_value": filter_value,
-                        "close_price": close_price,
-                        "candle_timestamp_ms": int(candle["timestamp_ms"]),
-                    })
-                    observing = False
-                    touched_lines = []
-                    touch_timestamp_ms = None
-                    continue
-
-        # Only enter observation when not already observing. This ensures the
-        # touch candle itself cannot also become the formal-signal candle.
+        if observing and filter_value is not None:
+            close_price = float(candle["close"])
+            if close_price > filter_value or close_price < filter_value:
+                side = "上方" if close_price > filter_value else "下方"
+                signals.append({
+                    "formal_signal": True, "symbol": symbol, "timeframe": "1H",
+                    "line": ", ".join(touched_lines),
+                    "touch_timestamp_ms": touch_timestamp_ms,
+                    "filter_line": "EMA12", "filter_side": side,
+                    "filter_value": filter_value, "close_price": close_price,
+                    "candle_timestamp_ms": timestamp_ms,
+                })
+                observing, touched_lines, touch_timestamp_ms = False, [], None
+                last_processed = timestamp_ms
+                continue
         if not observing:
             hit_lines = []
             for label, _period in LINES:
@@ -85,8 +79,12 @@ def detect_formal_signals(symbol: str, candles: list[dict[str, Any]]) -> list[di
                 if line_value is not None and low <= line_value <= high:
                     hit_lines.append(label)
             if hit_lines:
-                observing = True
-                touched_lines = hit_lines
-                touch_timestamp_ms = int(candle["timestamp_ms"])
-
+                observing, touched_lines = True, hit_lines
+                touch_timestamp_ms = timestamp_ms
+        last_processed = timestamp_ms
+    state.update({
+        "observing": observing, "touched_lines": touched_lines,
+        "touch_timestamp_ms": touch_timestamp_ms,
+        "last_processed_timestamp_ms": last_processed,
+    })
     return signals

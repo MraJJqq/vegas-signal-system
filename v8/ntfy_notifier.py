@@ -87,8 +87,7 @@ def send_notification(report_path: str) -> int:
     core = [symbol for symbol in core_order if symbol in symbols]
     stocks = [symbol for symbol in symbols if symbol not in core_order]
 
-    # Category headings are always present. When names should be hidden, show
-    # only the headings (no placeholder text such as "No change").
+    # When no new symbols appear, both category sections show the approved placeholder.
     core_section = "🔔 核心能源"
     stock_section = "🔔 美股巨头"
     if show_symbols:
@@ -100,6 +99,9 @@ def send_notification(report_path: str) -> int:
                 for i in range(0, len(stocks), 3)
             ]
             stock_section += "\n" + "\n".join(stock_lines)
+    else:
+        core_section += "\n▰ No change ▰"
+        stock_section += "\n▰ No change ▰"
 
     message = (
         "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -125,7 +127,7 @@ def send_notification(report_path: str) -> int:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
             # Save the latest result only after ntfy confirms the push succeeded.
             save_state(today, symbols)
-            mode = "full list" if show_symbols else "headings only"
+            mode = "full list" if show_symbols else "no change"
             print(f"ntfy accepted grouped notification (HTTP {response.status}; {mode}).")
             return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:

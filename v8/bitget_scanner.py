@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -17,6 +18,7 @@ PRODUCT_TYPE = "USDT-FUTURES"
 GRANULARITY = "1H"
 CANDLE_LIMIT = 800
 REQUEST_TIMEOUT = 15
+SIGNAL_STATE_PATH = os.environ.get("V8_SIGNAL_STATE_PATH", "v8/.signal-state.json")
 
 # Final pool: core markets first, then selected US stock contracts.
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CLU", "SNDK")
@@ -73,11 +75,48 @@ def fetch_candles(symbol: str) -> list[dict[str, Any]]:
         except (TypeError, ValueError, IndexError):
             continue
     candles.sort(key=lambda c: c["timestamp_ms"])
+    seen_timestamps: set[int] = set()
+    for candle in candles:
+        timestamp_ms = candle["timestamp_ms"]
+        if timestamp_ms in seen_timestamps:
+            raise BitgetError(f"Duplicate candle timestamp: {timestamp_ms}")
+        seen_timestamps.add(timestamp_ms)
+        prices = [candle[key] for key in ("open", "high", "low", "close")]
+        if not all(math.isfinite(value) and value > 0 for value in prices):
+            raise BitgetError(f"Invalid OHLC value at {timestamp_ms}")
+        if candle["high"] < max(candle["open"], candle["close"]):
+            raise BitgetError(f"High below open/close at {timestamp_ms}")
+        if candle["low"] > min(candle["open"], candle["close"]):
+            raise BitgetError(f"Low above open/close at {timestamp_ms}")
+        if candle["low"] > candle["high"]:
+            raise BitgetError(f"Low above high at {timestamp_ms}")
     now_ms = int(time.time() * 1000)
     interval_ms = 60 * 60 * 1000
     for candle in candles:
         candle["closed"] = candle["timestamp_ms"] + interval_ms <= now_ms
     return candles
+
+
+def load_signal_state() -> dict[str, dict[str, Any]]:
+    try:
+        with open(SIGNAL_STATE_PATH, "r", encoding="utf-8") as file:
+            value = json.load(file)
+        if not isinstance(value, dict):
+            return {}
+        return {str(symbol): state for symbol, state in value.items() if isinstance(state, dict)}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_signal_state(state: dict[str, dict[str, Any]]) -> None:
+    directory = os.path.dirname(SIGNAL_STATE_PATH)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_path = SIGNAL_STATE_PATH + ".tmp"
+    with open(temporary_path, "w", encoding="utf-8") as file:
+        json.dump(state, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    os.replace(temporary_path, SIGNAL_STATE_PATH)
 
 
 def scan_market_data() -> dict[str, Any]:
@@ -91,6 +130,7 @@ def scan_market_data() -> dict[str, Any]:
         "results": [],
         "signals": [],
     }
+    signal_state = load_signal_state()
     for symbol in SYMBOLS:
         item: dict[str, Any] = {"symbol": symbol, "timeframes": {}}
         try:
@@ -101,7 +141,8 @@ def scan_market_data() -> dict[str, Any]:
             # Only keep signals from closed 1H candles dated today in China time.
             china_tz = timezone(timedelta(hours=8))
             china_today = datetime.now(china_tz).date()
-            daily_signals = detect_formal_signals(symbol, candles)
+            symbol_state = signal_state.setdefault(symbol, {})
+            daily_signals = detect_formal_signals(symbol, candles, symbol_state)
             report["signals"].extend(
                 signal for signal in daily_signals
                 if datetime.fromtimestamp(
@@ -123,6 +164,7 @@ def scan_market_data() -> dict[str, Any]:
             item["excluded_reason"] = str(exc)
             report["symbols_excluded"] += 1
         report["results"].append(item)
+    save_signal_state(signal_state)
     return report
 
 
