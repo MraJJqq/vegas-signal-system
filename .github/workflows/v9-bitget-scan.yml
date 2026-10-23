@@ -52,10 +52,14 @@ jobs:
           git commit -m "chore(v9): persist signal state"
           git push
       - name: Sync sanitized V9 signals to Vegas Octopus
-        if: success() && env.OCTOPUS_SYNC_TOKEN != ''
+        if: success()
         env:
           OCTOPUS_SYNC_TOKEN: ${{ secrets.OCTOPUS_SYNC_TOKEN }}
         run: |
+          if [ -z "$OCTOPUS_SYNC_TOKEN" ]; then
+            echo "OCTOPUS_SYNC_TOKEN is not configured; signal sync skipped safely."
+            exit 0
+          fi
           python - <<'PY'
           import json
           from datetime import datetime, timezone
