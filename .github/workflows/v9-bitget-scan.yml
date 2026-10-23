@@ -78,7 +78,7 @@ jobs:
               ]
           }
           Path("/tmp/octopus-signal-state.json").write_text(
-              json.dumps(safe, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+              json.dumps(safe, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           PY
           git clone "https://x-access-token:${OCTOPUS_SYNC_TOKEN}@github.com/MraJJqq/vegas-octopus.git" /tmp/vegas-octopus
           cp /tmp/octopus-signal-state.json /tmp/vegas-octopus/web/signal-state.json
