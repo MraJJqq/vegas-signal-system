@@ -24,9 +24,7 @@ def send_notification(report_path: str) -> int:
         if symbol and symbol not in seen:
             symbols.append(symbol)
             seen.add(symbol)
-    if not symbols:
-        print("No formal signals found; no notification sent.")
-        return 0
+    # Always notify every scan. Empty groups are represented by NOCHANGE.
     core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
     stock_order = ["NVDA","AAPL","MSFT","AMZN","GOOGL","META","TSLA","AVGO","AMD","HOOD","GLW","SPCX","CRCL","MSTR","COIN","PLTR","ORCL","INTC","MU","MRVL","ASML","ARM","APP","RDDT","NFLX","BABA","JD","QCOM","TXN","AMAT","LRCX","KLAC","JPM","GS","BAC","WFC","XOM","CVX","CAT","GE","CEG","UBER","DASH","SHOP","CRM","NOW","PANW","CRWD","TSM"]
     core = [s for s in core_order if s in seen]
