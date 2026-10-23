@@ -45,10 +45,15 @@ def save_state(day: str, symbols: list[str]) -> None:
 
 
 def send_notification(report_path: str) -> int:
+    topic = os.environ.get("V8_NTFY_TOPIC", "").strip()
     bark_key = os.environ.get("V8_BARK_KEY", "").strip()
+    if not topic:
+        print("ERROR: V8_NTFY_TOPIC is not configured.", file=sys.stderr)
+        return 1
     if not bark_key:
         print("ERROR: V8_BARK_KEY is not configured.", file=sys.stderr)
         return 1
+    token = os.environ.get("V8_NTFY_TOKEN", "").strip()
 
     with open(report_path, "r", encoding="utf-8") as file:
         report: dict[str, Any] = json.load(file)
@@ -97,6 +102,27 @@ def send_notification(report_path: str) -> int:
         ))
     message = "\\n\\n".join(sections)
 
+    ntfy_payload = json.dumps(
+        {"topic": topic, "message": message, "priority": 4},
+        ensure_ascii=False,
+    ).encode("utf-8")
+    ntfy_headers = {"Content-Type": "application/json; charset=utf-8"}
+    if token:
+        ntfy_headers["Authorization"] = f"Bearer {token}"
+    try:
+        request = urllib.request.Request(
+            "https://ntfy.sh/", data=ntfy_payload, headers=ntfy_headers, method="POST"
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if not 200 <= response.status < 300:
+                raise RuntimeError(f"ntfy returned HTTP {response.status}")
+            print(f"ntfy accepted notification (HTTP {response.status}).")
+    except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
+        print(f"ntfy notification failed: {exc}", file=sys.stderr)
+        ntfy_ok = False
+    else:
+        ntfy_ok = True
+
     bark_payload = json.dumps(
         {
             "device_key": bark_key,
@@ -118,10 +144,16 @@ def send_notification(report_path: str) -> int:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"Bark returned HTTP {response.status}")
             print(f"Bark accepted notification (HTTP {response.status}); symbols: {', '.join(symbols)}.")
-            return 0
+            bark_ok = True
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
         print(f"Bark notification failed: {exc}", file=sys.stderr)
-        return 1
+        bark_ok = False
+
+    if ntfy_ok and bark_ok:
+        print("Both notification channels succeeded.")
+        return 0
+    print("ERROR: one or more notification channels failed.", file=sys.stderr)
+    return 1
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v8/scan-report.json"))
