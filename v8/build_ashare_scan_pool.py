@@ -66,7 +66,7 @@ def normalize_catalog(payload: Any) -> list[tuple[str, str]]:
             return False
         raw_code = str(code_value).strip().upper()
         # Accept 000001, 000001.SZ, SZ000001, and sh/sz/bj-prefixed symbols.
-        match = re.search(r"(?<!\d)(\d{6})(?:\\.(?:SH|SZ|BJ))?$", raw_code)
+        match = re.search(r"(?<!\d)(\d{6})(?:\.(?:SH|SZ|BJ))?$", raw_code)
         if not match:
             match = re.fullmatch(r"(?:SH|SZ|BJ)(\d{6})", raw_code)
         if not match:
@@ -99,11 +99,11 @@ def normalize_catalog(payload: Any) -> list[tuple[str, str]]:
             return
 
         # Some APIs return { "000001": "平安银行", ... } or exchange-prefixed keys.
-        if re.fullmatch(r"(?:(?:SH|SZ|BJ)?\d{6})(?:\\.(?:SH|SZ|BJ))?", key_hint.upper()):
+        if re.fullmatch(r"(?:(?:SH|SZ|BJ)?\d{6})(?:\.(?:SH|SZ|BJ))?", key_hint.upper()):
             if isinstance(node, (str, int, float)) and add(key_hint, node):
                 return
         for key, value in node.items():
-            if isinstance(key, str) and re.fullmatch(r"(?:(?:SH|SZ|BJ)?\d{6})(?:\\.(?:SH|SZ|BJ))?", key.upper()):
+            if isinstance(key, str) and re.fullmatch(r"(?:(?:SH|SZ|BJ)?\d{6})(?:\.(?:SH|SZ|BJ))?", key.upper()):
                 if isinstance(value, str):
                     if add(key, value):
                         continue
