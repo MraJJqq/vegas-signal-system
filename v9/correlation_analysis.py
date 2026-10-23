@@ -12,6 +12,7 @@ import json
 import math
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -42,8 +43,12 @@ def api_get(path: str, params: dict[str, str]) -> dict[str, Any]:
         url,
         headers={"User-Agent": "VEGAS-V9-Correlation/1.1", "Accept": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} for {path}: {detail}") from exc
     if payload.get("code") != "00000":
         raise RuntimeError(f"Bitget API error {payload.get('code')}: {payload.get('msg', 'unknown')}")
     return payload
@@ -57,16 +62,18 @@ def available_symbols() -> set[str]:
 def fetch_1h_candles(symbol: str, start_ms: int, end_ms: int) -> list[tuple[int, float]]:
     """Fetch up to six months using Bitget's bounded candle pages."""
     all_rows: dict[int, float] = {}
-    cursor_end = end_ms
-    for _ in range(30):
+    # Bitget may reject broad date ranges; query bounded windows of <=199 hours.
+    chunk_ms = (LIMIT - 1) * INTERVAL_MS
+    window_start = start_ms
+    while window_start <= end_ms:
+        window_end = min(end_ms, window_start + chunk_ms)
         params = {
             "symbol": symbol, "productType": PRODUCT_TYPE,
             "granularity": GRANULARITY, "limit": str(LIMIT),
-            "startTime": str(start_ms), "endTime": str(cursor_end),
+            "startTime": str(window_start), "endTime": str(window_end),
         }
         payload = api_get("/api/v2/mix/market/candles", params)
         rows = payload.get("data") or []
-        parsed: list[tuple[int, float]] = []
         for row in rows:
             if not isinstance(row, list) or len(row) < 5:
                 continue
@@ -74,18 +81,10 @@ def fetch_1h_candles(symbol: str, start_ms: int, end_ms: int) -> list[tuple[int,
                 ts, close = int(row[0]), float(row[4])
             except (TypeError, ValueError, IndexError):
                 continue
-            if start_ms <= ts <= end_ms and math.isfinite(close) and close > 0 and ts + INTERVAL_MS <= int(time.time() * 1000):
-                parsed.append((ts, close))
-        if not parsed:
-            break
-        before = len(all_rows)
-        for ts, close in parsed:
-            all_rows[ts] = close
-        oldest = min(ts for ts, _ in parsed)
-        if oldest <= start_ms or len(rows) < LIMIT or len(all_rows) == before:
-            break
-        cursor_end = oldest - 1
-        time.sleep(0.12)
+            if window_start <= ts <= window_end and math.isfinite(close) and close > 0 and ts + INTERVAL_MS <= int(time.time() * 1000):
+                all_rows[ts] = close
+        window_start = window_end + INTERVAL_MS
+        time.sleep(0.08)
     return sorted(all_rows.items())
 
 
