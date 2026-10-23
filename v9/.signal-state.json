@@ -3,43 +3,43 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "HYPEUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "XAUUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "CLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "SNDKUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "NVDAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "AAPLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "MSFTUSDT": {
     "observing": false,
@@ -51,13 +51,13 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "GOOGLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "METAUSDT": {
     "observing": false,
@@ -69,7 +69,7 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "AVGOUSDT": {
     "observing": false,
@@ -117,7 +117,7 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "PLTRUSDT": {
     "observing": true,
@@ -162,13 +162,13 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "BABAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792742400000
+    "last_processed_timestamp_ms": 1792746000000
   },
   "QCOMUSDT": {
     "observing": true,
