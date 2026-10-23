@@ -119,16 +119,16 @@ def send_notification(report_path: str) -> int:
     else:
         stock_section += "\n▰ No change ▰"
 
-    title = "🔔 VEGAS V8 信号系统 🔔"
+    footer_title = "🔔 VEGAS V8 信号系统 🔔"
     message = (
         "━━━━━━━━━━━━━━━━━━━━\n\n"
         + core_section + "\n\n" + stock_section
-        + "\n\n━━━━━━━━━━━━━━━━━━━━\n\n" + title
+        + "\n\n━━━━━━━━━━━━━━━━━━━━\n\n" + footer_title
     )
     priority = 4 if symbols else 3
 
     ntfy_payload = json.dumps(
-        {"topic": topic, "title": title, "message": message, "priority": priority},
+        {"topic": topic, "message": message, "priority": priority},
         ensure_ascii=False,
     ).encode("utf-8")
     ntfy_headers = {"Content-Type": "application/json; charset=utf-8"}
@@ -152,7 +152,7 @@ def send_notification(report_path: str) -> int:
     bark_payload = json.dumps(
         {
             "device_key": bark_key,
-            "title": title,
+            "title": "",
             "body": message,
             "group": "VEGAS V8",
             "level": "active",
