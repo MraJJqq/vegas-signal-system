@@ -36,11 +36,9 @@ jobs:
         env:
           V9_REPORT_PATH: v9/scan-report.json
         run: python v9/bitget_scanner.py
-      - name: Send V9 notification
+      - name: Send V9 Bark notification
         if: success()
         env:
-          V9_NTFY_TOPIC: ${{ secrets.V9_NTFY_TOPIC }}
-          V9_NTFY_TOKEN: ${{ secrets.V9_NTFY_TOKEN }}
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
         run: python v9/ntfy_notifier.py v9/scan-report.json
       - name: Upload scan report
