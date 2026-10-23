@@ -1,9 +1,8 @@
-"""Build a data-qualified V8 A-share pool using Tencent native 4H candles.
+"""Build a data-qualified V8 A-share pool from the curated 200-stock universe.
 
-The stock-code catalogue is a replaceable public reference list; all market candles
-are fetched from Tencent. This builds a *scan-capable* pool, not a list of stocks
-that happen to signal today. Incomplete/invalid candles or insufficient EMA history
-exclude a stock.
+Candidate symbols come from ashare_universe.json; all market candles are fetched
+from Tencent. This builds a scan-capable pool, not a list of stocks that happen to
+signal today. Incomplete/invalid candles or insufficient EMA history exclude a stock.
 """
 from __future__ import annotations
 
@@ -20,7 +19,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 ENDPOINT = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
 # Public A-share reference catalogue; all OHLC data remains Tencent sourced.
-UNIVERSE_URL = "https://raw.githubusercontent.com/guidebee/china-stock-data/main/data/company/companies.json"
+UNIVERSE_FILE = ROOT / "ashare_universe.json"
 TIMEOUT = 15
 MIN_CLOSED_CANDLES = 700  # Covers EMA676 warm-up plus recent closed bars.
 CHUNK_DAYS = 180
@@ -197,7 +196,8 @@ def fetch_history(symbol: str, end: date) -> list[dict[str, Any]]:
 
 def main() -> int:
     tested_at = datetime.now().astimezone().isoformat(timespec="seconds")
-    catalog = normalize_catalog(json.loads(request_text(UNIVERSE_URL)))
+    catalog_payload = json.loads(UNIVERSE_FILE.read_text(encoding="utf-8"))
+    catalog = normalize_catalog(catalog_payload)
     end = date.today()
     eligible: list[dict[str, Any]] = []
     excluded: list[dict[str, str]] = []
@@ -230,7 +230,7 @@ def main() -> int:
         "name": "V8 A-share data-qualified scan pool",
         "market": "CN A-shares",
         "provider": "Tencent Finance native m240 candles",
-        "catalogue_source": UNIVERSE_URL,
+        "catalogue_source": "v8/ashare_universe.json (200 recommended candidates); Tencent native m240 candles",
         "tested_at": tested_at,
         "requested_timeframe": "native 4H (m240); no daily/hourly aggregation",
         "minimum_native_4h_candles": MIN_CLOSED_CANDLES,
