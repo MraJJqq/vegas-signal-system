@@ -49,36 +49,88 @@ def parse_jsonp(raw: str) -> dict[str, Any]:
 
 
 def normalize_catalog(payload: Any) -> list[tuple[str, str]]:
-    if isinstance(payload, dict):
-        for key in ("data", "stocks", "list", "result"):
-            if key in payload:
-                payload = payload[key]
-                break
-    if not isinstance(payload, list):
-        raise ValueError("A-share catalogue is not a list")
+    """Normalize common A-share catalogue shapes without assuming one API schema."""
     found: dict[str, str] = {}
-    for item in payload:
-        code = name = ""
-        if isinstance(item, dict):
-            code = str(item.get("code") or item.get("symbol") or item.get("stock_code") or "")
-            name = str(item.get("name") or item.get("stock_name") or "")
-        elif isinstance(item, (list, tuple)) and len(item) >= 2:
-            code, name = str(item[0]), str(item[1])
-        if "." in code:
-            code = code.split(".", 1)[0]
-        code = code.strip()
-        name = name.strip()
-        # Keep listed A-share equity code families; exclude indices/funds by prefix.
-        if re.fullmatch(r"\d{6}", code) and name and code.startswith(
-            ("000", "001", "002", "003", "300", "301", "600", "601", "603", "605",
-             "688", "689", "430", "831", "832", "833", "834", "835", "836", "837",
-             "838", "839", "870", "871", "872", "873", "920")
-        ):
-            found[code] = name
-    if not found:
-        raise ValueError("catalogue parsed but no A-share symbols were recognized")
-    return sorted(found.items())
+    code_keys = ("code", "symbol", "stock_code", "stockCode", "ts_code",
+                 "tsCode", "dm", "api_code", "security_code", "ticker")
+    name_keys = ("name", "stock_name", "stockName", "mc", "security_name",
+                 "short_name", "简称", "名称")
+    valid_prefixes = (
+        "000", "001", "002", "003", "300", "301", "600", "601", "603",
+        "605", "688", "689", "430", "831", "832", "833", "834", "835",
+        "836", "837", "838", "839", "870", "871", "872", "873", "920"
+    )
 
+    def add(code_value: Any, name_value: Any) -> bool:
+        if code_value is None or name_value is None:
+            return False
+        raw_code = str(code_value).strip().upper()
+        # Accept 000001, 000001.SZ, SZ000001, and sh/sz/bj-prefixed symbols.
+        match = re.search(r"(?<!\\d)(\\d{6})(?:\\.(?:SH|SZ|BJ))?$", raw_code)
+        if not match:
+            match = re.fullmatch(r"(?:SH|SZ|BJ)(\\d{6})", raw_code)
+        if not match:
+            return False
+        code = match.group(1)
+        name = str(name_value).strip()
+        if not name or not code.startswith(valid_prefixes):
+            return False
+        # Reject placeholder names and accidental code-as-name rows.
+        if name == code or name.lower() in {"none", "null", "nan"}:
+            return False
+        found[code] = name
+        return True
+
+    def walk(node: Any, key_hint: str = "") -> None:
+        if isinstance(node, list):
+            # Common catalogue format: [code, name].
+            if len(node) >= 2 and not isinstance(node[0], (dict, list)) and not isinstance(node[1], (dict, list)):
+                if add(node[0], node[1]):
+                    return
+            for item in node:
+                walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+
+        code_value = next((node[k] for k in code_keys if k in node and node[k] not in (None, "")), None)
+        name_value = next((node[k] for k in name_keys if k in node and node[k] not in (None, "")), None)
+        if code_value is not None and name_value is not None and add(code_value, name_value):
+            return
+
+        # Some APIs return { "000001": "平安银行", ... } or exchange-prefixed keys.
+        if re.fullmatch(r"(?:(?:SH|SZ|BJ)?\\d{6})(?:\\.(?:SH|SZ|BJ))?", key_hint.upper()):
+            if isinstance(node, (str, int, float)) and add(key_hint, node):
+                return
+        for key, value in node.items():
+            if isinstance(key, str) and re.fullmatch(r"(?:(?:SH|SZ|BJ)?\\d{6})(?:\\.(?:SH|SZ|BJ))?", key.upper()):
+                if isinstance(value, str):
+                    if add(key, value):
+                        continue
+                elif isinstance(value, dict):
+                    inner_name = next((value[k] for k in name_keys if k in value and value[k] not in (None, "")), None)
+                    if inner_name is not None and add(key, inner_name):
+                        continue
+            # Recurse into nested envelopes such as data/result/stocks/list and exchange groups.
+            if isinstance(value, (dict, list)):
+                walk(value, str(key))
+
+    walk(payload)
+    if not found:
+        if isinstance(payload, dict):
+            shape = f"dict keys={list(payload.keys())[:20]}"
+            for key in ("data", "stocks", "list", "result"):
+                value = payload.get(key)
+                if isinstance(value, dict):
+                    shape += f"; {key} keys={list(value.keys())[:10]}"
+                elif isinstance(value, list) and value:
+                    shape += f"; {key} first_item_type={type(value[0]).__name__}"
+        elif isinstance(payload, list):
+            shape = f"list length={len(payload)}; first_item_type={type(payload[0]).__name__ if payload else 'empty'}"
+        else:
+            shape = f"root_type={type(payload).__name__}"
+        raise ValueError(f"catalogue parsed but no A-share symbols were recognized ({shape})")
+    return sorted(found.items())
 
 def market_symbol(code: str) -> str:
     if code.startswith(("6", "5", "9")):
