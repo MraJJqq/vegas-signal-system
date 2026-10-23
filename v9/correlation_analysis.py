@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Standalone Bitget 4H historical-return correlation analysis.
+"""Standalone Bitget 1H historical-return correlation analysis.
 
 This module is intentionally isolated from the V9 signal scanner. It only
-uses Bitget USDT-FUTURES symbols for which Bitget returns usable 4H candles.
+uses Bitget USDT-FUTURES symbols for which Bitget returns usable 1H candles.
 Outputs CSV correlation matrix and a JSON report under v9/correlation/.
 """
 from __future__ import annotations
@@ -20,8 +20,8 @@ from typing import Any
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
-GRANULARITY = "4H"
-INTERVAL_MS = 4 * 60 * 60 * 1000
+GRANULARITY = "1H"
+INTERVAL_MS = 60 * 60 * 1000
 TIMEOUT = 20
 LIMIT = 200
 SIX_MONTHS_DAYS = 183
@@ -48,11 +48,11 @@ def available_symbols() -> set[str]:
     payload = api_get("/api/v2/mix/market/contracts", {"productType": PRODUCT_TYPE})
     return {str(row.get("symbol", "")) for row in payload.get("data", []) if row.get("symbol")}
 
-def fetch_4h_candles(symbol: str, start_ms: int, end_ms: int) -> list[tuple[int, float]]:
+def fetch_1h_candles(symbol: str, start_ms: int, end_ms: int) -> list[tuple[int, float]]:
     """Fetch up to six months using Bitget's bounded candle pages."""
     all_rows: dict[int, float] = {}
     cursor_end = end_ms
-    for _ in range(12):  # 12 x 200 bars comfortably spans six months of 4H bars.
+    for _ in range(30):  # Up to 30 x 200 bars spans six months of 1H bars.
         params = {
             "symbol": symbol, "productType": PRODUCT_TYPE,
             "granularity": GRANULARITY, "limit": str(LIMIT),
@@ -96,7 +96,7 @@ def pearson(x: list[float], y: list[float]) -> float | None:
 
 def main() -> int:
     now_ms = int(time.time() * 1000)
-    start_ms = now_ms - SIX_MONTHS_DAYS * 24 * 60 * 60 * 1000
+    start_ms = now_ms - SIX_MONTHS_DAYS * 260 * 60 * 1000
     end_ms = now_ms - now_ms % INTERVAL_MS
     wanted = [f"{s}USDT" for s in STOCKS]
     try:
@@ -110,14 +110,14 @@ def main() -> int:
             excluded.append({"symbol": symbol, "reason": "Not listed on Bitget USDT-FUTURES"})
             continue
         try:
-            rows = fetch_4h_candles(symbol, start_ms, end_ms)
+            rows = fetch_1h_candles(symbol, start_ms, end_ms)
             if len(rows) < 30:
-                excluded.append({"symbol": symbol, "reason": f"Insufficient usable closed 4H candles ({len(rows)})"})
+                excluded.append({"symbol": symbol, "reason": f"Insufficient usable closed 1H candles ({len(rows)})"})
                 continue
             candle_map[symbol] = dict(rows)
-            print(f"{symbol}: {len(rows)} closed 4H candles", flush=True)
+            print(f"{symbol}: {len(rows)} closed 1H candles", flush=True)
         except Exception as exc:
-            excluded.append({"symbol": symbol, "reason": f"4H data fetch failed: {exc}"})
+            excluded.append({"symbol": symbol, "reason": f"1H data fetch failed: {exc}"})
         time.sleep(0.12)
 
     # Use exact shared timestamps for each pair; do not forward-fill missing bars.
@@ -140,7 +140,7 @@ def main() -> int:
             corr = pearson([returns[a][t] for t in common], [returns[b][t] for t in common])
             matrix[a][b] = round(corr, 4) if corr is not None else None
             if a < b and corr is not None:
-                pairs.append({"symbol_a": a, "symbol_b": b, "correlation": round(corr, 4), "shared_4h_returns": len(common)})
+                pairs.append({"symbol_a": a, "symbol_b": b, "correlation": round(corr, 4), "shared_1h_returns": len(common)})
 
     pairs.sort(key=lambda p: p["correlation"], reverse=True)
     # Greedy correlation groups: attach a symbol to the group with highest
@@ -170,7 +170,7 @@ def main() -> int:
         "granularity": GRANULARITY,
         "window_start_utc": datetime.fromtimestamp(start_ms / 1000, timezone.utc).isoformat(),
         "window_end_utc": datetime.fromtimestamp(end_ms / 1000, timezone.utc).isoformat(),
-        "method": "Pearson correlation of consecutive 4H close-to-close returns; pairwise exact timestamp intersection; no forward-fill",
+        "method": "Pearson correlation of consecutive 1H close-to-close returns; pairwise exact timestamp intersection; no forward-fill",
         "available_symbols_count": len(symbols),
         "available_symbols": symbols,
         "excluded_count": len(excluded),
