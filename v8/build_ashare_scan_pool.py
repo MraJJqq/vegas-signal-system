@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
-ENDPOINT = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+ENDPOINT = "https://ifzq.gtimg.cn/appstock/app/newfqkline/get"
 # Public A-share reference catalogue; all OHLC data remains Tencent sourced.
 UNIVERSE_FILE = ROOT / "ashare_universe.json"
 TIMEOUT = 15
@@ -147,12 +147,12 @@ def market_symbol(code: str) -> str:
 
 
 def fetch_chunk(symbol: str, start: date, end: date) -> list[list[Any]]:
-    params = {"param": f"{symbol},m240,{start.isoformat()},{end.isoformat()},200,qfq"}
+    params = {"param": f"{symbol},m240,{start.isoformat()},{end.isoformat()},500,qfq"}
     payload = parse_jsonp(request_text(f"{ENDPOINT}?{urllib.parse.urlencode(params)}"))
     node = (payload.get("data") or {}).get(symbol)
     if not isinstance(node, dict):
         raise ValueError("missing Tencent data node")
-    rows = node.get("m240") or node.get("240m") or []
+    rows = (node.get("m240_qfq") or node.get("m240") or node.get("240m_qfq") or node.get("240m") or [])
     if not isinstance(rows, list):
         raise ValueError("Tencent 4H rows are malformed")
     return rows
