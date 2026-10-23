@@ -45,16 +45,11 @@ def save_state(day: str, symbols: list[str]) -> None:
 
 
 def send_notification(report_path: str) -> int:
-    topic = os.environ.get("V8_NTFY_TOPIC", "").strip()
     bark_key = os.environ.get("V8_BARK_KEY", "").strip()
-    if not topic:
-        print("ERROR: V8_NTFY_TOPIC is not configured.", file=sys.stderr)
-        return 1
     if not bark_key:
         print("ERROR: V8_BARK_KEY is not configured.", file=sys.stderr)
         return 1
 
-    token = os.environ.get("V8_NTFY_TOKEN", "").strip()
     with open(report_path, "r", encoding="utf-8") as file:
         report: dict[str, Any] = json.load(file)
 
@@ -71,34 +66,11 @@ def send_notification(report_path: str) -> int:
             symbols.append(symbol)
             seen.add(symbol)
 
-    now = datetime.now(CHINA_TZ)
-    today = now.date().isoformat()
-    previous_state = read_state()
-    previous_symbols = previous_state.get("symbols", [])
-    if not isinstance(previous_symbols, list):
-        previous_symbols = []
-    previous_symbols = [
-        display_symbol(str(symbol))
-        for symbol in previous_symbols
-        if str(symbol).strip()
-    ]
+    if not symbols:
+        print("No formal signals found; no Bark notification sent.")
+        return 0
 
-    first_scan_today = previous_state.get("date") != today
-    if first_scan_today:
-        previous_symbols = []
-
-    previous_seen = set(previous_symbols)
-    has_new_symbol = bool(set(symbols) - previous_seen)
-    show_symbols = first_scan_today or has_new_symbol
-
-    daily_symbols = list(previous_symbols)
-    daily_seen = set(daily_symbols)
-    for symbol in symbols:
-        if symbol not in daily_seen:
-            daily_symbols.append(symbol)
-            daily_seen.add(symbol)
-
-    # Approved compact scan-pool layout. Signal detection and comparison state remain unchanged.
+    # Every scan sends the formal signals found in that scan; no change-comparison rule.
     core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
     stock_order = [
         "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
@@ -106,46 +78,29 @@ def send_notification(report_path: str) -> int:
         "MSTR", "COIN", "PLTR", "ORCL", "INTC", "MU", "MRVL",
         "ASML", "ARM", "APP", "RDDT", "NFLX", "BABA", "JD",
     ]
+    core = [symbol for symbol in core_order if symbol in seen]
+    stocks = [symbol for symbol in stock_order if symbol in seen]
+    # Preserve any formal signal not yet listed in the display order.
+    known = set(core_order) | set(stock_order)
+    stocks.extend(symbol for symbol in symbols if symbol not in known)
 
-    core_section = "🔔 核心能源\n" + "   ".join(
-        f"▰ {symbol} ▰" for symbol in core_order
-    )
-    stock_lines = [
-        "   ".join(f"▰ {symbol} ▰" for symbol in stock_order[i:i + 3])
-        for i in range(0, len(stock_order), 3)
-    ]
-    stock_section = "🔔 美股巨头\n" + "\n".join(stock_lines)
-
-    footer_title = "VEGAS V8 SIGNAL SYSTEM"
-    message = footer_title + "\n\n" + stock_section + "\n\n" + core_section
-    priority = 4 if symbols else 3
-
-    ntfy_payload = json.dumps(
-        {"topic": topic, "message": message, "priority": priority},
-        ensure_ascii=False,
-    ).encode("utf-8")
-    ntfy_headers = {"Content-Type": "application/json; charset=utf-8"}
-    if token:
-        ntfy_headers["Authorization"] = f"Bearer {token}"
-
-    ntfy_ok = False
-    bark_ok = False
-    try:
-        request = urllib.request.Request(
-            "https://ntfy.sh/", data=ntfy_payload, headers=ntfy_headers, method="POST"
-        )
-        with urllib.request.urlopen(request, timeout=20) as response:
-            if not 200 <= response.status < 300:
-                raise RuntimeError(f"ntfy returned HTTP {response.status}")
-            ntfy_ok = True
-            print(f"ntfy accepted notification (HTTP {response.status}).")
-    except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
-        print(f"ntfy notification failed: {exc}", file=sys.stderr)
+    sections: list[str] = ["VEGAS V8 SIGNAL SYSTEM"]
+    if stocks:
+        stock_lines = [
+            "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
+            for i in range(0, len(stocks), 3)
+        ]
+        sections.append("🔔 美股巨头\\n" + "\\n".join(stock_lines))
+    if core:
+        sections.append("🔔 核心能源\\n" + "   ".join(
+            f"▰ {symbol} ▰" for symbol in core
+        ))
+    message = "\\n\\n".join(sections)
 
     bark_payload = json.dumps(
         {
             "device_key": bark_key,
-            "title": "",
+            "title": "VEGAS V8 SIGNAL SYSTEM",
             "body": message,
             "group": "VEGAS V8",
             "level": "active",
@@ -162,21 +117,11 @@ def send_notification(report_path: str) -> int:
         with urllib.request.urlopen(request, timeout=20) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"Bark returned HTTP {response.status}")
-            bark_ok = True
-            print(f"Bark accepted notification (HTTP {response.status}).")
+            print(f"Bark accepted notification (HTTP {response.status}); symbols: {', '.join(symbols)}.")
+            return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
         print(f"Bark notification failed: {exc}", file=sys.stderr)
-
-    # Only advance comparison state when both channels accepted this notification.
-    # If one channel fails, the next scheduled run retries the same daily list.
-    if ntfy_ok and bark_ok:
-        save_state(today, daily_symbols)
-        mode = "full daily list" if show_symbols else "no change"
-        print(f"Both notification channels succeeded ({mode}).")
-        return 0
-
-    print("ERROR: one or more notification channels failed; state was not advanced.", file=sys.stderr)
-    return 1
+        return 1
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v8/scan-report.json"))
