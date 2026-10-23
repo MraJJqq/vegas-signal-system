@@ -119,13 +119,13 @@ def send_notification(report_path: str) -> int:
     else:
         stock_section += "\n▰ No change ▰"
 
+    title = "🔔 VEGAS V8 信号系统 🔔"
     message = (
         "━━━━━━━━━━━━━━━━━━━━\n\n"
         + core_section + "\n\n" + stock_section
-        + "\n\n━━━━━━━━━━━━━━━━━━━━\n本轮扫描结束"
+        + "\n\n━━━━━━━━━━━━━━━━━━━━\n\n" + title
     )
     priority = 4 if symbols else 3
-    title = "🔔 VEGAS V8 信号系统 🔔"
 
     ntfy_payload = json.dumps(
         {"topic": topic, "title": title, "message": message, "priority": priority},
