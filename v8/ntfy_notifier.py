@@ -1,4 +1,4 @@
-"""Send V8 notifications using the approved compact grouped layout."""
+""""Send V8 notifications using the approved compact grouped layout."""
 from __future__ import annotations
 
 import json
@@ -87,20 +87,21 @@ def send_notification(report_path: str) -> int:
     core = [symbol for symbol in core_order if symbol in symbols]
     stocks = [symbol for symbol in symbols if symbol not in core_order]
 
-    # When no new symbols appear, both category sections show the approved placeholder.
+    # Keep both category headings and always show the exact placeholder for an empty section.
     core_section = "🔔 核心能源"
-    stock_section = "🔔 美股巨头"
-    if show_symbols:
-        if core:
-            core_section += "\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core)
-        if stocks:
-            stock_lines = [
-                "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
-                for i in range(0, len(stocks), 3)
-            ]
-            stock_section += "\n" + "\n".join(stock_lines)
+    if show_symbols and core:
+        core_section += "\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core)
     else:
         core_section += "\n▰ No change ▰"
+
+    stock_section = "🔔 美股巨头"
+    if show_symbols and stocks:
+        stock_lines = [
+            "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
+            for i in range(0, len(stocks), 3)
+        ]
+        stock_section += "\n" + "\n".join(stock_lines)
+    else:
         stock_section += "\n▰ No change ▰"
 
     message = (
