@@ -1,0 +1,53 @@
+name: VEGAS V9 Bitget Scan
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Determine China-local scan date
+        id: scan-date
+        run: echo "day=$(python -c 'from datetime import datetime; from zoneinfo import ZoneInfo; print(datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat())')" >> "$GITHUB_OUTPUT"
+      - name: Restore V9 previous-scan state
+        uses: actions/cache@v4
+        with:
+          path: v9/.signal-state.json
+          key: v9-signal-state-${{ steps.scan-date.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: v9-signal-state-${{ steps.scan-date.outputs.day }}-
+      - name: Validate Python syntax and tests
+        run: |
+          python -m compileall -q v9 tests
+          python -m unittest discover -s tests -v
+      - name: Scan Bitget USDT futures
+        env:
+          V9_REPORT_PATH: v9/scan-report.json
+        run: python v9/bitget_scanner.py
+      - name: Send V9 notification
+        if: success()
+        env:
+          V9_NTFY_TOPIC: ${{ secrets.V9_NTFY_TOPIC }}
+          V9_NTFY_TOKEN: ${{ secrets.V9_NTFY_TOKEN }}
+          V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
+        run: python v9/ntfy_notifier.py v9/scan-report.json
+      - name: Upload scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vegas-v9-bitget-scan-report
+          path: v9/scan-report.json
+          if-no-files-found: warn
+          retention-days: 7
