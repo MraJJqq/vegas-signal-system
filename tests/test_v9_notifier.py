@@ -40,7 +40,7 @@ class V9NotifierTests(unittest.TestCase):
         self.assertEqual(symbols, ["NVDA", "SNDK"])
         self.assertIn("🔔 美股巨头", body)
         self.assertIn("▰ NVDA ▰", body)
-        self.assertIn("🔔 核心能源\\n▰ SNDK ▰", body)
+        self.assertIn("🔔 核心能源\n▰ SNDK ▰", body)
         for stale in ("MSFT", "CRCL", "MSTR"):
             self.assertNotIn(f"▰ {stale} ▰", body)
 
