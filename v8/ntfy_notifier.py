@@ -95,12 +95,12 @@ def send_notification(report_path: str) -> int:
             "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
             for i in range(0, len(stocks), 3)
         ]
-        sections.append("🔔 美股巨头\\n" + "\\n".join(stock_lines))
+        sections.append("🔔 美股巨头\n" + "\n".join(stock_lines))
     if core:
-        sections.append("🔔 核心能源\\n" + "   ".join(
+        sections.append("🔔 核心能源\n" + "   ".join(
             f"▰ {symbol} ▰" for symbol in core
         ))
-    message = "\\n\\n".join(sections)
+    message = "\n\n".join(sections)
 
     ntfy_payload = json.dumps(
         {"topic": topic, "message": message, "priority": 4},
