@@ -21,7 +21,7 @@ REQUEST_TIMEOUT = 15
 SIGNAL_STATE_PATH = os.environ.get("V8_SIGNAL_STATE_PATH", "v8/.signal-state.json")
 
 # Final pool: core markets first, then selected US stock contracts.
-CORE_MARKETS = ("BTC", "HYPE", "XAU", "CLU", "SNDK")
+CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
 STOCKS = (
     "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
     "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX",
