@@ -35,6 +35,11 @@ jobs:
           restore-keys: |
             v8-scan-state-${{ steps.scan-date.outputs.day }}-
 
+      - name: Validate Python syntax and V8 signal-state tests
+        run: |
+          python -m compileall -q v8 tests
+          python -m unittest discover -s tests -v
+
       - name: Scan Bitget USDT futures
         env:
           V8_REPORT_PATH: v8/scan-report.json
