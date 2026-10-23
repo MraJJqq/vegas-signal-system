@@ -29,6 +29,7 @@ jobs:
         env:
           V9_CN_A_STATE_PATH: v9_cn_a/.signal-state.json
           V9_CN_A_REPORT_PATH: v9_cn_a/scan-report.json
+          BARK_KEY: ${{ secrets.BARK_KEY }}
         run: python v9_cn_a/tencent_scanner.py
       - name: Persist A-share state only
         if: always()
