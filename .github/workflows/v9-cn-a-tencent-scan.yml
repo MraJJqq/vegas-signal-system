@@ -1,5 +1,7 @@
 name: VEGAS V9 A股 Tencent Scan
 
+# MANUAL-ONLY POLICY: keep workflow_dispatch as the sole trigger.
+# Do not add schedule, push, pull_request, or other automatic triggers.
 on:
   workflow_dispatch:
 
