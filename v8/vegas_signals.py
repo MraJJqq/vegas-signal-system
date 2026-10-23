@@ -1,4 +1,4 @@
-""""VEGAS V8 signal rules."""
+"""VEGAS V8 signal rules."""
 from __future__ import annotations
 
 from typing import Any
