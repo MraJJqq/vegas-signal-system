@@ -20,7 +20,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 ENDPOINT = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
 # Public A-share reference catalogue; all OHLC data remains Tencent sourced.
-UNIVERSE_URL = "https://assets.linkdiary.cn/shares/zh_a_list.json"
+UNIVERSE_URL = "https://raw.githubusercontent.com/guidebee/china-stock-data/main/data/company/companies.json"
 TIMEOUT = 15
 MIN_CLOSED_CANDLES = 700  # Covers EMA676 warm-up plus recent closed bars.
 CHUNK_DAYS = 180
@@ -78,10 +78,17 @@ def normalize_catalog(payload: Any) -> list[tuple[str, str]]:
         # Reject placeholder names and accidental code-as-name rows.
         if name == code or name.lower() in {"none", "null", "nan"}:
             return False
+        # Reject catalogue corruption such as code=920000, name=bj920001.
+        if re.fullmatch(r"(?i)(?:SH|SZ|BJ)?\d{6}(?:\.(?:SH|SZ|BJ))?", name):
+            return False
         found[code] = name
         return True
 
     def walk(node: Any, key_hint: str = "") -> None:
+        if isinstance(node, dict) and "stock_type" in node:
+            # The catalogue includes B-shares too; retain only listed A-share segments.
+            if str(node.get("stock_type", "")).strip().lower() not in {"sh_a", "sz_a", "kcb", "hs_bjs"}:
+                return
         if isinstance(node, list):
             # Common catalogue format: [code, name].
             if len(node) >= 2 and not isinstance(node[0], (dict, list)) and not isinstance(node[1], (dict, list)):
