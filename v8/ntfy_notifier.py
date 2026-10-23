@@ -1,4 +1,4 @@
-""""Send V8 notifications using the approved compact grouped layout."""
+"""Send V8 notifications using the approved compact grouped layout."""
 from __future__ import annotations
 
 import json
@@ -73,21 +73,36 @@ def send_notification(report_path: str) -> int:
     previous_symbols = previous_state.get("symbols", [])
     if not isinstance(previous_symbols, list):
         previous_symbols = []
-    previous_symbols = [str(symbol) for symbol in previous_symbols]
+    previous_symbols = [
+        display_symbol(str(symbol))
+        for symbol in previous_symbols
+        if str(symbol).strip()
+    ]
 
-    # Each China-local day starts a fresh comparison cycle; never compare across days.
+    # A new China-local day starts a clean cumulative list.
     first_scan_today = previous_state.get("date") != today
     if first_scan_today:
         previous_symbols = []
-    # First scan shows all current symbols; later scans show names only if any are new.
-    has_new_symbol = bool(set(symbols) - set(previous_symbols))
+
+    previous_seen = set(previous_symbols)
+    has_new_symbol = bool(set(symbols) - previous_seen)
     show_symbols = first_scan_today or has_new_symbol
 
-    core_order = ["BTC", "HYPE", "XAU", "CL"]
-    core = [symbol for symbol in core_order if symbol in symbols]
-    stocks = [symbol for symbol in symbols if symbol not in core_order]
+    # Preserve the order in which symbols first appeared during the current day.
+    daily_symbols = list(previous_symbols)
+    daily_seen = set(daily_symbols)
+    for symbol in symbols:
+        if symbol not in daily_seen:
+            daily_symbols.append(symbol)
+            daily_seen.add(symbol)
 
-    # Keep both category headings and always show the exact placeholder for an empty section.
+    # Only display the day's cumulative list on the first scan or when a new
+    # symbol appears. Otherwise both categories show the exact No change text.
+    display_symbols = daily_symbols if show_symbols else []
+    core_order = ["BTC", "HYPE", "XAU", "CL"]
+    core = [symbol for symbol in core_order if symbol in display_symbols]
+    stocks = [symbol for symbol in display_symbols if symbol not in core_order]
+
     core_section = "🔔 核心能源"
     if show_symbols and core:
         core_section += "\n" + "   ".join(f"▰ {symbol} ▰" for symbol in core)
@@ -126,9 +141,9 @@ def send_notification(report_path: str) -> int:
         with urllib.request.urlopen(request, timeout=20) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
-            # Save the latest result only after ntfy confirms the push succeeded.
-            save_state(today, symbols)
-            mode = "full list" if show_symbols else "no change"
+            # Save the cumulative daily list only after ntfy confirms success.
+            save_state(today, daily_symbols)
+            mode = "full daily list" if show_symbols else "no change"
             print(f"ntfy accepted grouped notification (HTTP {response.status}; {mode}).")
             return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
