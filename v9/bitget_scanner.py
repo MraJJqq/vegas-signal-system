@@ -102,6 +102,10 @@ def scan_market_data() -> dict[str, Any]:
     tz = timezone(timedelta(hours=8))
     today = datetime.now(tz).date()
     state = load_state()
+    daily_state = state.get("__daily_formal_signals__", {})
+    if daily_state.get("date") != today.isoformat():
+        daily_state = {"date": today.isoformat(), "signals": []}
+    daily_signals = list(daily_state.get("signals", []))
     turnovers, turnover_error = fetch_stock_turnovers()
     scan_symbols = list(f"{x}USDT" for x in CORE_MARKETS)
     excluded_by_turnover: list[dict[str, Any]] = []
@@ -148,6 +152,16 @@ def scan_market_data() -> dict[str, Any]:
             item.update({"data_available": False, "excluded_reason": str(exc)})
             report["symbols_excluded"] += 1
         report["results"].append(item)
+    # Persist every formal signal seen today so each scan can notify the full daily set.
+    daily_by_key = {
+        (str(s.get("symbol")), int(s.get("candle_timestamp_ms", 0)), str(s.get("filter_side"))): s
+        for s in daily_signals if isinstance(s, dict)
+    }
+    for signal in report["signals"]:
+        daily_by_key[(str(signal.get("symbol")), int(signal.get("candle_timestamp_ms", 0)), str(signal.get("filter_side")))] = signal
+    daily_state = {"date": today.isoformat(), "signals": list(daily_by_key.values())}
+    state["__daily_formal_signals__"] = daily_state
+    report["signals"] = daily_state["signals"]
     save_state(state)
     return report
 
