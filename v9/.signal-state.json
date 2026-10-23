@@ -3,209 +3,120 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "HYPEUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "XAUUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "CLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "SNDKUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "NVDAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "AAPLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "AMZNUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "GOOGLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "TSLAUSDT": {
     "observing": true,
     "touched_lines": [
-      "中锋EMA144",
-      "中锋EMA169",
-      "红峰EMA576",
-      "红峰EMA676"
+      "中锋EMA144"
     ],
-    "touch_timestamp_ms": 1792760400000,
-    "last_processed_timestamp_ms": 1792760400000
+    "touch_timestamp_ms": 1792792800000,
+    "last_processed_timestamp_ms": 1792792800000
   },
   "COINUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "NFLXUSDT": {
-    "observing": true,
-    "touched_lines": [
-      "中锋EMA144"
-    ],
-    "touch_timestamp_ms": 1792760400000,
-    "last_processed_timestamp_ms": 1792760400000
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792792800000
   },
   "BABAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "__daily_formal_signals__": {
-    "date": "2026-10-23",
+    "date": "2026-10-24",
     "signals": [
       {
         "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144, 中锋EMA169",
-        "touch_timestamp_ms": 1792699200000,
-        "filter_line": "EMA12",
-        "filter_side": "上方",
-        "filter_value": 335.7295124164527,
-        "close_price": 336.55,
-        "candle_timestamp_ms": 1792702800000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144, 中锋EMA169, 红峰EMA576, 红峰EMA676",
-        "touch_timestamp_ms": 1792706400000,
-        "filter_line": "EMA12",
-        "filter_side": "上方",
-        "filter_value": 336.2457455762767,
-        "close_price": 337.79,
-        "candle_timestamp_ms": 1792710000000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "红峰EMA576, 红峰EMA676",
-        "touch_timestamp_ms": 1792713600000,
-        "filter_line": "EMA12",
-        "filter_side": "上方",
-        "filter_value": 336.4810367735472,
-        "close_price": 337.23,
-        "candle_timestamp_ms": 1792717200000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "红峰EMA576, 红峰EMA676",
-        "touch_timestamp_ms": 1792720800000,
-        "filter_line": "EMA12",
-        "filter_side": "上方",
-        "filter_value": 336.7193221869776,
-        "close_price": 337.43,
-        "candle_timestamp_ms": 1792724400000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144, 中锋EMA169, 红峰EMA576, 红峰EMA676",
-        "touch_timestamp_ms": 1792728000000,
-        "filter_line": "EMA12",
-        "filter_side": "上方",
-        "filter_value": 336.91418925813184,
-        "close_price": 337.52,
-        "candle_timestamp_ms": 1792731600000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144, 中锋EMA169, 红峰EMA576, 红峰EMA676",
-        "touch_timestamp_ms": 1792735200000,
-        "filter_line": "EMA12",
-        "filter_side": "下方",
-        "filter_value": 336.7858988179524,
-        "close_price": 336.16,
-        "candle_timestamp_ms": 1792738800000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144, 中锋EMA169",
-        "touch_timestamp_ms": 1792742400000,
-        "filter_line": "EMA12",
-        "filter_side": "下方",
-        "filter_value": 336.68907548504285,
-        "close_price": 336.61,
-        "candle_timestamp_ms": 1792746000000
-      },
-      {
-        "formal_signal": true,
         "symbol": "CRWDUSDT",
         "timeframe": "1H",
-        "line": "中锋EMA169",
-        "touch_timestamp_ms": 1792692000000,
+        "line": "红峰EMA676",
+        "touch_timestamp_ms": 1792767600000,
         "filter_line": "EMA12",
-        "filter_side": "下方",
-        "filter_value": 238.63472638344638,
-        "close_price": 238.38,
-        "candle_timestamp_ms": 1792695600000
+        "filter_side": "上方",
+        "filter_value": 244.84705140771325,
+        "close_price": 253.9,
+        "candle_timestamp_ms": 1792771200000
       },
       {
         "formal_signal": true,
-        "symbol": "CRWDUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144, 中锋EMA169",
-        "touch_timestamp_ms": 1792702800000,
-        "filter_line": "EMA12",
-        "filter_side": "下方",
-        "filter_value": 238.06569905160086,
-        "close_price": 236.9,
-        "candle_timestamp_ms": 1792706400000
-      },
-      {
-        "formal_signal": true,
-        "symbol": "JPMUSDT",
+        "symbol": "TSLAUSDT",
         "timeframe": "1H",
         "line": "中锋EMA144, 中锋EMA169, 红峰EMA676",
-        "touch_timestamp_ms": 1792749600000,
+        "touch_timestamp_ms": 1792771200000,
         "filter_line": "EMA12",
         "filter_side": "下方",
-        "filter_value": 336.7344268265692,
-        "close_price": 336.56,
-        "candle_timestamp_ms": 1792753200000
+        "filter_value": 374.30101059445104,
+        "close_price": 372.31,
+        "candle_timestamp_ms": 1792774800000
+      },
+      {
+        "formal_signal": true,
+        "symbol": "TSLAUSDT",
+        "timeframe": "1H",
+        "line": "中锋EMA144",
+        "touch_timestamp_ms": 1792778400000,
+        "filter_line": "EMA12",
+        "filter_side": "下方",
+        "filter_value": 373.80959930135253,
+        "close_price": 372.8,
+        "candle_timestamp_ms": 1792782000000
       }
     ]
   },
@@ -213,39 +124,36 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "CRWDUSDT": {
-    "observing": true,
-    "touched_lines": [
-      "中锋EMA144",
-      "中锋EMA169"
-    ],
-    "touch_timestamp_ms": 1792760400000,
-    "last_processed_timestamp_ms": 1792760400000
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792792800000
   },
   "UBERUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "CATUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "CEGUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   },
   "CVXUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792760400000
+    "last_processed_timestamp_ms": 1792792800000
   }
 }
