@@ -25,6 +25,8 @@ CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
 STOCKS = (
     "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META",
     "TSLA", "AVGO", "AMD", "HOOD", "GLW", "SPCX", "CRCL",
+    "MSTR", "COIN", "PLTR", "ORCL", "INTC", "MU", "MRVL",
+    "ASML", "ARM", "APP", "RDDT", "NFLX", "BABA", "JD",
 )
 SYMBOLS = tuple(f"{ticker}USDT" for ticker in (*CORE_MARKETS, *STOCKS))
 
