@@ -1,7 +1,7 @@
 """Independent VEGAS V9 A-share signal engine; no imports from v9/."""
 from __future__ import annotations
 from typing import Any
-LINES = (("中锋EMA144",144),("中锋EMA169",169))
+LINES = (("中锋EMA144",144),("中锋EMA169",169),("红峰EMA576",576),("红峰EMA676",676))
 
 def ema(values: list[float], period: int) -> list[float | None]:
     out: list[float | None] = [None]*len(values)
