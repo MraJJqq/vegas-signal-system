@@ -1,5 +1,8 @@
 name: VEGAS V9 A股 Baostock Build 2000-Stock Pool
 on:
+  push:
+    paths:
+      - 'v9_cn_a/baostock_pool_builder.py'
   workflow_dispatch:
 permissions:
   contents: write
