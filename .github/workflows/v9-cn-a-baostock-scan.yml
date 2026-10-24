@@ -20,6 +20,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Restore hourly candle cache
+        uses: actions/cache/restore@v4
+        with:
+          path: v9_cn_a/.candle-cache.json
+          key: v9-cn-a-candles-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            v9-cn-a-candles-
       - name: Install Baostock
         run: python -m pip install --upgrade pip baostock
       - name: Validate isolated A-share code
@@ -29,6 +36,7 @@ jobs:
           V9_CN_A_STATE_PATH: v9_cn_a/.signal-state.json
           V9_CN_A_REPORT_PATH: v9_cn_a/scan-report.json
           V9_CN_A_POOL_PATH: v9_cn_a/baostock-stock-pool.json
+          V9_CN_A_CANDLE_CACHE_PATH: v9_cn_a/.candle-cache.json
           BARK_KEY: ${{ secrets.BARK_KEY }}
         run: python v9_cn_a/baostock_scanner.py
       - name: Persist A-share state only
@@ -71,6 +79,12 @@ jobs:
               exit 1
             fi
           fi
+      - name: Save hourly candle cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: v9_cn_a/.candle-cache.json
+          key: v9-cn-a-candles-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Upload A-share scan report
         if: always()
         uses: actions/upload-artifact@v4
