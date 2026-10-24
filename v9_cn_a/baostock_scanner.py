@@ -50,7 +50,7 @@ def send_bark(signals:list[dict[str,Any]])->dict[str,Any]:
     for s in signals:
         sym=str(s.get("symbol","")).strip().upper()
         if sym and sym not in seen: symbols.append(sym); seen.add(sym)
-    body="🔔 A股\\n"+"\\n".join("   ".join(f"▰ {sym} ▰" for sym in symbols[i:i+3]) for i in range(0,len(symbols),3))
+    body="🔔 A股\n"+"\n".join("   ".join(f"▰ {sym} ▰" for sym in symbols[i:i+3]) for i in range(0,len(symbols),3))
     payload=json.dumps({"device_key":key,"title":"VEGAS V9 SIGNAL SYSTEM","body":body,"group":"VEGAS V9","level":"active"},ensure_ascii=False).encode()
     req=urllib.request.Request("https://api.day.app/push",data=payload,headers={"Content-Type":"application/json; charset=utf-8"},method="POST")
     try:
