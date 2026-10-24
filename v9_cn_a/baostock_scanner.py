@@ -43,14 +43,15 @@ def fetch(code:str)->list[dict[str,Any]]:
     return out
 
 def send_bark(signals:list[dict[str,Any]])->dict[str,Any]:
-    if not signals: return {"status":"skipped","reason":"no_qualifying_signals_today"}
     key=os.environ.get("BARK_KEY","").strip()
     if not key: return {"status":"skipped","reason":"BARK_KEY_missing"}
     symbols=[]; seen=set()
     for s in signals:
         sym=str(s.get("symbol","")).strip().upper()
         if sym and sym not in seen: symbols.append(sym); seen.add(sym)
-    body="🔔 A股\n"+"\n".join("   ".join(f"▰ {sym} ▰" for sym in symbols[i:i+3]) for i in range(0,len(symbols),3))
+    # Match US V9: push on every scan, including scans with no qualifying signals.
+    symbol_lines="\n".join("   ".join(f"▰ {sym} ▰" for sym in symbols[i:i+3]) for i in range(0,len(symbols),3))
+    body="🔔 A股\n"+(symbol_lines if symbol_lines else "▰ NOCHANGE ▰")
     payload=json.dumps({"device_key":key,"title":"VEGAS V9 SIGNAL SYSTEM","body":body,"group":"VEGAS V9","level":"active"},ensure_ascii=False).encode()
     req=urllib.request.Request("https://api.day.app/push",data=payload,headers={"Content-Type":"application/json; charset=utf-8"},method="POST")
     try:
