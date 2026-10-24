@@ -40,7 +40,35 @@ jobs:
             git add -f v9_cn_a/.signal-state.json
             if ! git diff --cached --quiet; then
               git commit -m 'chore(v9-cn-a): persist Baostock A-share signal state'
-              git push
+              branch="${GITHUB_REF_NAME}"
+              git fetch origin "$branch"
+              if ! git rebase "origin/$branch"; then
+                if git status --porcelain | grep -q 'v9_cn_a/\\.signal-state\\.json'; then
+                  git checkout --theirs -- v9_cn_a/.signal-state.json
+                  git add -f v9_cn_a/.signal-state.json
+                  GIT_EDITOR=true git rebase --continue
+                else
+                  git rebase --abort
+                  exit 1
+                fi
+              fi
+              for attempt in 1 2 3; do
+                if git push origin "HEAD:$branch"; then exit 0; fi
+                echo "Push attempt $attempt failed; refreshing remote and retrying."
+                git fetch origin "$branch"
+                if ! git rebase "origin/$branch"; then
+                  if git status --porcelain | grep -q 'v9_cn_a/\\.signal-state\\.json'; then
+                    git checkout --theirs -- v9_cn_a/.signal-state.json
+                    git add -f v9_cn_a/.signal-state.json
+                    GIT_EDITOR=true git rebase --continue
+                  else
+                    git rebase --abort
+                    exit 1
+                  fi
+                fi
+              done
+              echo "Unable to push A-share state after 3 attempts."
+              exit 1
             fi
           fi
       - name: Upload A-share scan report
