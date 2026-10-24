@@ -16,13 +16,22 @@ PAUSE=float(os.environ.get("BAOSTOCK_REQUEST_PAUSE","0.08"))
 
 def main():
     today=datetime.now(TZ).date()
-    start=(today-timedelta(days=LOOKBACK)).isoformat()
-    end=today.isoformat()
     login=bs.login()
     if login.error_code!="0":
         raise RuntimeError(f"Baostock login failed: {login.error_code} {login.error_msg}")
     ranked=[]; errors=0
     try:
+        # Baostock stock-list queries require a trading date; resolve weekends/holidays.
+        cal=bs.query_trade_dates(start_date=(today-timedelta(days=20)).isoformat(),end_date=today.isoformat())
+        if cal.error_code!="0": raise RuntimeError(f"query_trade_dates failed: {cal.error_code} {cal.error_msg}")
+        trading_dates=[]
+        while cal.next():
+            row=dict(zip(cal.fields,cal.get_row_data()))
+            if row.get("is_trading_day")=="1": trading_dates.append(row.get("calendar_date"))
+        if not trading_dates: raise RuntimeError("Baostock returned no recent trading date")
+        end=trading_dates[-1]
+        start=(datetime.strptime(end,"%Y-%m-%d").date()-timedelta(days=LOOKBACK)).isoformat()
+        print(f"Using latest Baostock trading date: {end}; lookback starts {start}")
         rs=bs.query_all_stock(end)
         if rs.error_code!="0":
             raise RuntimeError(f"query_all_stock failed: {rs.error_code} {rs.error_msg}")
