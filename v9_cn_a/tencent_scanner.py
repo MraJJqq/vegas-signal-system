@@ -79,44 +79,36 @@ def fetch(code:str)->list[dict[str,Any]]:
     return out
 
 def send_bark(signals:list[dict[str,Any]])->dict[str,Any]:
-    """Send the A-share-only black-and-gold styled summary on every scan."""
+    """Send the current day's full A-share signal set using V9 Bark-style formatting."""
+    if not signals:
+        return {'status':'skipped','reason':'no_qualifying_signals_today'}
     key=os.environ.get('BARK_KEY','').strip()
     if not key:
         return {'status':'skipped','reason':'BARK_KEY_missing'}
-    title='VEGAS V9｜A股扫描'
-    lines=[
-        '✦ VEGAS V9',
-        'A-SHARE SIGNAL SYSTEM',
-        '',
-        '🔔 A股 · 今日扫描结果',
-        f'正式信号：{len(signals)}只',
-        '',
-    ]
-    if signals:
-        for s in signals:
-            side=str(s.get('filter_side',''))
-            symbol=str(s.get('symbol',''))
-            name=str(s.get('name',''))
-            ts=s.get('candle_timestamp_ms')
-            when=datetime.fromtimestamp(ts/1000,tz=TZ).strftime('%m-%d %H:%M') if isinstance(ts,(int,float)) else ''
-            lines.append(f'▰ {name}（{symbol}）')
-            lines.append(f'   过滤线确认：{side}  {when}')
-    else:
-        lines.append('今日暂无符合条件的信号。')
-    lines.extend(['', '扫描状态：完成', 'VEGAS V9 · CN'])
-    body='\n'.join(lines)
-    url='https://api.day.app/'+urllib.parse.quote(key,safe='')+'/'+urllib.parse.quote(title,safe='')+'/'+urllib.parse.quote(body,safe='')
-    req=urllib.request.Request(url,headers={'User-Agent':'VEGAS-V9-CN-A/1.0'})
+    symbols=[]; seen=set()
+    for s in signals:
+        symbol=str(s.get('symbol','')).strip().upper()
+        if symbol and symbol not in seen:
+            symbols.append(symbol); seen.add(symbol)
+    body='🔔 A股\\n'+'\\n'.join('   '.join(f'▰ {symbol} ▰' for symbol in symbols[i:i+3]) for i in range(0,len(symbols),3))
+    payload=json.dumps({
+        'device_key':key,
+        'title':'VEGAS V9 SIGNAL SYSTEM',
+        'body':body,
+        'group':'VEGAS V9',
+        'level':'active',
+    },ensure_ascii=False).encode()
+    req=urllib.request.Request('https://api.day.app/push',data=payload,headers={'Content-Type':'application/json; charset=utf-8'},method='POST')
     try:
-        with urllib.request.urlopen(req,timeout=15) as resp:
-            payload=resp.read().decode('utf-8','replace')
-            if resp.status < 200 or resp.status >= 300:
-                raise RuntimeError(f'Bark HTTP {resp.status}: {payload[:200]}')
-        try: parsed=json.loads(payload)
+        with urllib.request.urlopen(req,timeout=20) as resp:
+            response_body=resp.read().decode('utf-8','replace')
+            if not 200 <= resp.status < 300:
+                raise RuntimeError(f'Bark HTTP {resp.status}: {response_body[:200]}')
+        try: parsed=json.loads(response_body)
         except json.JSONDecodeError: parsed={}
-        if isinstance(parsed,dict) and parsed.get('code') not in (None, 200):
-            raise RuntimeError(f'Bark rejected push: {payload[:200]}')
-        return {'status':'sent','signals':len(signals)}
+        if isinstance(parsed,dict) and parsed.get('code') not in (None,200):
+            raise RuntimeError(f'Bark rejected push: {response_body[:200]}')
+        return {'status':'sent','signals':len(signals),'symbols':symbols}
     except Exception as e:
         return {'status':'failed','error':f'{type(e).__name__}: {e}'}
 
