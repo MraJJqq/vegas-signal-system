@@ -43,7 +43,7 @@ jobs:
               branch="${GITHUB_REF_NAME}"
               git fetch origin "$branch"
               if ! git rebase "origin/$branch"; then
-                if git status --porcelain | grep -q 'v9_cn_a/\\.signal-state\\.json'; then
+                if git status --porcelain | grep -q 'v9_cn_a/\.signal-state\.json'; then
                   git checkout --theirs -- v9_cn_a/.signal-state.json
                   git add -f v9_cn_a/.signal-state.json
                   GIT_EDITOR=true git rebase --continue
@@ -57,7 +57,7 @@ jobs:
                 echo "Push attempt $attempt failed; refreshing remote and retrying."
                 git fetch origin "$branch"
                 if ! git rebase "origin/$branch"; then
-                  if git status --porcelain | grep -q 'v9_cn_a/\\.signal-state\\.json'; then
+                  if git status --porcelain | grep -q 'v9_cn_a/\.signal-state\.json'; then
                     git checkout --theirs -- v9_cn_a/.signal-state.json
                     git add -f v9_cn_a/.signal-state.json
                     GIT_EDITOR=true git rebase --continue
