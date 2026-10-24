@@ -1,0 +1,53 @@
+name: VEGAS V9 A股 Baostock Scan
+on:
+  schedule:
+    # Beijing time 07:00–22:00 inclusive; GitHub cron uses UTC.
+    - cron: "0 0-14,23 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: v9-cn-a-baostock-scan
+  cancel-in-progress: false
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Baostock
+        run: python -m pip install --upgrade pip baostock
+      - name: Validate isolated A-share code
+        run: python -m compileall -q v9_cn_a
+      - name: Run Baostock A-share scan
+        env:
+          V9_CN_A_STATE_PATH: v9_cn_a/.signal-state.json
+          V9_CN_A_REPORT_PATH: v9_cn_a/scan-report.json
+          V9_CN_A_POOL_PATH: v9_cn_a/baostock-stock-pool.json
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: python v9_cn_a/baostock_scanner.py
+      - name: Persist A-share state only
+        if: always()
+        run: |
+          if [ -f v9_cn_a/.signal-state.json ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -f v9_cn_a/.signal-state.json
+            if ! git diff --cached --quiet; then
+              git commit -m 'chore(v9-cn-a): persist Baostock A-share signal state'
+              git push
+            fi
+          fi
+      - name: Upload A-share scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vegas-v9-cn-a-baostock-scan-report
+          path: v9_cn_a/scan-report.json
+          if-no-files-found: warn
+          retention-days: 14
