@@ -46,9 +46,14 @@ STOCKS = [
 ]
 
 
-def parse_dt(value: str) -> datetime:
-    # Baostock's 60-minute records normally expose date as YYYY-MM-DD HH:MM:SS.
-    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=TZ)
+def parse_dt(date_value: str, time_value: str) -> datetime:
+    # Minute K-line data returns date and time separately; time is YYYYMMDDHHMMSSmmm.
+    digits = "".join(ch for ch in time_value if ch.isdigit())
+    if len(digits) >= 14:
+        stamp = datetime.strptime(digits[:14], "%Y%m%d%H%M%S")
+    else:
+        stamp = datetime.strptime(date_value, "%Y-%m-%d")
+    return stamp.replace(tzinfo=TZ)
 
 
 def main() -> int:
@@ -70,7 +75,7 @@ def main() -> int:
             try:
                 rs = bs.query_history_k_data_plus(
                     code,
-                    "date,code,open,high,low,close,volume,amount,adjustflag,tradestatus,pctChg",
+                    "date,time,code,open,high,low,close,volume,amount,adjustflag",
                     start_date=start,
                     end_date=end,
                     frequency="60",
@@ -83,7 +88,7 @@ def main() -> int:
                 while rs.next():
                     row = dict(zip(rs.fields, rs.get_row_data()))
                     try:
-                        stamp = parse_dt(row["date"])
+                        stamp = parse_dt(row["date"], row["time"])
                         o, h, low, close = (float(row[k]) for k in ("open", "high", "low", "close"))
                         valid = all(v > 0 for v in (o, h, low, close)) and low <= min(o, close) <= max(o, close) <= h
                         row["_timestamp"] = stamp
@@ -98,7 +103,7 @@ def main() -> int:
                     latest = rows[-1]
                     closed = [r for r in rows if r["_timestamp"] + timedelta(hours=1) <= now]
                     item["latest_record"] = {
-                        "timestamp": latest["date"],
+                        "timestamp": latest["time"],
                         "open": latest["open"], "high": latest["high"],
                         "low": latest["low"], "close": latest["close"],
                         "volume": latest["volume"], "ohlc_valid": latest["_ohlc_valid"],
@@ -106,7 +111,7 @@ def main() -> int:
                     if closed:
                         c = closed[-1]
                         item["latest_closed_candle"] = {
-                            "timestamp": c["date"],
+                            "timestamp": c["time"],
                             "open": c["open"], "high": c["high"],
                             "low": c["low"], "close": c["close"],
                             "volume": c["volume"], "ohlc_valid": c["_ohlc_valid"],
