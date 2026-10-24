@@ -1,4 +1,6 @@
-"""Build a recommended 2,000-stock A-share universe ranked by recent Baostock turnover."""
+"""Build a recommended 2,000-stock A-share universe ranked by recent Baostock turnover.
+Initial pool build is triggered by the workflow; later refreshes can be run manually.
+"""
 from __future__ import annotations
 import json, os, re, time
 from datetime import datetime, timedelta
