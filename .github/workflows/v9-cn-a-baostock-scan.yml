@@ -1,8 +1,8 @@
 name: VEGAS V9 A股 Baostock Scan
 on:
   schedule:
-    # Beijing time 07:00–22:00 inclusive; GitHub cron uses UTC.
-    - cron: "0 0-14,23 * * *"
+    # Run once daily at 10:00 Beijing time (02:00 UTC).
+    - cron: "0 2 * * *"
   workflow_dispatch:
 permissions:
   contents: write
