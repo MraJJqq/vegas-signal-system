@@ -1,8 +1,9 @@
 name: VEGAS V9 A股 Tencent Scan
 
-# MANUAL-ONLY POLICY: keep workflow_dispatch as the sole trigger.
-# Do not add schedule, push, pull_request, or other automatic triggers.
 on:
+  schedule:
+    # Beijing time 07:00–22:00 inclusive; GitHub cron uses UTC.
+    - cron: "0 0-14,23 * * *"
   workflow_dispatch:
 
 permissions:
