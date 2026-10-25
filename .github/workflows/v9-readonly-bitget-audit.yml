@@ -1,0 +1,107 @@
+name: V9 Read-Only Bitget Instrument Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-bitget-instruments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Audit approved V9 symbols and live 1H candles
+        run: |
+          python - <<'PY'
+          import json, math, time
+          from datetime import datetime, timezone
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          BASE = "https://api.bitget.com"
+          SYMBOLS = ("BTCUSDT", "HYPEUSDT", "XAUUSDT", "CLUSDT",
+                     "AAPLUSDT", "MSFTUSDT", "GOOGLUSDT", "AMZNUSDT",
+                     "NVDAUSDT", "TSLAUSDT", "METAUSDT", "INTCUSDT",
+                     "QCOMUSDT", "AMDUSDT", "TSMUSDT", "AVGOUSDT",
+                     "ORCLUSDT", "ARMUSDT", "MUUSDT", "ASMLUSDT",
+                     "SNDKUSDT", "SKHYNIXUSDT", "MRVLUSDT", "GLWUSDT",
+                     "HOODUSDT", "CBRSUSDT", "SPCXUSDT")
+          def get(path, params):
+              url = BASE + path + "?" + urlencode(params)
+              req = Request(url, headers={"User-Agent": "VEGAS-V9-READONLY-AUDIT/1.0", "Accept": "application/json"})
+              with urlopen(req, timeout=20) as resp:
+                  payload = json.loads(resp.read().decode("utf-8"))
+              if not isinstance(payload, dict) or payload.get("code") != "00000":
+                  raise RuntimeError(f"API response error: {payload!r}")
+              return payload.get("data")
+
+          print("V9 READ-ONLY BITGET AUDIT")
+          print("Started UTC:", datetime.now(timezone.utc).isoformat())
+          print("Pool size:", len(SYMBOLS))
+          try:
+              contracts_data = get("/api/v2/mix/market/contracts", {"productType": "USDT-FUTURES"})
+              contracts = {str(row.get("symbol", "")).upper(): row for row in (contracts_data or []) if isinstance(row, dict)}
+              print("Contract list endpoint: PASS; instruments returned:", len(contracts))
+          except Exception as exc:
+              print("Contract list endpoint: FAIL:", str(exc))
+              contracts = None
+
+          passed = failed = 0
+          for symbol in SYMBOLS:
+              issues = []
+              listed = None
+              if contracts is not None:
+                  listed = symbol in contracts
+                  if not listed:
+                      issues.append("not present in USDT-FUTURES contract list")
+              try:
+                  rows = get("/api/v2/mix/market/candles", {
+                      "symbol": symbol, "productType": "USDT-FUTURES",
+                      "granularity": "1H", "limit": "10"
+                  })
+                  if not isinstance(rows, list) or not rows:
+                      issues.append("no candle rows")
+                      rows = []
+                  now_ms = int(time.time() * 1000)
+                  valid_closed = []
+                  for row in rows:
+                      if not isinstance(row, list) or len(row) < 6:
+                          issues.append("malformed candle row")
+                          continue
+                      try:
+                          ts = int(row[0])
+                          o, h, low, c, volume = map(float, row[1:6])
+                      except (ValueError, TypeError):
+                          issues.append("non-numeric candle data")
+                          continue
+                      if not all(math.isfinite(v) for v in (o, h, low, c, volume)):
+                          issues.append("non-finite candle value")
+                          continue
+                      if min(o, h, low, c) <= 0 or h < max(o, c, low) or low > min(o, c, h) or volume < 0:
+                          issues.append("invalid OHLCV values")
+                          continue
+                      if ts + 3600000 <= now_ms:
+                          valid_closed.append((ts, c))
+                  if not valid_closed:
+                      issues.append("no valid fully closed 1H candle")
+                  if issues:
+                      failed += 1
+                      status = "FAIL"
+                  else:
+                      passed += 1
+                      status = "PASS"
+                  if valid_closed:
+                      latest_ts, latest_close = max(valid_closed)
+                      latest_time = datetime.fromtimestamp(latest_ts / 1000, timezone.utc).isoformat()
+                  else:
+                      latest_time, latest_close = "n/a", "n/a"
+                  print(f"{status} {symbol} listed={listed if listed is not None else 'unknown'} rows={len(rows)} latest_closed_utc={latest_time} close={latest_close} issues={' ; '.join(dict.fromkeys(issues)) if issues else 'none'}")
+              except Exception as exc:
+                  failed += 1
+                  print(f"FAIL {symbol} listed={listed if listed is not None else 'unknown'} request_error={exc}")
+          print(f"SUMMARY: passed={passed} failed={failed} total={len(SYMBOLS)}")
+          print("READ ONLY: no repository state, trading rules, orders, or notifications were changed.")
+          if failed:
+              raise SystemExit(1)
+          PY
