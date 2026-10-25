@@ -8,8 +8,8 @@
 - 收盘价等于 EMA12 时不确认，保持观察状态。
 - 确认后退出观察状态；通过持久化状态避免重复处理旧 K 线。
 - 仅纳入中国时区当天的正式信号；数据错误或无可用已收盘 K 线的品种排除本轮扫描。
-- 固定核心资金池共 19 个：BTC、HYPE、XAU、CL、SNDK，以及 AAPL、AMZN、GOOGL、NVDA、JPM、COIN、CRWD、BABA、NFLX、UBER、CAT、CEG、CVX、TSLA。
-- 不再按 24 小时成交额筛选；上述 19 个品种全部进入每轮扫描。仅当某品种行情数据不可用或错误时，才标记为本轮数据异常。
+- 固定扫描池共 27 个：核心能源 4 个（BTC、HYPE、XAU、CL），以及美股巨头/科技股 23 个（AAPL、MSFT、GOOGL、AMZN、NVDA、TSLA、META、INTC、QCOM、AMD、TSM、AVGO、ORCL、ARM、MU、ASML、SNDK、SKHYNIX、MRVL、GLW、HOOD、CBRS、SPCX）。
+- 不再按 24 小时成交额筛选；上述 27 个品种全部进入每轮扫描。仅当某品种行情数据不可用或错误时，才标记为本轮数据异常。
 - 数据源：Bitget USDT 永续合约；沿用 V8 的指标计算方式。
 
 ## 通知规则
@@ -25,7 +25,7 @@
 - 分组标题：美股巨头、核心能源。
 - 品种格式：▰ SYMBOL ▰。
 - 美股每行最多三个品种；核心品种同组排列。
-- 核心品种顺序：BTC、HYPE、XAU、CL、SNDK。
+- 核心品种顺序：BTC、HYPE、XAU、CL。
 - 美股按已确认的 23 个候选品种顺序排列；通知分类标题仍为“美股巨头”，核心品种仍单独显示在“核心能源”下。
 - Bark 标题独立显示；正文不重复系统标题；测试推送需加测试标记。
 
