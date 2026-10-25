@@ -22,7 +22,7 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
             seen.add(symbol)
 
     # Keep this whitelist and ordering synchronized with bitget_scanner.py's 28-symbol pool.
-    core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
+    core_order = ["BTC", "HYPE", "XAU", "CL"]
     stock_order = [
         "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"
     ]
