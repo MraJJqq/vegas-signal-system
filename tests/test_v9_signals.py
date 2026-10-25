@@ -27,4 +27,13 @@ class V9SignalTests(unittest.TestCase):
         candles=[candle(i*3600000) for i in range(699)]+[candle(699*3600000)]
         self.assertEqual(detect_formal_signals("TESTUSDT",candles,state),[])
         self.assertTrue(state["observing"])
+    def test_touch_candle_cannot_confirm_itself(self):
+        state={"observing":True,"touched_lines":["中锋EMA144"],"touch_timestamp_ms":700*3600000,"last_processed_timestamp_ms":699*3600000}
+        candles=[candle(i*3600000) for i in range(700)]+[candle(700*3600000,close=101,high=101,low=100)]
+        self.assertEqual(detect_formal_signals("TESTUSDT",candles,state),[])
+        self.assertTrue(state["observing"])
+        candles.append(candle(701*3600000,close=101,high=101,low=100))
+        signals=detect_formal_signals("TESTUSDT",candles,state)
+        self.assertEqual(len(signals),1)
+        self.assertEqual(signals[0]["candle_timestamp_ms"],701*3600000)
 if __name__=="__main__": unittest.main()
