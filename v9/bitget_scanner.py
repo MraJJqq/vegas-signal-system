@@ -12,7 +12,7 @@ CANDLE_LIMIT = 800
 TIMEOUT = 15
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
-STOCKS = ("AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA")
+STOCKS = ("AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA", "SPCX")
 SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 
 class BitgetError(RuntimeError):
