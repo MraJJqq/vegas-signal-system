@@ -78,7 +78,7 @@ class V9NotifierTests(unittest.TestCase):
                 self.assertIn("🔸 核心能源\n▰ No change ▰", payload["body"])
                 self.assertNotIn("🔔", payload["body"])
                 self.assertNotIn("VEGAS V9 SIGNAL SYSTEM", payload["body"])
-                self.assertEqual(payload["title"], "VEGAS V9 SIGNAL SYSTEM")
+                self.assertNotIn("title", payload)
 
     def test_missing_report_fails_cleanly(self):
         with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False):
