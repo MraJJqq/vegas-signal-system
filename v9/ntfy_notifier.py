@@ -72,7 +72,7 @@ def send_notification(report_path: str) -> int:
         with urllib.request.urlopen(req, timeout=20) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"Bark HTTP {response.status}")
-            print(f"Bark accepted notification (HTTP {response.status}); symbols: {', '.join(symbols) or 'NOCHANGE'}.")
+            print(f"Bark accepted notification (HTTP {response.status}); symbols: {', '.join(symbols) or 'No change'}.")
         return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
