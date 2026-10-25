@@ -61,8 +61,7 @@ def send_notification(report_path: str) -> int:
         body = "【测试推送】\n" + body
     payload = json.dumps({
         "device_key": bark_key,
-        "title": "【测试推送】VEGAS V9 SIGNAL SYSTEM" if test else "VEGAS V9 SIGNAL SYSTEM",
-        "body": body,
+                "body": body,
         "group": "VEGAS V9",
         "level": "active",
     }, ensure_ascii=False).encode()
