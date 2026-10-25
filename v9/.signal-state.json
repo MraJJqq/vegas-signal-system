@@ -3,95 +3,83 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "HYPEUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "XAUUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "CLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "SNDKUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "NVDAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "AAPLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "AMZNUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "GOOGLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "TSLAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "COINUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "NFLXUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "BABAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "__daily_formal_signals__": {
     "date": "2026-10-25",
     "signals": [
-      {
-        "formal_signal": true,
-        "symbol": "CVXUSDT",
-        "timeframe": "1H",
-        "line": "中锋EMA144",
-        "touch_timestamp_ms": 1792857600000,
-        "filter_line": "EMA12",
-        "filter_side": "下方",
-        "filter_value": 2.388239158805528,
-        "close_price": 2.386,
-        "candle_timestamp_ms": 1792861200000
-      },
       {
         "formal_signal": true,
         "symbol": "TSLAUSDT",
@@ -139,6 +127,30 @@
         "filter_value": 371.7542980194464,
         "close_price": 372.42,
         "candle_timestamp_ms": 1792882800000
+      },
+      {
+        "formal_signal": true,
+        "symbol": "MSFTUSDT",
+        "timeframe": "1H",
+        "line": "红峰EMA676",
+        "touch_timestamp_ms": 1792868400000,
+        "filter_line": "EMA12",
+        "filter_side": "上方",
+        "filter_value": 523.643203497905,
+        "close_price": 524.56,
+        "candle_timestamp_ms": 1792872000000
+      },
+      {
+        "formal_signal": true,
+        "symbol": "MSFTUSDT",
+        "timeframe": "1H",
+        "line": "红峰EMA676",
+        "touch_timestamp_ms": 1792875600000,
+        "filter_line": "EMA12",
+        "filter_side": "上方",
+        "filter_value": 523.793654575423,
+        "close_price": 524.37,
+        "candle_timestamp_ms": 1792879200000
       }
     ]
   },
@@ -146,36 +158,66 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "CRWDUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "UBERUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "CATUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
   "CEGUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
   },
-  "CVXUSDT": {
+  "SPCXUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792882800000
+    "last_processed_timestamp_ms": 1792886400000
+  },
+  "MSFTUSDT": {
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792886400000
+  },
+  "METAUSDT": {
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792886400000
+  },
+  "HOODUSDT": {
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792886400000
+  },
+  "GLWUSDT": {
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792886400000
+  },
+  "MRVLUSDT": {
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792886400000
   }
 }
