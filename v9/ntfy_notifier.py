@@ -21,16 +21,19 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
             symbols.append(symbol)
             seen.add(symbol)
 
-    # Keep this whitelist and ordering synchronized with bitget_scanner.py's 28-symbol pool.
+    # BTC, HYPE, XAU (gold), and CL (oil) are the only Core Energy symbols.
+    # Every other formal-signal symbol belongs to US Megacaps.
     core_order = ["BTC", "HYPE", "XAU", "CL"]
     stock_order = [
         "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"
     ]
-    allowed = set(core_order) | set(stock_order)
-    symbols = [symbol for symbol in symbols if symbol in allowed]
-    seen = set(symbols)
+    core_set = set(core_order)
     core = [symbol for symbol in core_order if symbol in seen]
-    stocks = [symbol for symbol in stock_order if symbol in seen]
+    other_symbols = [symbol for symbol in symbols if symbol not in core_set]
+    stock_set = set(stock_order)
+    stocks = [symbol for symbol in stock_order if symbol in other_symbols]
+    stocks.extend(sorted(symbol for symbol in other_symbols if symbol not in stock_set))
+
     stock_line = "\n".join(
         "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
         for i in range(0, len(stocks), 3)
