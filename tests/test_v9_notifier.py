@@ -22,8 +22,8 @@ class V9NotifierTests(unittest.TestCase):
     def test_empty_report_has_both_nochange_groups(self):
         body, symbols = ntfy_notifier.build_body({"signals": []})
         self.assertEqual(symbols, [])
-        self.assertIn("🔔 美股巨头\\n▰ NOCHANGE ▰", body)
-        self.assertIn("🔔 核心能源\\n▰ NOCHANGE ▰", body)
+        self.assertIn("🔔 美股巨头\n▰ NOCHANGE ▰", body)
+        self.assertIn("🔔 核心能源\n▰ NOCHANGE ▰", body)
 
     def test_symbols_are_deduplicated_and_grouped(self):
         body, symbols = ntfy_notifier.build_body({"signals": [
@@ -60,7 +60,7 @@ class V9NotifierTests(unittest.TestCase):
         self.assertEqual(set(symbols), {"NVDA", "SNDK"})
         self.assertIn("🔔 美股巨头", body)
         self.assertIn("▰ NVDA ▰", body)
-        self.assertIn("🔔 核心能源\\n▰ SNDK ▰", body)
+        self.assertIn("🔔 核心能源\n▰ SNDK ▰", body)
         for stale in ("CVX", "CRCL", "MSTR"):
             self.assertNotIn(f"▰ {stale} ▰", body)
 
@@ -68,8 +68,7 @@ class V9NotifierTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
             path.write_text(json.dumps({"signals": []}), encoding="utf-8")
-            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False), \\
-                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False), patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
                 self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
