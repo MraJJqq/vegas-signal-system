@@ -39,7 +39,9 @@ def detect_formal_signals(symbol: str, candles: list[dict[str, Any]], state: dic
             continue
         filter_value = filter_values[index]
         high, low = float(candle["high"]), float(candle["low"])
-        if observing and filter_value is not None:
+        # Formal confirmation must be on a strictly later 1H candle than the touch candle.
+        is_after_touch = touch_timestamp_ms is not None and timestamp_ms > int(touch_timestamp_ms)
+        if observing and is_after_touch and filter_value is not None:
             close_price = float(candle["close"])
             side = "上方" if close_price > filter_value else "下方" if close_price < filter_value else None
             if side is not None:
