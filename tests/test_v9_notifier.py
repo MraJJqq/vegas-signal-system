@@ -20,8 +20,8 @@ class V9NotifierTests(unittest.TestCase):
     def test_empty_report_has_both_nochange_groups(self):
         body, symbols = ntfy_notifier.build_body({"signals": []})
         self.assertEqual(symbols, [])
-        self.assertIn("🔔 美股巨头\n▰ No change ▰", body)
-        self.assertIn("🔔 核心能源\n▰ No change ▰", body)
+        self.assertIn("🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸\n▰ No change ▰", body)
+        self.assertIn("🔸━━━━━━━━ 核心能源 ━━━━━━━━🔸\n▰ No change ▰", body)
 
     def test_symbols_are_deduplicated_and_grouped(self):
         body, symbols = ntfy_notifier.build_body({"signals": [
@@ -56,9 +56,9 @@ class V9NotifierTests(unittest.TestCase):
             {"formal_signal": True, "symbol": "SNDKUSDT"},
         ]})
         self.assertEqual(set(symbols), {"NVDA", "SNDK"})
-        self.assertIn("🔔 美股巨头", body)
+        self.assertIn("🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸", body)
         self.assertIn("▰ NVDA ▰", body)
-        self.assertIn("🔔 美股巨头", body)
+        self.assertIn("🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸", body)
         self.assertIn("▰ SNDK ▰", body)
         for stale in ("CVX", "CRCL", "MSTR"):
             self.assertNotIn(f"▰ {stale} ▰", body)
