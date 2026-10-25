@@ -11,35 +11,37 @@ def display_symbol(symbol: str) -> str:
     return "CL" if value == "CLU" else value
 
 
+CORE_ORDER = ["BTC", "HYPE", "XAU", "CL"]
+STOCK_ORDER = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"
+]
+ALLOWED_SYMBOLS = set(CORE_ORDER + STOCK_ORDER)
+
+
 def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
     signals = [x for x in report.get("signals", []) if isinstance(x, dict) and x.get("formal_signal") is True]
     symbols: list[str] = []
     seen: set[str] = set()
     for signal in signals:
         symbol = display_symbol(str(signal.get("symbol", "")))
-        if symbol and symbol not in seen:
+        # Keep the legacy safeguard: signals from symbols outside the active scan pool are ignored.
+        if symbol and symbol in ALLOWED_SYMBOLS and symbol not in seen:
             symbols.append(symbol)
             seen.add(symbol)
 
-    # BTC, HYPE, XAU (gold), and CL (oil) are the only Core Energy symbols.
-    # Every other formal-signal symbol belongs to US Megacaps.
-    core_order = ["BTC", "HYPE", "XAU", "CL"]
-    stock_order = [
-        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"
-    ]
-    core_set = set(core_order)
-    core = [symbol for symbol in core_order if symbol in seen]
+    core_set = set(CORE_ORDER)
+    core = [symbol for symbol in CORE_ORDER if symbol in seen]
     other_symbols = [symbol for symbol in symbols if symbol not in core_set]
-    stock_set = set(stock_order)
-    stocks = [symbol for symbol in stock_order if symbol in other_symbols]
+    stock_set = set(STOCK_ORDER)
+    stocks = [symbol for symbol in STOCK_ORDER if symbol in other_symbols]
     stocks.extend(sorted(symbol for symbol in other_symbols if symbol not in stock_set))
 
-    stock_line = "\n".join(
+    stock_line = "\\n".join(
         "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
         for i in range(0, len(stocks), 3)
     ) if stocks else "▰ NOCHANGE ▰"
     core_line = "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "▰ NOCHANGE ▰"
-    return f"🔔 美股巨头\n{stock_line}\n\n🔔 核心能源\n{core_line}", symbols
+    return f"🔔 美股巨头\\n{stock_line}\\n\\n🔔 核心能源\\n{core_line}", symbols
 
 
 def send_notification(report_path: str) -> int:
@@ -56,7 +58,7 @@ def send_notification(report_path: str) -> int:
     body, symbols = build_body(report)
     test = os.environ.get("V9_NOTIFICATION_TEST_MODE") == "1"
     if test:
-        body = "【测试推送】\n" + body
+        body = "【测试推送】\\n" + body
     payload = json.dumps({
         "device_key": bark_key,
         "title": "【测试推送】VEGAS V9 SIGNAL SYSTEM" if test else "VEGAS V9 SIGNAL SYSTEM",
