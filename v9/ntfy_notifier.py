@@ -41,7 +41,7 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
         for i in range(0, len(stocks), 3)
     ) if stocks else "▰ No change ▰"
     core_line = "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "▰ No change ▰"
-    return f"🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸\n{stock_line}\n\n🔸━━━━━━━━ 核心能源 ━━━━━━━━🔸\n{core_line}", symbols
+    return f"🔸 美股巨头\n{stock_line}\n\n🔸 核心能源\n{core_line}", symbols
 
 
 def send_notification(report_path: str) -> int:
