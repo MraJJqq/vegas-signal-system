@@ -3,61 +3,64 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "HYPEUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "XAUUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "CLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "SNDKUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "NVDAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "AAPLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "AMZNUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "GOOGLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "TSLAUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "observing": true,
+    "touched_lines": [
+      "中锋EMA169",
+      "红峰EMA676"
+    ],
+    "touch_timestamp_ms": 1792933200000,
+    "last_processed_timestamp_ms": 1792933200000
   },
   "__daily_formal_signals__": {
     "date": "2026-10-25",
@@ -349,6 +352,30 @@
         "filter_value": 954.4582372783248,
         "close_price": 959.65,
         "candle_timestamp_ms": 1792929600000
+      },
+      {
+        "formal_signal": true,
+        "symbol": "MSFTUSDT",
+        "timeframe": "1H",
+        "line": "红峰EMA676",
+        "touch_timestamp_ms": 1792929600000,
+        "filter_line": "EMA12",
+        "filter_side": "下方",
+        "filter_value": 524.1522493652127,
+        "close_price": 524.15,
+        "candle_timestamp_ms": 1792933200000
+      },
+      {
+        "formal_signal": true,
+        "symbol": "MUUSDT",
+        "timeframe": "1H",
+        "line": "中锋EMA144",
+        "touch_timestamp_ms": 1792929600000,
+        "filter_line": "EMA12",
+        "filter_side": "上方",
+        "filter_value": 888.749264127611,
+        "close_price": 891.21,
+        "candle_timestamp_ms": 1792933200000
       }
     ]
   },
@@ -356,106 +383,102 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "MSFTUSDT": {
-    "observing": true,
-    "touched_lines": [
-      "红峰EMA676"
-    ],
-    "touch_timestamp_ms": 1792929600000,
-    "last_processed_timestamp_ms": 1792929600000
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792933200000
   },
   "METAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "HOODUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "GLWUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "MRVLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "INTCUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "QCOMUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "AMDUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "TSMUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "AVGOUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "ORCLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "ARMUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "MUUSDT": {
-    "observing": true,
-    "touched_lines": [
-      "中锋EMA144"
-    ],
-    "touch_timestamp_ms": 1792929600000,
-    "last_processed_timestamp_ms": 1792929600000
+    "observing": false,
+    "touched_lines": [],
+    "touch_timestamp_ms": null,
+    "last_processed_timestamp_ms": 1792933200000
   },
   "ASMLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "SKHYNIXUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   },
   "CBRSUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_timestamp_ms": 1792929600000
+    "last_processed_timestamp_ms": 1792933200000
   }
 }
