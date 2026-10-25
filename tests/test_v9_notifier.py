@@ -57,9 +57,10 @@ class V9NotifierTests(unittest.TestCase):
         ]})
         self.assertEqual(set(symbols), {"NVDA", "SNDK"})
         self.assertIn("🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸", body)
+        self.assertIn("🔸━━━━━━━━ 核心能源 ━━━━━━━━🔸", body)
         self.assertIn("▰ NVDA ▰", body)
-        self.assertIn("🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸", body)
         self.assertIn("▰ SNDK ▰", body)
+        self.assertNotIn("🔔", body)
         for stale in ("CVX", "CRCL", "MSTR"):
             self.assertNotIn(f"▰ {stale} ▰", body)
 
@@ -73,7 +74,10 @@ class V9NotifierTests(unittest.TestCase):
                 self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
                 self.assertEqual(urlopen.call_count, 1)
                 payload = json.loads(urlopen.call_args.args[0].data.decode())
-                self.assertIn("▰ No change ▰", payload["body"])
+                self.assertIn("🔸━━━━━━━━ 美股巨头 ━━━━━━━━🔸\\n▰ No change ▰", payload["body"])
+                self.assertIn("🔸━━━━━━━━ 核心能源 ━━━━━━━━🔸\\n▰ No change ▰", payload["body"])
+                self.assertNotIn("🔔", payload["body"])
+                self.assertNotIn("VEGAS V9 SIGNAL SYSTEM", payload["body"])
                 self.assertEqual(payload["title"], "VEGAS V9 SIGNAL SYSTEM")
 
     def test_missing_report_fails_cleanly(self):
