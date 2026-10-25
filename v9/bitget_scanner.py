@@ -12,7 +12,7 @@ CANDLE_LIMIT = 800
 TIMEOUT = 15
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL", "SNDK")
-STOCKS = ("AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA", "SPCX", "MSFT", "META", "HOOD", "GLW")  # CVX is intentionally scanned as CVXUSDT
+STOCKS = ("AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "TSLA", "SPCX", "MSFT", "META", "HOOD", "GLW")
 SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 
 class BitgetError(RuntimeError):
@@ -76,7 +76,7 @@ def save_state(state: dict[str, dict[str, Any]]) -> None:
 def scan_market_data() -> dict[str, Any]:
     tz = timezone(timedelta(hours=8))
     today = datetime.now(tz).date()
-    # Keep only state for the approved current 24-symbol pool; discard legacy symbols.
+    # Keep only state for the approved current 23-symbol pool; discard legacy symbols.
     loaded_state = load_state()
     state = {key: value for key, value in loaded_state.items()
              if key == "__daily_formal_signals__" or key in SYMBOLS}
@@ -88,7 +88,7 @@ def scan_market_data() -> dict[str, Any]:
         signal for signal in daily_state.get("signals", [])
         if isinstance(signal, dict) and str(signal.get("symbol", "")).upper() in SYMBOLS
     ]
-    # The 24 selected markets are the fixed V9 scan pool; do not filter by turnover.
+    # The 23 selected markets are the fixed V9 scan pool; do not filter by turnover.
     scan_symbols = list(SYMBOLS)
 
     report = {
