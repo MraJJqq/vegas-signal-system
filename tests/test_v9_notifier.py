@@ -11,9 +11,7 @@ import ntfy_notifier
 
 EXPECTED_CORE = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
 EXPECTED_STOCKS = [
-    "AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA",
-    "NFLX", "UBER", "CAT", "CEG", "TSLA", "SPCX", "MSFT", "META",
-    "HOOD", "GLW", "MRVL",
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"
 ]
 EXPECTED_POOL = set(EXPECTED_CORE + EXPECTED_STOCKS)
 
@@ -38,16 +36,16 @@ class V9NotifierTests(unittest.TestCase):
         self.assertNotIn("▰ TSLA ▰", body)
         self.assertNotIn("NOCHANGE", body)
 
-    def test_all_24_current_pool_symbols_are_allowed(self):
+    def test_all_28_current_pool_symbols_are_allowed(self):
         body, symbols = ntfy_notifier.build_body({
             "signals": [{"formal_signal": True, "symbol": f"{symbol}USDT"}
                         for symbol in EXPECTED_STOCKS + EXPECTED_CORE]
         })
         self.assertEqual(set(symbols), EXPECTED_POOL)
-        self.assertEqual(len(symbols), 24)
+        self.assertEqual(len(symbols), 28)
         for symbol in EXPECTED_POOL:
             self.assertIn(f"▰ {symbol} ▰", body)
-        self.assertNotIn("CVX", body)
+        self.assertNotIn("JPM", body)
 
     def test_stale_symbols_outside_current_pool_are_ignored(self):
         body, symbols = ntfy_notifier.build_body({"signals": [
