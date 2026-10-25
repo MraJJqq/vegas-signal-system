@@ -20,20 +20,25 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
         if symbol and symbol not in seen:
             symbols.append(symbol)
             seen.add(symbol)
-    # Whitelist exactly the current approved 19-symbol pool. Ignore stale signals
-    # from previous pools even if they remain in a persisted report/state file.
+
+    # Keep this whitelist and ordering synchronized with bitget_scanner.py's 24-symbol pool.
     core_order = ["BTC", "HYPE", "XAU", "CL", "SNDK"]
-    stock_order = ["AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA", "NFLX", "UBER", "CAT", "CEG", "CVX", "TSLA"]
+    stock_order = [
+        "AAPL", "AMZN", "GOOGL", "NVDA", "JPM", "COIN", "CRWD", "BABA",
+        "NFLX", "UBER", "CAT", "CEG", "TSLA", "SPCX", "MSFT", "META",
+        "HOOD", "GLW", "MRVL",
+    ]
     allowed = set(core_order) | set(stock_order)
     symbols = [symbol for symbol in symbols if symbol in allowed]
     seen = set(symbols)
     core = [symbol for symbol in core_order if symbol in seen]
     stocks = [symbol for symbol in stock_order if symbol in seen]
-    known = set(core_order) | set(stock_order)
-    stocks.extend(symbol for symbol in symbols if symbol not in known)
-    stock_line = "\n".join("   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i+3]) for i in range(0, len(stocks), 3)) if stocks else "▰ NOCHANGE ▰"
+    stock_line = "\\n".join(
+        "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
+        for i in range(0, len(stocks), 3)
+    ) if stocks else "▰ NOCHANGE ▰"
     core_line = "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "▰ NOCHANGE ▰"
-    return f"🔔 美股巨头\n{stock_line}\n\n🔔 核心能源\n{core_line}", symbols
+    return f"🔔 美股巨头\\n{stock_line}\\n\\n🔔 核心能源\\n{core_line}", symbols
 
 
 def send_notification(report_path: str) -> int:
@@ -50,7 +55,7 @@ def send_notification(report_path: str) -> int:
     body, symbols = build_body(report)
     test = os.environ.get("V9_NOTIFICATION_TEST_MODE") == "1"
     if test:
-        body = "【测试推送】\n" + body
+        body = "【测试推送】\\n" + body
     payload = json.dumps({
         "device_key": bark_key,
         "title": "【测试推送】VEGAS V9 SIGNAL SYSTEM" if test else "VEGAS V9 SIGNAL SYSTEM",
