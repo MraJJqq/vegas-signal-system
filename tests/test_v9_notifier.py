@@ -20,8 +20,8 @@ class V9NotifierTests(unittest.TestCase):
     def test_empty_report_has_both_nochange_groups(self):
         body, symbols = ntfy_notifier.build_body({"signals": []})
         self.assertEqual(symbols, [])
-        self.assertIn("🔔 美股巨头\n▰ NOCHANGE ▰", body)
-        self.assertIn("🔔 核心能源\n▰ NOCHANGE ▰", body)
+        self.assertIn("🔔 美股巨头\n▰ No change ▰", body)
+        self.assertIn("🔔 核心能源\n▰ No change ▰", body)
 
     def test_symbols_are_deduplicated_and_grouped(self):
         body, symbols = ntfy_notifier.build_body({"signals": [
@@ -34,7 +34,7 @@ class V9NotifierTests(unittest.TestCase):
         self.assertIn("▰ NVDA ▰", body)
         self.assertIn("▰ BTC ▰", body)
         self.assertNotIn("▰ TSLA ▰", body)
-        self.assertNotIn("NOCHANGE", body)
+        self.assertNotIn("▰ No change ▰", body)
 
     def test_all_27_current_pool_symbols_are_allowed(self):
         body, symbols = ntfy_notifier.build_body({
@@ -73,7 +73,7 @@ class V9NotifierTests(unittest.TestCase):
                 self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
                 self.assertEqual(urlopen.call_count, 1)
                 payload = json.loads(urlopen.call_args.args[0].data.decode())
-                self.assertIn("NOCHANGE", payload["body"])
+                self.assertIn("▰ No change ▰", payload["body"])
                 self.assertEqual(payload["title"], "VEGAS V9 SIGNAL SYSTEM")
 
     def test_missing_report_fails_cleanly(self):
