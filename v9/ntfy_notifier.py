@@ -39,8 +39,8 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
     stock_line = "\n".join(
         "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
         for i in range(0, len(stocks), 3)
-    ) if stocks else "▰ NOCHANGE ▰"
-    core_line = "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "▰ NOCHANGE ▰"
+    ) if stocks else "▰ No change ▰"
+    core_line = "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "▰ No change ▰"
     return f"🔔 美股巨头\n{stock_line}\n\n🔔 核心能源\n{core_line}", symbols
 
 
