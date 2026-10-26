@@ -77,17 +77,29 @@ def save_state(state: dict[str, dict[str, Any]]) -> None:
 def scan_market_data() -> dict[str, Any]:
     tz = timezone(timedelta(hours=8))
     today = datetime.now(tz).date()
-    # Keep only state for the approved current 27-symbol pool; discard legacy symbols.
+    # Bump this whenever signal semantics change. Old observations and accumulated
+    # signals cannot be trusted across rule versions (prevents stale AAPL alerts).
+    rule_version = 2
     loaded_state = load_state()
-    state = {key: value for key, value in loaded_state.items()
-             if key == "__daily_formal_signals__" or key in SYMBOLS}
-    daily_state = state.get("__daily_formal_signals__", {})
-    if daily_state.get("date") != today.isoformat():
+    version_record = loaded_state.get("__rule_version__", {})
+    rules_changed = version_record.get("version") != rule_version
+    if rules_changed:
+        state: dict[str, dict[str, Any]] = {}
         daily_state = {"date": today.isoformat(), "signals": []}
-    # Old same-day signals from retired pools must never be carried into notifications.
+    else:
+        state = {key: value for key, value in loaded_state.items()
+                 if key == "__daily_formal_signals__" or key == "__rule_version__" or key in SYMBOLS}
+        daily_state = state.get("__daily_formal_signals__", {})
+        if daily_state.get("date") != today.isoformat():
+            daily_state = {"date": today.isoformat(), "signals": []}
     daily_signals = [
         signal for signal in daily_state.get("signals", [])
-        if isinstance(signal, dict) and str(signal.get("symbol", "")).upper() in SYMBOLS
+        if isinstance(signal, dict)
+        and str(signal.get("symbol", "")).upper() in SYMBOLS
+        and signal.get("formal_signal") is True
+        and signal.get("observation_timeframe") == "4H"
+        and signal.get("filter_line") == "1H EMA12"
+        and signal.get("phase") == "信号期"
     ]
     # The 27 selected markets are the fixed V9 scan pool; do not filter by turnover.
     scan_symbols = list(SYMBOLS)
@@ -133,6 +145,7 @@ def scan_market_data() -> dict[str, Any]:
         daily_by_key[(str(signal.get("symbol")), int(signal.get("candle_timestamp_ms", 0)), str(signal.get("filter_side")))] = signal
     daily_state = {"date": today.isoformat(), "signals": list(daily_by_key.values())}
     state["__daily_formal_signals__"] = daily_state
+    state["__rule_version__"] = {"version": rule_version}
     report["signals"] = daily_state["signals"]
     save_state(state)
     return report
