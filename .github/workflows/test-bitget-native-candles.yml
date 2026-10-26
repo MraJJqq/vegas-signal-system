@@ -1,0 +1,45 @@
+name: Temporary Bitget Native Candle Verification
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test-bitget-native-candles.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify native 2H and control 1H candles
+        shell: bash
+        run: |
+          set -euo pipefail
+          for symbol in BTCUSDT ETHUSDT; do
+            for interval in 2H 1H; do
+              if [ "$interval" = "2H" ]; then expected_ms=7200000; else expected_ms=3600000; fi
+              echo "=== $symbol $interval expected_ms=$expected_ms ==="
+              response="$(curl --fail --silent --show-error --get 'https://api.bitget.com/api/v2/mix/market/candles' \
+                --data-urlencode "symbol=$symbol" \
+                --data-urlencode 'productType=USDT-FUTURES' \
+                --data-urlencode "granularity=$interval" \
+                --data-urlencode 'limit=5')"
+              echo "$response" | python -c '
+          import json, sys
+          expected = int(sys.argv[1])
+          d = json.load(sys.stdin)
+          print("API code:", d.get("code"), "message:", d.get("msg"))
+          assert d.get("code") == "00000", d
+          rows = d.get("data") or []
+          assert len(rows) >= 3, f"Too few candles: {len(rows)}"
+          ts = [int(row["timestamp"]) for row in rows]
+          diffs = [abs(ts[i] - ts[i+1]) for i in range(len(ts)-1)]
+          print("timestamps:", ts)
+          print("interval_differences_ms:", diffs)
+          assert all(delta == expected for delta in diffs), f"Unexpected intervals: {diffs}"
+          print("PASS")
+          ' "$expected_ms"
+            done
+          done
+          echo "RESULT: Bitget API accepted 2H directly and returned evenly spaced 2-hour candles for both symbols."
