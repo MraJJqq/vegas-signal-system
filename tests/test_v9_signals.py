@@ -4,36 +4,49 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v9"))
 from vegas_signals import detect_formal_signals
 
+HOUR = 3600000
 def candle(ts, close=100.0, high=100.0, low=100.0):
-    return {"timestamp_ms":ts,"open":close,"high":high,"low":low,"close":close,"closed":True}
+    return {"timestamp_ms": ts, "open": close, "high": high, "low": low, "close": close, "closed": True}
 
 class V9SignalTests(unittest.TestCase):
-    def test_observation_then_confirmation_once(self):
-        state={}; initial=[candle(i*3600000) for i in range(700)]
-        self.assertEqual(detect_formal_signals("TESTUSDT",initial,state),[])
+    def test_4h_touch_then_1h_signal_once(self):
+        # Flat data creates valid EMAs; 4H candle range touches EMA144.
+        state = {}
+        c4 = [candle(i * 4 * HOUR) for i in range(700)]
+        c4[-1] = candle(699 * 4 * HOUR, high=101, low=99)
+        c1 = [candle(i * HOUR) for i in range(2800)]
+        self.assertEqual(detect_formal_signals("TESTUSDT", c1, c4, state), [])
         self.assertTrue(state["observing"])
-        expanded=initial+[candle(700*3600000,close=101,high=101,low=100)]
-        signals=detect_formal_signals("TESTUSDT",expanded,state)
-        self.assertEqual(len(signals),1); self.assertTrue(signals[0]["formal_signal"])
-        self.assertEqual(signals[0]["filter_side"],"上方")
-        self.assertEqual(detect_formal_signals("TESTUSDT",expanded,state),[])
-    def test_close_below_ema12_confirms(self):
-        state={"observing":True,"touched_lines":["中锋EMA144"],"touch_timestamp_ms":699*3600000,"last_processed_timestamp_ms":699*3600000}
-        candles=[candle(i*3600000) for i in range(700)]+[candle(700*3600000,close=99,high=100,low=99)]
-        signals=detect_formal_signals("TESTUSDT",candles,state)
-        self.assertEqual(len(signals),1); self.assertEqual(signals[0]["filter_side"],"下方")
-    def test_equal_to_ema12_keeps_observation(self):
-        state={"observing":True,"touched_lines":["中锋EMA144"],"touch_timestamp_ms":698*3600000,"last_processed_timestamp_ms":698*3600000}
-        candles=[candle(i*3600000) for i in range(699)]+[candle(699*3600000)]
-        self.assertEqual(detect_formal_signals("TESTUSDT",candles,state),[])
+        # A later 1H close above its EMA12 confirms once.
+        c1.append(candle(2800 * HOUR, close=101, high=101, low=101))
+        signals = detect_formal_signals("TESTUSDT", c1, c4, state)
+        self.assertEqual(len(signals), 1)
+        self.assertTrue(signals[0]["formal_signal"])
+        self.assertEqual(signals[0]["filter_line"], "1H EMA12")
+        self.assertEqual(detect_formal_signals("TESTUSDT", c1, c4, state), [])
+
+    def test_touch_observation_persists_after_price_leaves_area(self):
+        state = {"observing": True, "touched_lines": ["中锋EMA144"],
+                 "touch_timestamp_ms": 100 * 4 * HOUR,
+                 "last_processed_1h_timestamp_ms": 399 * HOUR,
+                 "last_processed_4h_timestamp_ms": 100 * 4 * HOUR}
+        c4 = [candle(i * 4 * HOUR) for i in range(101)]
+        c1 = [candle(i * HOUR) for i in range(400)]
+        c1.append(candle(400 * HOUR, close=101, high=101, low=101))
+        signals = detect_formal_signals("TESTUSDT", c1, c4, state)
+        self.assertEqual(len(signals), 1)
+        self.assertFalse(state["observing"])
+
+    def test_equal_ema12_does_not_confirm(self):
+        state = {"observing": True, "touched_lines": ["中锋EMA144"],
+                 "touch_timestamp_ms": 100 * 4 * HOUR,
+                 "last_processed_1h_timestamp_ms": 400 * HOUR,
+                 "last_processed_4h_timestamp_ms": 100 * 4 * HOUR}
+        c4 = [candle(i * 4 * HOUR) for i in range(101)]
+        c1 = [candle(i * HOUR) for i in range(401)]
+        c1.append(candle(401 * HOUR))
+        self.assertEqual(detect_formal_signals("TESTUSDT", c1, c4, state), [])
         self.assertTrue(state["observing"])
-    def test_touch_candle_cannot_confirm_itself(self):
-        state={"observing":True,"touched_lines":["中锋EMA144"],"touch_timestamp_ms":700*3600000,"last_processed_timestamp_ms":699*3600000}
-        candles=[candle(i*3600000) for i in range(700)]+[candle(700*3600000,close=101,high=101,low=100)]
-        self.assertEqual(detect_formal_signals("TESTUSDT",candles,state),[])
-        self.assertTrue(state["observing"])
-        candles.append(candle(701*3600000,close=101,high=101,low=100))
-        signals=detect_formal_signals("TESTUSDT",candles,state)
-        self.assertEqual(len(signals),1)
-        self.assertEqual(signals[0]["candle_timestamp_ms"],701*3600000)
-if __name__=="__main__": unittest.main()
+
+if __name__ == "__main__":
+    unittest.main()
