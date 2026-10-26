@@ -1,8 +1,9 @@
-"""VEGAS V9 signal rules: 4H observation, 1H EMA12 confirmation."""
+"""VEGAS V9 signal rules: 4H zone observation, later 1H EMA12 confirmation."""
 from __future__ import annotations
 from typing import Any
 
 LINES = (("中锋EMA144", 144), ("中锋EMA169", 169), ("红峰EMA576", 576), ("红峰EMA676", 676))
+ZONES = (("中锋", ("中锋EMA144", "中锋EMA169")), ("红峰", ("红峰EMA576", "红峰EMA676")))
 FILTER_PERIOD = 12
 HOUR_MS = 3600000
 
@@ -22,19 +23,28 @@ def ema(values: list[float], period: int) -> list[float | None]:
     return result
 
 
+def _touched_zones(low: float, high: float, values: dict[str, list[float | None]], index: int) -> list[str]:
+    """Return zones whose full EMA band overlaps the candle's [low, high] range."""
+    hits: list[str] = []
+    for zone_name, labels in ZONES:
+        a, b = (values[label][index] for label in labels)
+        if a is None or b is None:
+            continue
+        zone_low, zone_high = min(a, b), max(a, b)
+        if low <= zone_high and high >= zone_low:
+            hits.extend(label for label in labels)
+    return hits
+
+
 def detect_formal_signals(
     symbol: str,
     candles_1h: list[dict[str, Any]],
     candles_4h: list[dict[str, Any]],
     state: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """A closed 4H touch starts observation; a later closed 1H candle vs 1H EMA12 confirms once."""
-    closed_1h = sorted(
-        (c for c in candles_1h if c.get("closed")), key=lambda c: c["timestamp_ms"]
-    )
-    closed_4h = sorted(
-        (c for c in candles_4h if c.get("closed")), key=lambda c: c["timestamp_ms"]
-    )
+    """A closed 4H candle overlapping a Vegas band starts observation; a strictly later closed 1H candle confirms."""
+    closed_1h = sorted((c for c in candles_1h if c.get("closed")), key=lambda c: c["timestamp_ms"])
+    closed_4h = sorted((c for c in candles_4h if c.get("closed")), key=lambda c: c["timestamp_ms"])
     if not closed_1h or not closed_4h:
         return []
     if state is None:
@@ -52,8 +62,6 @@ def detect_formal_signals(
     filter_values_1h = ema(closes_1h, FILTER_PERIOD)
     signals: list[dict[str, Any]] = []
 
-    # Process candle-close events in chronological order. A 4H candle is not
-    # known to have touched until its close; a 1H confirmation must close later.
     events: list[tuple[int, int, int, dict[str, Any]]] = []
     for index, candle in enumerate(closed_4h):
         ts = int(candle["timestamp_ms"])
@@ -69,12 +77,9 @@ def detect_formal_signals(
         ts = int(candle["timestamp_ms"])
         if event_type == 0:
             if not observing:
-                high, low = float(candle["high"]), float(candle["low"])
-                hits = [
-                    label for label, _period in LINES
-                    if values_4h[label][index] is not None
-                    and low <= values_4h[label][index] <= high
-                ]
+                hits = _touched_zones(
+                    float(candle["low"]), float(candle["high"]), values_4h, index
+                )
                 if hits:
                     observing = True
                     touched_lines = hits
