@@ -1,0 +1,32 @@
+name: Temporary Bitget 2H Native Candle Test
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test-bitget-2h.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Bitget 2H and 1H candles
+        shell: bash
+        run: |
+          set -euo pipefail
+          for interval in 2H 1H; do
+            echo "=== $interval ==="
+            response="$(curl --fail --silent --show-error --get 'https://api.bitget.com/api/v2/mix/market/candles' \
+              --data-urlencode 'symbol=BTCUSDT' \
+              --data-urlencode 'productType=USDT-FUTURES' \
+              --data-urlencode "granularity=$interval" \
+              --data-urlencode 'limit=5')"
+            echo "$response" | jq '{code, msg, data: (.data // [] | map({timestamp: .[0], open: .[1], high: .[2], low: .[3], close: .[4]}))}'
+            echo "$response" | jq -e '.code == "00000" and (.data | type == "array") and (.data | length >= 2)' >/dev/null
+            if [ "$interval" = "2H" ]; then
+              echo "$response" | jq -e '[.data[].0 | tonumber] as $t | all(range(0; ($t | length) - 1); ($t[.] - $t[.+1]) == 7200000 or ($t[.+1] - $t[.]) == 7200000)' >/dev/null
+            fi
+          done
+          echo "RESULT: Bitget accepted both requested intervals and returned candle data."
