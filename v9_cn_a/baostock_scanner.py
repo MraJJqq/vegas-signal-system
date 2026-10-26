@@ -129,7 +129,8 @@ def main() -> int:
     report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "source": "Baostock native 60-minute candles",
         "timeframe": "1H", "minimum_closed_candles": 676, "pool_size": len(pool),
         "symbols_ok": 0, "symbols_excluded": [], "results": [], "new_signals": [], "signals": [],
-        "diagnostics": {"historical_zone_touches": 0, "historical_confirmations_above_ema12": 0,\n            "historical_confirmations_below_ema12": 0, "historical_replay_signals": 0,
+        "diagnostics": {"historical_zone_touches": 0, "historical_confirmations_above_ema12": 0,
+            "historical_confirmations_below_ema12": 0, "historical_replay_signals": 0,
             "historical_observation_open": 0, "symbols_with_diagnostic_data": 0,
             "symbols_with_live_observation": 0, "symbols_with_676_closed_candles": 0}}
     login = bs.login()
@@ -159,7 +160,8 @@ def main() -> int:
                 report["symbols_ok"] += 1
                 report["results"].append({"code": code, "name": name, "data_available": True,
                     "candles_1h_total": len(candles), "candles_1h_closed": closed_count,
-                    "latest_closed_candle_ms": max((int(c["timestamp_ms"]) for c in candles if c.get("closed")), default=None),\n                    "diagnostics": diag, "live_observing_after_scan": bool(state.get(symbol, {}).get("observing"))})
+                    "latest_closed_candle_ms": max((int(c["timestamp_ms"]) for c in candles if c.get("closed")), default=None),
+                    "diagnostics": diag, "live_observing_after_scan": bool(state.get(symbol, {}).get("observing"))})
             except Exception as exc:
                 report["symbols_excluded"].append({"code": code, "name": name, "reason": str(exc)})
                 report["results"].append({"code": code, "name": name, "data_available": False, "error": str(exc)})
