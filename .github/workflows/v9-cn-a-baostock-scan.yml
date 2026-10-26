@@ -1,13 +1,14 @@
-name: VEGAS V9 A股 Baostock Scan
+name: VEGAS V9 A股 Baostock Native 1H Scan
 on:
   schedule:
-    # Run once daily at 10:00 Beijing time (02:00 UTC).
-    - cron: "0 2 * * *"
+    # Beijing time: after the 10:30, 11:30, 14:00 and 15:00 bar closes.
+    - cron: "30 2,3 * * 1-5"
+    - cron: "0 6,7 * * 1-5"
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: v9-cn-a-baostock-scan
+  group: v9-cn-a-native-1h-scan
   cancel-in-progress: false
 jobs:
   scan:
@@ -20,18 +21,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Restore hourly candle cache
+      - name: Restore 1H candle cache
         uses: actions/cache/restore@v4
         with:
           path: v9_cn_a/.candle-cache.json
-          key: v9-cn-a-candles-${{ github.run_id }}-${{ github.run_attempt }}
+          key: v9-cn-a-1h-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            v9-cn-a-1h-
             v9-cn-a-candles-
       - name: Install Baostock
         run: python -m pip install --upgrade pip baostock
-      - name: Validate isolated A-share code
-        run: python -m compileall -q v9_cn_a
-      - name: Run Baostock A-share scan
+      - name: Compile and validate isolated A-share code
+        run: python -m py_compile v9_cn_a/vegas_signals_cn.py v9_cn_a/baostock_scanner.py v9_cn_a/baostock_pool_builder.py
+      - name: Run native 1H A-share scan
         env:
           V9_CN_A_STATE_PATH: v9_cn_a/.signal-state.json
           V9_CN_A_REPORT_PATH: v9_cn_a/scan-report.json
@@ -47,49 +49,27 @@ jobs:
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add -f v9_cn_a/.signal-state.json
             if ! git diff --cached --quiet; then
-              git commit -m 'chore(v9-cn-a): persist Baostock A-share signal state'
+              git commit -m 'chore(v9-cn-a): persist native 1H signal state'
               branch="${GITHUB_REF_NAME}"
               git fetch origin "$branch"
               if ! git rebase "origin/$branch"; then
-                if git status --porcelain | grep -q 'v9_cn_a/\.signal-state\.json'; then
-                  git checkout --theirs -- v9_cn_a/.signal-state.json
-                  git add -f v9_cn_a/.signal-state.json
-                  GIT_EDITOR=true git rebase --continue
-                else
-                  git rebase --abort
-                  exit 1
-                fi
+                git rebase --abort
+                exit 1
               fi
-              for attempt in 1 2 3; do
-                if git push origin "HEAD:$branch"; then exit 0; fi
-                echo "Push attempt $attempt failed; refreshing remote and retrying."
-                git fetch origin "$branch"
-                if ! git rebase "origin/$branch"; then
-                  if git status --porcelain | grep -q 'v9_cn_a/\.signal-state\.json'; then
-                    git checkout --theirs -- v9_cn_a/.signal-state.json
-                    git add -f v9_cn_a/.signal-state.json
-                    GIT_EDITOR=true git rebase --continue
-                  else
-                    git rebase --abort
-                    exit 1
-                  fi
-                fi
-              done
-              echo "Unable to push A-share state after 3 attempts."
-              exit 1
+              git push origin "HEAD:$branch"
             fi
           fi
-      - name: Save hourly candle cache
+      - name: Save 1H candle cache
         if: always()
         uses: actions/cache/save@v4
         with:
           path: v9_cn_a/.candle-cache.json
-          key: v9-cn-a-candles-${{ github.run_id }}-${{ github.run_attempt }}
+          key: v9-cn-a-1h-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Upload A-share scan report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vegas-v9-cn-a-baostock-scan-report
+          name: vegas-v9-cn-a-native-1h-report
           path: v9_cn_a/scan-report.json
           if-no-files-found: warn
           retention-days: 14
