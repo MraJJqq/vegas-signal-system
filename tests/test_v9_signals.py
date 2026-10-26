@@ -28,11 +28,11 @@ class V9SignalTests(unittest.TestCase):
     def test_touch_observation_persists_after_price_leaves_area(self):
         state = {"observing": True, "touched_lines": ["中锋EMA144"],
                  "touch_timestamp_ms": 100 * 4 * HOUR,
-                 "last_processed_1h_timestamp_ms": 399 * HOUR,
+                 "last_processed_1h_timestamp_ms": 403 * HOUR,
                  "last_processed_4h_timestamp_ms": 100 * 4 * HOUR}
         c4 = [candle(i * 4 * HOUR) for i in range(101)]
-        c1 = [candle(i * HOUR) for i in range(400)]
-        c1.append(candle(400 * HOUR, close=101, high=101, low=101))
+        c1 = [candle(i * HOUR) for i in range(404)]
+        c1.append(candle(404 * HOUR, close=101, high=101, low=101))
         signals = detect_formal_signals("TESTUSDT", c1, c4, state)
         self.assertEqual(len(signals), 1)
         self.assertFalse(state["observing"])
