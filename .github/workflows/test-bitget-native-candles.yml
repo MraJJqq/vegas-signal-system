@@ -33,7 +33,7 @@ jobs:
           assert d.get("code") == "00000", d
           rows = d.get("data") or []
           assert len(rows) >= 3, f"Too few candles: {len(rows)}"
-          ts = [int(row["timestamp"]) for row in rows]
+          ts = [int(row[0]) for row in rows]
           diffs = [abs(ts[i] - ts[i+1]) for i in range(len(ts)-1)]
           print("timestamps:", ts)
           print("interval_differences_ms:", diffs)
