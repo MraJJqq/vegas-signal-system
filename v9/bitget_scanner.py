@@ -8,6 +8,7 @@ from vegas_signals import detect_formal_signals
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
 GRANULARITY = "1H"
+OBSERVATION_GRANULARITY = "4H"
 CANDLE_LIMIT = 800
 TIMEOUT = 15
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
@@ -30,8 +31,8 @@ def get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
         raise BitgetError(f"Bitget API error {payload.get('code')}: {payload.get('msg', 'unknown')}")
     return payload
 
-def fetch_candles(symbol: str) -> list[dict[str, Any]]:
-    payload = get_json("/api/v2/mix/market/candles", {"symbol": symbol, "productType": PRODUCT_TYPE, "granularity": GRANULARITY, "limit": str(CANDLE_LIMIT)})
+def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str, Any]]:
+    payload = get_json("/api/v2/mix/market/candles", {"symbol": symbol, "productType": PRODUCT_TYPE, "granularity": granularity, "limit": str(CANDLE_LIMIT)})
     candles = []
     for row in payload.get("data") or []:
         if not isinstance(row, list) or len(row) < 5:
@@ -43,7 +44,7 @@ def fetch_candles(symbol: str) -> list[dict[str, Any]]:
     candles.sort(key=lambda x: x["timestamp_ms"])
     seen = set()
     now = int(time.time() * 1000)
-    interval = 3600000
+    interval = 4 * 3600000 if granularity == "4H" else 3600000
     for c in candles:
         ts = c["timestamp_ms"]
         if ts in seen:
@@ -94,7 +95,7 @@ def scan_market_data() -> dict[str, Any]:
     report = {
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": "Bitget Mix USDT-FUTURES",
-        "scan_timeframes": [GRANULARITY],
+        "scan_timeframes": [OBSERVATION_GRANULARITY, GRANULARITY],
         "symbols_total": len(scan_symbols),
         "symbols_ok": 0,
         "symbols_excluded": 0,
@@ -104,13 +105,18 @@ def scan_market_data() -> dict[str, Any]:
     for symbol in scan_symbols:
         item = {"symbol": symbol, "timeframes": {}}
         try:
-            candles = fetch_candles(symbol)
-            closed = [c for c in candles if c["closed"]]
-            if not closed:
+            candles_1h = fetch_candles(symbol, GRANULARITY)
+            candles_4h = fetch_candles(symbol, OBSERVATION_GRANULARITY)
+            closed_1h = [c for c in candles_1h if c["closed"]]
+            closed_4h = [c for c in candles_4h if c["closed"]]
+            if not closed_1h:
                 raise BitgetError("No closed 1H candles returned")
-            signals = detect_formal_signals(symbol, candles, state.setdefault(symbol, {}))
+            if not closed_4h:
+                raise BitgetError("No closed 4H candles returned")
+            signals = detect_formal_signals(symbol, candles_1h, candles_4h, state.setdefault(symbol, {}))
             report["signals"].extend(s for s in signals if datetime.fromtimestamp(s["candle_timestamp_ms"] / 1000, tz=tz).date() == today)
-            item["timeframes"][GRANULARITY] = {"candles_received": len(candles), "closed_candles": len(closed), "latest_closed_candle_ms": closed[-1]["timestamp_ms"], "latest_closed_price": closed[-1]["close"]}
+            item["timeframes"][GRANULARITY] = {"candles_received": len(candles_1h), "closed_candles": len(closed_1h), "latest_closed_candle_ms": closed_1h[-1]["timestamp_ms"], "latest_closed_price": closed_1h[-1]["close"]}
+            item["timeframes"][OBSERVATION_GRANULARITY] = {"candles_received": len(candles_4h), "closed_candles": len(closed_4h), "latest_closed_candle_ms": closed_4h[-1]["timestamp_ms"], "latest_closed_price": closed_4h[-1]["close"]}
             item.update({"data_available": True, "excluded_reason": None})
             report["symbols_ok"] += 1
         except Exception as exc:
