@@ -1,4 +1,4 @@
-"""VEGAS V9 signal rules; intentionally inherited from V8."""
+"""VEGAS V9 signal rules: 4H observation, 1H EMA12 confirmation."""
 from __future__ import annotations
 from typing import Any
 
@@ -19,41 +19,65 @@ def ema(values: list[float], period: int) -> list[float | None]:
         result[i] = previous
     return result
 
-def detect_formal_signals(symbol: str, candles: list[dict[str, Any]], state: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    closed = sorted((c for c in candles if c.get("closed")), key=lambda c: c["timestamp_ms"])
-    if not closed:
+def detect_formal_signals(symbol: str, candles_1h: list[dict[str, Any]], candles_4h: list[dict[str, Any]], state: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Observe closed 4H touches; confirm once on a later closed 1H candle vs 1H EMA12."""
+    closed_1h = sorted((c for c in candles_1h if c.get("closed")), key=lambda c: c["timestamp_ms"])
+    closed_4h = sorted((c for c in candles_4h if c.get("closed")), key=lambda c: c["timestamp_ms"])
+    if not closed_1h or not closed_4h:
         return []
     if state is None:
         state = {}
     observing = bool(state.get("observing", False))
     touched_lines = [str(line) for line in state.get("touched_lines", [])]
     touch_timestamp_ms = state.get("touch_timestamp_ms")
-    last_processed = int(state.get("last_processed_timestamp_ms", -1))
-    closes = [float(c["close"]) for c in closed]
-    values = {label: ema(closes, period) for label, period in LINES}
-    filter_values = ema(closes, FILTER_PERIOD)
+    last_processed_1h = int(state.get("last_processed_1h_timestamp_ms", -1))
+    last_processed_4h = int(state.get("last_processed_4h_timestamp_ms", -1))
+
+    closes_4h = [float(c["close"]) for c in closed_4h]
+    values_4h = {label: ema(closes_4h, period) for label, period in LINES}
+    closes_1h = [float(c["close"]) for c in closed_1h]
+    filter_values_1h = ema(closes_1h, FILTER_PERIOD)
     signals: list[dict[str, Any]] = []
-    for index, candle in enumerate(closed):
-        timestamp_ms = int(candle["timestamp_ms"])
-        if timestamp_ms <= last_processed:
+
+    # Observation phase: a closed 4H candle's high-low range touches any Vegas line.
+    for index, candle in enumerate(closed_4h):
+        ts = int(candle["timestamp_ms"])
+        if ts <= last_processed_4h:
             continue
-        filter_value = filter_values[index]
-        high, low = float(candle["high"]), float(candle["low"])
-        # Formal confirmation must be on a strictly later 1H candle than the touch candle.
-        is_after_touch = touch_timestamp_ms is not None and timestamp_ms > int(touch_timestamp_ms)
-        if observing and is_after_touch and filter_value is not None:
-            close_price = float(candle["close"])
-            side = "上方" if close_price > filter_value else "下方" if close_price < filter_value else None
-            if side is not None:
-                signals.append({"formal_signal": True, "symbol": symbol, "timeframe": "1H", "line": ", ".join(touched_lines), "touch_timestamp_ms": touch_timestamp_ms, "filter_line": "EMA12", "filter_side": side, "filter_value": filter_value, "close_price": close_price, "candle_timestamp_ms": timestamp_ms})
-                observing, touched_lines, touch_timestamp_ms = False, [], None
-                last_processed = timestamp_ms
-                continue
         if not observing:
-            hit_lines = [label for label, _period in LINES if values[label][index] is not None and low <= values[label][index] <= high]
-            if hit_lines:
-                observing, touched_lines = True, hit_lines
-                touch_timestamp_ms = timestamp_ms
-        last_processed = timestamp_ms
-    state.update({"observing": observing, "touched_lines": touched_lines, "touch_timestamp_ms": touch_timestamp_ms, "last_processed_timestamp_ms": last_processed})
+            high, low = float(candle["high"]), float(candle["low"])
+            hits = [label for label, _period in LINES
+                    if values_4h[label][index] is not None and low <= values_4h[label][index] <= high]
+            if hits:
+                observing = True
+                touched_lines = hits
+                touch_timestamp_ms = ts
+        last_processed_4h = ts
+
+    # Signal phase: use only a later, closed 1H candle and its own 1H EMA12.
+    for index, candle in enumerate(closed_1h):
+        ts = int(candle["timestamp_ms"])
+        if ts <= last_processed_1h:
+            continue
+        fv = filter_values_1h[index]
+        if observing and touch_timestamp_ms is not None and ts >= int(touch_timestamp_ms) + 4 * 3600000 and fv is not None:
+            close_price = float(candle["close"])
+            side = "上方" if close_price > fv else "下方" if close_price < fv else None
+            if side is not None:
+                signals.append({
+                    "formal_signal": True, "symbol": symbol, "timeframe": "1H",
+                    "observation_timeframe": "4H", "phase": "信号期",
+                    "line": ", ".join(touched_lines), "touch_timestamp_ms": touch_timestamp_ms,
+                    "filter_line": "1H EMA12", "filter_side": side, "filter_value": fv,
+                    "close_price": close_price, "candle_timestamp_ms": ts
+                })
+                observing, touched_lines, touch_timestamp_ms = False, [], None
+        last_processed_1h = ts
+
+    state.update({
+        "observing": observing, "touched_lines": touched_lines,
+        "touch_timestamp_ms": touch_timestamp_ms,
+        "last_processed_1h_timestamp_ms": last_processed_1h,
+        "last_processed_4h_timestamp_ms": last_processed_4h
+    })
     return signals
