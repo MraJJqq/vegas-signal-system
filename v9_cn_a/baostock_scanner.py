@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 import baostock as bs
-from vegas_signals_cn import detect_formal_signals
+from vegas_signals_cn import detect_formal_signals, ema
 
 TZ = timezone(timedelta(hours=8))
 STATE_PATH = Path(os.environ.get("V9_CN_A_STATE_PATH", "v9_cn_a/.signal-state.json"))
@@ -53,6 +53,50 @@ def fetch_hourly(code: str, cached: list[dict[str, Any]]) -> list[dict[str, Any]
     if not result: raise ValueError("Baostock returned no valid 1H OHLC candles")
     return result
 
+
+def diagnose_history(candles: list[dict[str, Any]]) -> dict[str, Any]:
+    """Read-only full-history replay for diagnosis; never changes live signal state."""
+    closed = sorted((c for c in candles if c.get("closed")), key=lambda c: int(c["timestamp_ms"]))
+    out = {"closed_candles": len(closed), "historical_zone_touches": 0,
+           "historical_confirmations_above_ema12": 0, "historical_confirmations_below_ema12": 0,
+           "historical_observation_open": False, "historical_replay_signals": 0,
+           "latest_closed_timestamp_ms": int(closed[-1]["timestamp_ms"]) if closed else None}
+    if len(closed) < 676:
+        out["diagnostic_status"] = "insufficient_closed_candles"
+        return out
+    closes = [float(c["close"]) for c in closed]
+    values = {p: ema(closes, p) for p in (12, 144, 169, 576, 676)}
+    observing, touch_ts = False, None
+    for i, c in enumerate(closed):
+        ts = int(c["timestamp_ms"])
+        fv = values[12][i]
+        if observing and ts > int(touch_ts or 0) and fv is not None:
+            close = float(c["close"])
+            if close > fv:
+                out["historical_confirmations_above_ema12"] += 1
+                out["historical_replay_signals"] += 1
+                observing, touch_ts = False, None
+                continue
+            if close < fv:
+                out["historical_confirmations_below_ema12"] += 1
+                out["historical_replay_signals"] += 1
+                observing, touch_ts = False, None
+                continue
+        if not observing:
+            high, low = float(c["high"]), float(c["low"])
+            hit = False
+            for p1, p2 in ((144, 169), (576, 676)):
+                e1, e2 = values[p1][i], values[p2][i]
+                if e1 is not None and e2 is not None and low <= max(e1, e2) and high >= min(e1, e2):
+                    hit = True
+                    break
+            if hit:
+                out["historical_zone_touches"] += 1
+                observing, touch_ts = True, ts
+    out["historical_observation_open"] = observing
+    out["diagnostic_status"] = "ok"
+    return out
+
 def send_bark(signals: list[dict[str, Any]]) -> dict[str, Any]:
     key = os.environ.get("BARK_KEY", "").strip()
     if not key: return {"status": "skipped", "reason": "BARK_KEY_missing"}
@@ -84,7 +128,7 @@ def main() -> int:
              for s in daily.get("signals", []) if isinstance(s, dict)}
     report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "source": "Baostock native 60-minute candles",
         "timeframe": "1H", "minimum_closed_candles": 676, "pool_size": len(pool),
-        "symbols_ok": 0, "symbols_excluded": [], "results": [], "new_signals": [], "signals": []}
+        "symbols_ok": 0, "symbols_excluded": [], "results": [], "new_signals": [], "signals": [],\n        "diagnostics": {"historical_zone_touches": 0, "historical_confirmations_above_ema12": 0,\n            "historical_confirmations_below_ema12": 0, "historical_replay_signals": 0,\n            "historical_observation_open": 0, "symbols_with_diagnostic_data": 0,\n            "symbols_with_live_observation": 0, "symbols_with_676_closed_candles": 0}}
     login = bs.login()
     if login.error_code != "0": raise RuntimeError(f"Baostock login failed: {login.error_code} {login.error_msg}")
     try:
@@ -104,7 +148,7 @@ def main() -> int:
                 report["symbols_ok"] += 1
                 report["results"].append({"code": code, "name": name, "data_available": True,
                     "candles_1h_total": len(candles), "candles_1h_closed": closed_count,
-                    "latest_closed_candle_ms": max((int(c["timestamp_ms"]) for c in candles if c.get("closed")), default=None)})
+                    "latest_closed_candle_ms": max((int(c["timestamp_ms"]) for c in candles if c.get("closed")), default=None),\n                    "diagnostics": diag, "live_observing_after_scan": bool(state.get(symbol, {}).get("observing"))})
             except Exception as exc:
                 report["symbols_excluded"].append({"code": code, "name": name, "reason": str(exc)})
                 report["results"].append({"code": code, "name": name, "data_available": False, "error": str(exc)})
