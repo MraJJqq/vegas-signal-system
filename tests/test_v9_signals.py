@@ -40,11 +40,11 @@ class V9SignalTests(unittest.TestCase):
     def test_equal_ema12_does_not_confirm(self):
         state = {"observing": True, "touched_lines": ["中锋EMA144"],
                  "touch_timestamp_ms": 100 * 4 * HOUR,
-                 "last_processed_1h_timestamp_ms": 400 * HOUR,
+                 "last_processed_1h_timestamp_ms": 403 * HOUR,
                  "last_processed_4h_timestamp_ms": 100 * 4 * HOUR}
         c4 = [candle(i * 4 * HOUR) for i in range(101)]
-        c1 = [candle(i * HOUR) for i in range(401)]
-        c1.append(candle(401 * HOUR))
+        c1 = [candle(i * HOUR) for i in range(404)]
+        c1.append(candle(404 * HOUR))
         self.assertEqual(detect_formal_signals("TESTUSDT", c1, c4, state), [])
         self.assertTrue(state["observing"])
 
