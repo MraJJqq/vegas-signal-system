@@ -12,8 +12,9 @@ STATE_PATH=Path(os.environ.get("V9_CN_A_STATE_PATH","v9_cn_a/.signal-state.json"
 REPORT_PATH=Path(os.environ.get("V9_CN_A_REPORT_PATH","v9_cn_a/scan-report.json"))
 POOL_PATH=Path(os.environ.get("V9_CN_A_POOL_PATH","v9_cn_a/baostock-stock-pool.json"))
 CANDLE_CACHE_PATH=Path(os.environ.get("V9_CN_A_CANDLE_CACHE_PATH","v9_cn_a/.candle-cache.json"))
-CACHE_MAX_CANDLES=900
+CACHE_MAX_CANDLES=3600  # enough 1H bars to build >676 daily 4H candles
 CACHE_REFRESH_DAYS=7
+INITIAL_HISTORY_DAYS=1460
 
 def load_pool():
     data=json.loads(POOL_PATH.read_text(encoding="utf-8"))
@@ -30,7 +31,7 @@ def fetch(code:str, cached:list[dict[str,Any]]|None=None)->list[dict[str,Any]]:
         latest_ms=max(int(x["timestamp_ms"]) for x in cached)
         start=(datetime.fromtimestamp(latest_ms/1000,tz=TZ).date()-timedelta(days=CACHE_REFRESH_DAYS)).isoformat()
     else:
-        start=(datetime.now(TZ).date()-timedelta(days=365)).isoformat()
+        start=(datetime.now(TZ).date()-timedelta(days=INITIAL_HISTORY_DAYS)).isoformat()
     end=datetime.now(TZ).date().isoformat()
     rs=bs.query_history_k_data_plus(code,"date,time,code,open,high,low,close,volume,amount,adjustflag",start_date=start,end_date=end,frequency="60",adjustflag="3")
     if rs.error_code!="0": raise RuntimeError(f"{rs.error_code}: {rs.error_msg}")
@@ -51,6 +52,29 @@ def fetch(code:str, cached:list[dict[str,Any]]|None=None)->list[dict[str,Any]]:
     result=sorted(merged.values(),key=lambda x:x["timestamp_ms"])[-CACHE_MAX_CANDLES:]
     if not result: raise ValueError("Baostock returned no valid 1H OHLC candles")
     return result
+
+def aggregate_4h(candles:list[dict[str,Any]])->list[dict[str,Any]]:
+    """Aggregate four intraday 60-minute bars into one completed daily 4H bar."""
+    by_day:dict[str,list[dict[str,Any]]]={}
+    for candle in sorted(candles,key=lambda x:int(x["timestamp_ms"])):
+        day=datetime.fromtimestamp(int(candle["timestamp_ms"])/1000,tz=TZ).date().isoformat()
+        by_day.setdefault(day,[]).append(candle)
+    result=[]
+    for day,bars in sorted(by_day.items()):
+        # Only complete sessions count as 4H candles.
+        if len(bars)!=4 or not all(x.get("closed") for x in bars):
+            continue
+        result.append({
+            "timestamp_ms":int(bars[-1]["timestamp_ms"]),
+            "open":float(bars[0]["open"]),
+            "high":max(float(x["high"]) for x in bars),
+            "low":min(float(x["low"]) for x in bars),
+            "close":float(bars[-1]["close"]),
+            "volume":sum(float(x.get("volume",0) or 0) for x in bars),
+            "closed":True,
+        })
+    return result
+
 
 def send_bark(signals:list[dict[str,Any]])->dict[str,Any]:
     key=os.environ.get("BARK_KEY","").strip()
@@ -83,7 +107,7 @@ def main()->int:
     bykey={(s.get("symbol"),s.get("candle_timestamp_ms"),s.get("filter_side")):s for s in daily.get("signals",[]) if isinstance(s,dict)}
     try: candle_cache=json.loads(CANDLE_CACHE_PATH.read_text(encoding="utf-8"))
     except (OSError,json.JSONDecodeError): candle_cache={}
-    report={"started_at_utc":datetime.now(timezone.utc).isoformat(),"source":"Baostock 60-minute A-share K-line","timeframe":"1H","pool_size":len(pool),"symbols_ok":0,"symbols_excluded":[],"results":[],"new_signals":[],"signals":[]}
+    report={"started_at_utc":datetime.now(timezone.utc).isoformat(),"source":"Baostock 60-minute bars aggregated into daily 4H candles","timeframe":"4H","pool_size":len(pool),"symbols_ok":0,"symbols_excluded":[],"results":[],"new_signals":[],"signals":[]}
     login=bs.login()
     if login.error_code!="0": raise RuntimeError(f"Baostock login failed: {login.error_code} {login.error_msg}")
     try:
@@ -93,14 +117,17 @@ def main()->int:
                 candles=fetch(code,candle_cache.get(code,[]))
                 candle_cache[code]=candles
                 symbol=code.replace(".","").upper()
-                signals=detect_formal_signals(symbol,candles,state.setdefault(symbol,{}))
+                candles_4h=aggregate_4h(candles)
+                if len(candles_4h)<676:
+                    raise ValueError(f"Not enough complete 4H candles for EMA676: {len(candles_4h)}")
+                signals=detect_formal_signals(symbol,candles_4h,state.setdefault(symbol,{}))
                 for s in signals:
                     if datetime.fromtimestamp(s["candle_timestamp_ms"]/1000,tz=TZ).date().isoformat()==today:
                         s["name"]=name
                         bykey[(s["symbol"],s["candle_timestamp_ms"],s["filter_side"])]=s
                         report["new_signals"].append(s)
                 report["symbols_ok"]+=1
-                report["results"].append({"code":code,"name":name,"data_available":True,"candles":len(candles),"latest_closed_candle_ms":max((c["timestamp_ms"] for c in candles if c["closed"]),default=None)})
+                report["results"].append({"code":code,"name":name,"data_available":True,"candles_1h":len(candles),"candles_4h":len(candles_4h),"latest_closed_candle_ms":max((c["timestamp_ms"] for c in candles_4h if c["closed"]),default=None)})
             except Exception as exc:
                 report["symbols_excluded"].append({"code":code,"name":name,"reason":str(exc)})
                 report["results"].append({"code":code,"name":name,"data_available":False,"error":str(exc)})
