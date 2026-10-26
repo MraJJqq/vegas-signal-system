@@ -148,6 +148,7 @@ def main() -> int:
                             "historical_confirmations_below_ema12", "historical_replay_signals"):
                     report["diagnostics"][key] += int(diag.get(key, 0))
                 report["diagnostics"]["symbols_with_diagnostic_data"] += 1
+                report["diagnostics"]["historical_observation_open"] += int(diag.get("historical_observation_open", False))
                 report["diagnostics"]["symbols_with_676_closed_candles"] += 1
                 signals = detect_formal_signals(symbol, candles, state.setdefault(symbol, {}))
                 if state.get(symbol, {}).get("observing"):
