@@ -128,7 +128,10 @@ def main() -> int:
              for s in daily.get("signals", []) if isinstance(s, dict)}
     report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "source": "Baostock native 60-minute candles",
         "timeframe": "1H", "minimum_closed_candles": 676, "pool_size": len(pool),
-        "symbols_ok": 0, "symbols_excluded": [], "results": [], "new_signals": [], "signals": [],\n        "diagnostics": {"historical_zone_touches": 0, "historical_confirmations_above_ema12": 0,\n            "historical_confirmations_below_ema12": 0, "historical_replay_signals": 0,\n            "historical_observation_open": 0, "symbols_with_diagnostic_data": 0,\n            "symbols_with_live_observation": 0, "symbols_with_676_closed_candles": 0}}
+        "symbols_ok": 0, "symbols_excluded": [], "results": [], "new_signals": [], "signals": [],
+        "diagnostics": {"historical_zone_touches": 0, "historical_confirmations_above_ema12": 0,\n            "historical_confirmations_below_ema12": 0, "historical_replay_signals": 0,
+            "historical_observation_open": 0, "symbols_with_diagnostic_data": 0,
+            "symbols_with_live_observation": 0, "symbols_with_676_closed_candles": 0}}
     login = bs.login()
     if login.error_code != "0": raise RuntimeError(f"Baostock login failed: {login.error_code} {login.error_msg}")
     try:
@@ -139,7 +142,15 @@ def main() -> int:
                 closed_count = sum(bool(c.get("closed")) for c in candles)
                 if closed_count < 676: raise ValueError(f"Not enough closed native 1H candles for EMA676: {closed_count}")
                 symbol = code.upper()
+                diag = diagnose_history(candles)
+                for key in ("historical_zone_touches", "historical_confirmations_above_ema12",
+                            "historical_confirmations_below_ema12", "historical_replay_signals"):
+                    report["diagnostics"][key] += int(diag.get(key, 0))
+                report["diagnostics"]["symbols_with_diagnostic_data"] += 1
+                report["diagnostics"]["symbols_with_676_closed_candles"] += 1
                 signals = detect_formal_signals(symbol, candles, state.setdefault(symbol, {}))
+                if state.get(symbol, {}).get("observing"):
+                    report["diagnostics"]["symbols_with_live_observation"] += 1
                 for signal in signals:
                     signal["name"] = name
                     if datetime.fromtimestamp(signal["candle_timestamp_ms"] / 1000, tz=TZ).date().isoformat() == today:
