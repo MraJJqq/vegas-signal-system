@@ -20,8 +20,8 @@ ALLOWED_SYMBOLS = set(CORE_ORDER + STOCK_ORDER)
 
 def bitget_url(symbol: str) -> str:
     """Return the Bitget USDT futures page for a normalized V9 symbol."""
-    # The scanner normalizes Bitget's CLUUSDT contract to the display symbol CL.
-    contract_symbol = "CLU" if symbol == "CL" else symbol
+    # V9 scans Bitget's CLUSDT crude-oil contract and displays it as CL.
+    contract_symbol = symbol
     return f"https://www.bitget.com/futures/usdt/{contract_symbol}USDT"
 
 
