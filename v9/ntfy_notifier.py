@@ -1,4 +1,4 @@
-"""VEGAS V9 per-symbol Bark notifications; app deep links only."""
+"""VEGAS V9 grouped notifications via Bark only."""
 from __future__ import annotations
 import json, os, sys, urllib.error, urllib.request
 from typing import Any
@@ -16,14 +16,6 @@ STOCK_ORDER = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"
 ]
 ALLOWED_SYMBOLS = set(CORE_ORDER + STOCK_ORDER)
-
-
-def bitget_app_url(symbol: str) -> str:
-    """Return a Bitget trading-app deep link from a verified configurable template."""
-    template = os.environ.get("V9_BITGET_APP_LINK_TEMPLATE", "").strip()
-    if not template:
-        return ""
-    return template.replace("{symbol}", f"{symbol}USDT")
 
 
 def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
@@ -77,32 +69,17 @@ def send_notification(report_path: str) -> int:
 
     body, symbols = build_body(report)
     test = os.environ.get("V9_NOTIFICATION_TEST_MODE") == "1"
+    if test:
+        body = "【测试推送】\n" + body
+    payload = {
+        "device_key": bark_key,
+        "body": body,
+        "group": "VEGAS V9",
+        "level": "active",
+    }
     try:
-        if not symbols:
-            payload: dict[str, Any] = {
-                "device_key": bark_key,
-                "body": body,
-                "group": "VEGAS V9",
-                "level": "active",
-            }
-            if test:
-                payload["body"] = "【测试推送】\n" + body
-            _post_bark(payload)
-            print("Bark accepted no-change notification (HTTP 2xx).")
-        else:
-            for symbol in symbols:
-                payload = {
-                    "device_key": bark_key,
-                    "title": f"{'【测试推送】' if test else ''}V9 正式信号 · {symbol}",
-                    "body": f"{symbol} 检测到正式信号。点击通知尝试打开 Bitget App 对应合约。",
-                    "group": "VEGAS V9",
-                    "level": "active",
-                }
-                app_url = bitget_app_url(symbol)
-                if app_url:
-                    payload["url"] = app_url
-                _post_bark(payload)
-                print(f"Bark accepted notification for {symbol}; app_link_configured={bool(app_url)}")
+        _post_bark(payload)
+        print(f"Bark accepted grouped notification; symbols: {', '.join(symbols) or 'No change'}.")
         return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
