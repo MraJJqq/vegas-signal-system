@@ -45,6 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f v9/.signal-state.json
+          if [ -f v9/scan-report.json ]; then git add -f v9/scan-report.json; fi
           if git diff --cached --quiet; then
             echo "V9 state unchanged; no commit required."
             exit 0
