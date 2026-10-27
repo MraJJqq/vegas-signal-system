@@ -64,7 +64,7 @@ class V9NotifierTests(unittest.TestCase):
         for stale in ("CVX", "CRCL", "MSTR"):
             self.assertNotIn(f"▰ {stale} ▰", body)
 
-    def test_send_empty_report_posts_to_bark(self):
+    def test_send_empty_report_posts_to_bark_without_url(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
             path.write_text(json.dumps({"signals": []}), encoding="utf-8")
@@ -79,9 +79,9 @@ class V9NotifierTests(unittest.TestCase):
                 self.assertNotIn("🔔", payload["body"])
                 self.assertNotIn("VEGAS V9 SIGNAL SYSTEM", payload["body"])
                 self.assertNotIn("title", payload)
+                self.assertNotIn("url", payload)
 
-
-    def test_formal_signals_send_one_notification_per_symbol_with_direct_urls(self):
+    def test_formal_signals_send_one_notification_per_symbol_without_web_urls_by_default(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
             path.write_text(json.dumps({"signals": [
@@ -94,25 +94,20 @@ class V9NotifierTests(unittest.TestCase):
                 urlopen.return_value.__enter__.return_value.status = 200
                 self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
                 self.assertEqual(urlopen.call_count, 2)
-                payloads = [
-                    json.loads(call.args[0].data.decode())
-                    for call in urlopen.call_args_list
-                ]
+                payloads = [json.loads(call.args[0].data.decode()) for call in urlopen.call_args_list]
                 self.assertEqual([p["title"] for p in payloads], [
                     "V9 正式信号 · NVDA", "V9 正式信号 · BTC"
                 ])
-                self.assertEqual([p["url"] for p in payloads], [
-                    "https://www.bitget.com/futures/usdt/NVDAUSDT",
-                    "https://www.bitget.com/futures/usdt/BTCUSDT",
-                ])
+                self.assertTrue(all("url" not in p for p in payloads))
                 self.assertTrue(all(p["group"] == "VEGAS V9" for p in payloads))
                 self.assertTrue(all(p["level"] == "active" for p in payloads))
 
-    def test_crude_oil_display_symbol_uses_clu_contract_url(self):
-        self.assertEqual(
-            ntfy_notifier.bitget_url("CL"),
-            "https://www.bitget.com/futures/usdt/CLUSDT",
-        )
+    def test_configured_app_link_is_used_without_web_fallback(self):
+        with patch.dict(os.environ, {"V9_BITGET_APP_LINK_TEMPLATE": "bitget-app-scheme://trade/{symbol}"}, clear=False):
+            self.assertEqual(ntfy_notifier.bitget_app_url("NVDA"), "bitget-app-scheme://trade/NVDAUSDT")
+
+    def test_crude_oil_display_symbol_normalizes_to_cl(self):
+        self.assertEqual(ntfy_notifier.display_symbol("CLUSDT"), "CL")
 
     def test_missing_report_fails_cleanly(self):
         with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False):
