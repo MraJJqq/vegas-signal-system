@@ -43,12 +43,12 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
     stocks = [symbol for symbol in STOCK_ORDER if symbol in other_symbols]
     stocks.extend(sorted(symbol for symbol in other_symbols if symbol not in stock_set))
 
-    stock_line = "\\n".join(
+    stock_line = "\n".join(
         "   ".join(f"▰ {symbol} ▰" for symbol in stocks[i:i + 3])
         for i in range(0, len(stocks), 3)
     ) if stocks else "▰ No change ▰"
     core_line = "   ".join(f"▰ {symbol} ▰" for symbol in core) if core else "▰ No change ▰"
-    return f"🔸 美股巨头\\n{stock_line}\\n\\n🔸 核心能源\\n{core_line}", symbols
+    return f"🔸 美股巨头\n{stock_line}\n\n🔸 核心能源\n{core_line}", symbols
 
 
 def _post_bark(payload: dict[str, Any]) -> None:
@@ -87,7 +87,7 @@ def send_notification(report_path: str) -> int:
                 "level": "active",
             }
             if test:
-                payload["body"] = "【测试推送】\\n" + body
+                payload["body"] = "【测试推送】\n" + body
             _post_bark(payload)
             print("Bark accepted no-change notification (HTTP 2xx).")
         else:
