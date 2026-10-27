@@ -68,7 +68,7 @@ class V9NotifierTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
             path.write_text(json.dumps({"signals": []}), encoding="utf-8")
-            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False), patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key", "V9_BITGET_APP_LINK_TEMPLATE": ""}, clear=False), patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
                 self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
@@ -90,7 +90,7 @@ class V9NotifierTests(unittest.TestCase):
                 {"formal_signal": True, "symbol": "NVDAUSDT"},
                 {"formal_signal": False, "symbol": "TSLAUSDT"},
             ]}), encoding="utf-8")
-            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False), patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key", "V9_BITGET_APP_LINK_TEMPLATE": ""}, clear=False), patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 urlopen.return_value.__enter__.return_value.status = 200
                 self.assertEqual(ntfy_notifier.send_notification(str(path)), 0)
                 self.assertEqual(urlopen.call_count, 2)
@@ -102,7 +102,7 @@ class V9NotifierTests(unittest.TestCase):
                 self.assertTrue(all(p["group"] == "VEGAS V9" for p in payloads))
                 self.assertTrue(all(p["level"] == "active" for p in payloads))
 
-    def test_configured_app_link_is_used_without_web_fallback(self):
+    def test_configured_app_link_template_is_used(self):
         with patch.dict(os.environ, {"V9_BITGET_APP_LINK_TEMPLATE": "bitget-app-scheme://trade/{symbol}"}, clear=False):
             self.assertEqual(ntfy_notifier.bitget_app_url("NVDA"), "bitget-app-scheme://trade/NVDAUSDT")
 
