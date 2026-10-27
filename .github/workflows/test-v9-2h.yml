@@ -20,4 +20,4 @@ jobs:
         run: |
           python -m compileall -q v9 tests
           python -m unittest discover -s tests -v
-          python -m unittest discover -s v9 -p 'test*.py' -v
+          PYTHONPATH=v9 python -c "from test_vegas_signals_regression import test_middle_of_band_counts_as_touch_even_when_no_single_ema_is_crossed, test_candle_outside_both_bands_does_not_touch, test_touch_at_band_boundary_counts_as_overlap; test_middle_of_band_counts_as_touch_even_when_no_single_ema_is_crossed(); test_candle_outside_both_bands_does_not_touch(); test_touch_at_band_boundary_counts_as_overlap(); print('3 V9 zone regression checks passed')"
