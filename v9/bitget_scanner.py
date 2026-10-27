@@ -1,4 +1,4 @@
-"""VEGAS V9 Bitget 1H scanner."""
+"""VEGAS V9 scanner: 4H observation, 2H formal signal confirmation."""
 from __future__ import annotations
 import json, math, os, sys, time, urllib.parse, urllib.request
 from datetime import datetime, timezone, timedelta
@@ -7,7 +7,7 @@ from vegas_signals import detect_formal_signals
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
-GRANULARITY = "1H"
+GRANULARITY = "2H"
 OBSERVATION_GRANULARITY = "4H"
 CANDLE_LIMIT = 800
 TIMEOUT = 15
@@ -44,7 +44,9 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
     candles.sort(key=lambda x: x["timestamp_ms"])
     seen = set()
     now = int(time.time() * 1000)
-    interval = 4 * 3600000 if granularity == "4H" else 3600000
+    interval_ms = {"2H": 2 * 3600000, "4H": 4 * 3600000}.get(granularity)
+    if interval_ms is None:
+        raise ValueError(f"Unsupported V9 candle granularity: {granularity}")
     for c in candles:
         ts = c["timestamp_ms"]
         if ts in seen:
@@ -55,7 +57,7 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
             raise BitgetError(f"Invalid OHLC value at {ts}")
         if c["high"] < max(c["open"], c["close"]) or c["low"] > min(c["open"], c["close"]) or c["low"] > c["high"]:
             raise BitgetError(f"Invalid OHLC range at {ts}")
-        c["closed"] = ts + interval <= now
+        c["closed"] = ts + interval_ms <= now
     return candles
 
 def load_state() -> dict[str, dict[str, Any]]:
@@ -77,9 +79,8 @@ def save_state(state: dict[str, dict[str, Any]]) -> None:
 def scan_market_data() -> dict[str, Any]:
     tz = timezone(timedelta(hours=8))
     today = datetime.now(tz).date()
-    # Bump this whenever signal semantics change. Old observations and accumulated
-    # signals cannot be trusted across rule versions (prevents stale AAPL alerts).
-    rule_version = 2
+    # A timeframe change invalidates observations and accumulated signals from the prior rule version.
+    rule_version = 3
     loaded_state = load_state()
     version_record = loaded_state.get("__rule_version__", {})
     rules_changed = version_record.get("version") != rule_version
@@ -98,7 +99,7 @@ def scan_market_data() -> dict[str, Any]:
         and str(signal.get("symbol", "")).upper() in SYMBOLS
         and signal.get("formal_signal") is True
         and signal.get("observation_timeframe") == "4H"
-        and signal.get("filter_line") == "1H EMA12"
+        and signal.get("filter_line") == "2H EMA12"
         and signal.get("phase") == "信号期"
     ]
     # The 27 selected markets are the fixed V9 scan pool; do not filter by turnover.
@@ -117,17 +118,17 @@ def scan_market_data() -> dict[str, Any]:
     for symbol in scan_symbols:
         item = {"symbol": symbol, "timeframes": {}}
         try:
-            candles_1h = fetch_candles(symbol, GRANULARITY)
+            candles_2h = fetch_candles(symbol, GRANULARITY)
             candles_4h = fetch_candles(symbol, OBSERVATION_GRANULARITY)
-            closed_1h = [c for c in candles_1h if c["closed"]]
+            closed_2h = [c for c in candles_2h if c["closed"]]
             closed_4h = [c for c in candles_4h if c["closed"]]
-            if not closed_1h:
-                raise BitgetError("No closed 1H candles returned")
+            if not closed_2h:
+                raise BitgetError("No closed 2H candles returned")
             if not closed_4h:
                 raise BitgetError("No closed 4H candles returned")
-            signals = detect_formal_signals(symbol, candles_1h, candles_4h, state.setdefault(symbol, {}))
+            signals = detect_formal_signals(symbol, candles_2h, candles_4h, state.setdefault(symbol, {}))
             report["signals"].extend(s for s in signals if datetime.fromtimestamp(s["candle_timestamp_ms"] / 1000, tz=tz).date() == today)
-            item["timeframes"][GRANULARITY] = {"candles_received": len(candles_1h), "closed_candles": len(closed_1h), "latest_closed_candle_ms": closed_1h[-1]["timestamp_ms"], "latest_closed_price": closed_1h[-1]["close"]}
+            item["timeframes"][GRANULARITY] = {"candles_received": len(candles_2h), "closed_candles": len(closed_2h), "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"], "latest_closed_price": closed_2h[-1]["close"]}
             item["timeframes"][OBSERVATION_GRANULARITY] = {"candles_received": len(candles_4h), "closed_candles": len(closed_4h), "latest_closed_candle_ms": closed_4h[-1]["timestamp_ms"], "latest_closed_price": closed_4h[-1]["close"]}
             item.update({"data_available": True, "excluded_reason": None})
             report["symbols_ok"] += 1
@@ -136,7 +137,6 @@ def scan_market_data() -> dict[str, Any]:
             item.update({"data_available": False, "excluded_reason": str(exc)})
             report["symbols_excluded"] += 1
         report["results"].append(item)
-    # Persist every formal signal seen today so each scan can notify the full daily set.
     daily_by_key = {
         (str(s.get("symbol")), int(s.get("candle_timestamp_ms", 0)), str(s.get("filter_side"))): s
         for s in daily_signals if isinstance(s, dict)
