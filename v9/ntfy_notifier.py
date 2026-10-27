@@ -1,4 +1,4 @@
-"""VEGAS V9 grouped notifications via Bark only."""
+"""VEGAS V9 grouped Bark notifications: list formal-signal symbols only; no directional commentary."""
 from __future__ import annotations
 import json, os, sys, urllib.error, urllib.request
 from typing import Any
