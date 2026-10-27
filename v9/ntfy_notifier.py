@@ -1,4 +1,4 @@
-""""VEGAS V9 per-symbol Bark notifications; app deep links only."""
+"""VEGAS V9 per-symbol Bark notifications; app deep links only."""
 from __future__ import annotations
 import json, os, sys, urllib.error, urllib.request
 from typing import Any
@@ -19,7 +19,7 @@ ALLOWED_SYMBOLS = set(CORE_ORDER + STOCK_ORDER)
 
 
 def bitget_app_url(symbol: str) -> str:
-    """Return a verified Bitget trading-app deep link, once the official route is confirmed."""
+    """Return a Bitget trading-app deep link from a verified configurable template."""
     template = os.environ.get("V9_BITGET_APP_LINK_TEMPLATE", "").strip()
     if not template:
         return ""
@@ -111,4 +111,3 @@ def send_notification(report_path: str) -> int:
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v9/scan-report.json"))
-"
