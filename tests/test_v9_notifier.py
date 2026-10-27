@@ -100,6 +100,19 @@ class V9NotifierTests(unittest.TestCase):
                 self.assertNotIn("title", payload)
                 self.assertNotIn("url", payload)
 
+    def test_direction_fields_are_not_rendered_as_commentary(self):
+        body, symbols = ntfy_notifier.build_body({"signals": [
+            {"formal_signal": True, "symbol": "NVDAUSDT", "filter_side": "上方",
+             "filter_value": 123.4, "close_price": 125.0},
+            {"formal_signal": True, "symbol": "BTCUSDT", "filter_side": "下方",
+             "filter_value": 100.0, "close_price": 98.0},
+        ]})
+        self.assertEqual(set(symbols), {"NVDA", "BTC"})
+        self.assertIn("▰ NVDA ▰", body)
+        self.assertIn("▰ BTC ▰", body)
+        for commentary in ("上方", "下方", "涨", "跌", "做多", "做空", "123.4", "125.0"):
+            self.assertNotIn(commentary, body)
+
     def test_crude_oil_display_symbol_normalizes_to_cl(self):
         self.assertEqual(ntfy_notifier.display_symbol("CLUSDT"), "CL")
 
