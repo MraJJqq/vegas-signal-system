@@ -111,7 +111,7 @@ class V9NotifierTests(unittest.TestCase):
     def test_crude_oil_display_symbol_uses_clu_contract_url(self):
         self.assertEqual(
             ntfy_notifier.bitget_url("CL"),
-            "https://www.bitget.com/futures/usdt/CLUUSDT",
+            "https://www.bitget.com/futures/usdt/CLUSDT",
         )
 
     def test_missing_report_fails_cleanly(self):
