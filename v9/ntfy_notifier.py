@@ -1,4 +1,4 @@
-"""VEGAS V9 per-symbol Bark notifications with direct Bitget links."""
+""""VEGAS V9 per-symbol Bark notifications; app deep links only."""
 from __future__ import annotations
 import json, os, sys, urllib.error, urllib.request
 from typing import Any
@@ -18,11 +18,12 @@ STOCK_ORDER = [
 ALLOWED_SYMBOLS = set(CORE_ORDER + STOCK_ORDER)
 
 
-def bitget_url(symbol: str) -> str:
-    """Return the Bitget USDT futures page for a normalized V9 symbol."""
-    # V9 scans Bitget's CLUSDT crude-oil contract and displays it as CL.
-    contract_symbol = symbol
-    return f"https://www.bitget.com/futures/usdt/{contract_symbol}USDT"
+def bitget_app_url(symbol: str) -> str:
+    """Return a verified Bitget trading-app deep link, once the official route is confirmed."""
+    template = os.environ.get("V9_BITGET_APP_LINK_TEMPLATE", "").strip()
+    if not template:
+        return ""
+    return template.replace("{symbol}", f"{symbol}USDT")
 
 
 def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
@@ -31,7 +32,6 @@ def build_body(report: dict[str, Any]) -> tuple[str, list[str]]:
     seen: set[str] = set()
     for signal in signals:
         symbol = display_symbol(str(signal.get("symbol", "")))
-        # Keep the legacy safeguard: signals from symbols outside the active scan pool are ignored.
         if symbol and symbol in ALLOWED_SYMBOLS and symbol not in seen:
             symbols.append(symbol)
             seen.add(symbol)
@@ -79,7 +79,6 @@ def send_notification(report_path: str) -> int:
     test = os.environ.get("V9_NOTIFICATION_TEST_MODE") == "1"
     try:
         if not symbols:
-            # Preserve the existing single no-change notification when there are no formal signals.
             payload: dict[str, Any] = {
                 "device_key": bark_key,
                 "body": body,
@@ -91,18 +90,19 @@ def send_notification(report_path: str) -> int:
             _post_bark(payload)
             print("Bark accepted no-change notification (HTTP 2xx).")
         else:
-            # One notification per formal signal, with its own direct Bitget contract URL.
             for symbol in symbols:
                 payload = {
                     "device_key": bark_key,
                     "title": f"{'【测试推送】' if test else ''}V9 正式信号 · {symbol}",
-                    "body": f"{symbol} 检测到正式信号。点击本通知打开 Bitget 对应合约。",
-                    "url": bitget_url(symbol),
+                    "body": f"{symbol} 检测到正式信号。点击通知尝试打开 Bitget App 对应合约。",
                     "group": "VEGAS V9",
                     "level": "active",
                 }
+                app_url = bitget_app_url(symbol)
+                if app_url:
+                    payload["url"] = app_url
                 _post_bark(payload)
-                print(f"Bark accepted notification for {symbol}: {bitget_url(symbol)}")
+                print(f"Bark accepted notification for {symbol}; app_link_configured={bool(app_url)}")
         return 0
     except (urllib.error.URLError, TimeoutError, RuntimeError, OSError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
@@ -111,3 +111,4 @@ def send_notification(report_path: str) -> int:
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v9/scan-report.json"))
+"
