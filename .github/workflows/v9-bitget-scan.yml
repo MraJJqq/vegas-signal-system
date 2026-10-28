@@ -2,8 +2,8 @@ name: VEGAS V9 Bitget Scan
 
 on:
   schedule:
-    # Beijing time 10:00–22:00 every hour; GitHub cron uses UTC.
-    - cron: "0 2-14 * * *"
+    # Beijing time 10:00–22:00 every two hours; GitHub cron uses UTC.
+    - cron: "0 2,4,6,8,10,12,14 * * *"
   workflow_dispatch:
 
 permissions:
