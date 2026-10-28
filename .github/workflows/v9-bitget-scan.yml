@@ -85,10 +85,14 @@ jobs:
           echo "Unable to push V9 state after 3 attempts."
           exit 1
       - name: Publish sanitized signal state to Vegas Octopus V2
-        if: success() && secrets.OCTOPUS_REPO_TOKEN != ''
+        if: success()
         env:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
+          if [ -z "${OCTOPUS_REPO_TOKEN}" ]; then
+            echo "::warning::Add OCTOPUS_REPO_TOKEN secret with contents write access to MraJJqq/vegas-octopus-v2 to enable the latest-events signal mirror."
+            exit 0
+          fi
           python - <<'PY'
           import json
           from pathlib import Path
@@ -104,7 +108,7 @@ jobs:
                   ]
               }
           }
-          Path("/tmp/v9-signals.json").write_text(json.dumps(public_state, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
+          Path("/tmp/v9-signals.json").write_text(json.dumps(public_state, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
           PY
           git clone --depth 1 https://x-access-token:${OCTOPUS_REPO_TOKEN}@github.com/MraJJqq/vegas-octopus-v2.git /tmp/octopus-v2
           cp /tmp/v9-signals.json /tmp/octopus-v2/v9-signals.json
@@ -118,9 +122,6 @@ jobs:
             git commit -m "chore: update public V9 signal mirror"
             git push origin HEAD:main
           fi
-      - name: Publish mirror setup reminder
-        if: success() && secrets.OCTOPUS_REPO_TOKEN == ''
-        run: echo "::warning::Add OCTOPUS_REPO_TOKEN secret with contents write access to MraJJqq/vegas-octopus-v2 to enable the latest-events signal mirror."
       - name: Send V9 Bark notification
         if: success()
         env:
