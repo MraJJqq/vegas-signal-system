@@ -90,8 +90,8 @@ jobs:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
           if [ -z "${OCTOPUS_REPO_TOKEN}" ]; then
-            echo "::warning::Add OCTOPUS_REPO_TOKEN secret with contents write access to MraJJqq/vegas-octopus-v2 to enable the latest-events signal mirror."
-            exit 0
+            echo "::error::OCTOPUS_REPO_TOKEN is missing; cannot publish V9 signals to Vegas Octopus V2."
+            exit 1
           fi
           python - <<'PY'
           import json
@@ -123,7 +123,7 @@ jobs:
             git push origin HEAD:main
           fi
       - name: Send V9 Bark notification
-        if: success()
+        if: ${{ always() && steps.scan.outcome == 'success' }}
         env:
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
         run: python v9/ntfy_notifier.py v9/scan-report.json
