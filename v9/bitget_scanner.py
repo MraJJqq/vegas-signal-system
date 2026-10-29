@@ -14,6 +14,7 @@ OBSERVATION_GRANULARITY = "4H"
 CANDLE_LIMIT = 800
 EMA_HISTORY_LIMIT = 3500
 CANDLE_PAGE_LIMIT = 1000
+HISTORY_CANDLE_PAGE_LIMIT = 200
 TIMEOUT = 15
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
@@ -46,8 +47,15 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
     collected: dict[int, dict[str, Any]] = {}
     end_time: int | None = None
 
+    history_endpoint = granularity == OBSERVATION_GRANULARITY
+    endpoint_path = (
+        "/api/v2/mix/market/history-candles"
+        if history_endpoint else "/api/v2/mix/market/candles"
+    )
+    page_limit = HISTORY_CANDLE_PAGE_LIMIT if history_endpoint else CANDLE_PAGE_LIMIT
+
     while len(collected) < target_count:
-        page_size = min(CANDLE_PAGE_LIMIT, target_count - len(collected))
+        page_size = min(page_limit, target_count - len(collected))
         params = {
             "symbol": symbol,
             "productType": PRODUCT_TYPE,
@@ -56,7 +64,7 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
         }
         if end_time is not None:
             params["endTime"] = str(end_time)
-        payload = get_json("/api/v2/mix/market/candles", params)
+        payload = get_json(endpoint_path, params)
         rows = payload.get("data") or []
         if not rows:
             break
