@@ -1,6 +1,6 @@
 """Baostock native-1H A-share scanner; isolated from the US V9 system."""
 from __future__ import annotations
-import json, os, time, urllib.request
+import json, os, time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
@@ -97,28 +97,7 @@ def diagnose_history(candles: list[dict[str, Any]]) -> dict[str, Any]:
     out["diagnostic_status"] = "ok"
     return out
 
-def send_bark(signals: list[dict[str, Any]]) -> dict[str, Any]:
-    key = os.environ.get("BARK_KEY", "").strip()
-    if not key: return {"status": "skipped", "reason": "BARK_KEY_missing"}
-    symbols, seen = [], set()
-    for signal in signals:
-        symbol = str(signal.get("symbol", "")).strip().upper()
-        if symbol and symbol not in seen: symbols.append(symbol); seen.add(symbol)
-    body = "A股\n" + ("\n".join("   ".join(f"▰ {s} ▰" for s in symbols[i:i+3]) for i in range(0, len(symbols), 3)) if symbols else "▰ No change ▰")
-    payload = json.dumps({"device_key": key, "title": "VEGAS V9 A股 1H", "body": body,
-                          "group": "VEGAS V9 A股", "level": "active"}, ensure_ascii=False).encode()
-    req = urllib.request.Request("https://api.day.app/push", data=payload,
-        headers={"Content-Type": "application/json; charset=utf-8"}, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            text = response.read().decode("utf-8", "replace")
-            if not 200 <= response.status < 300: raise RuntimeError(f"Bark HTTP {response.status}: {text[:200]}")
-        try: parsed = json.loads(text)
-        except json.JSONDecodeError: parsed = {}
-        if isinstance(parsed, dict) and parsed.get("code") not in (None, 200): raise RuntimeError(f"Bark rejected push: {text[:200]}")
-        return {"status": "sent", "signals": len(signals), "symbols": symbols}
-    except Exception as exc: return {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
-
+def send_bark(s
 def main() -> int:
     today = datetime.now(TZ).date().isoformat()
     pool, state, cache = load_pool(), load_json(STATE_PATH, {}), load_json(CACHE_PATH, {})
@@ -176,7 +155,6 @@ def main() -> int:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = STATE_PATH.with_suffix(STATE_PATH.suffix + ".tmp")
     tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"); tmp.replace(STATE_PATH)
-    report["bark_notification"] = send_bark(report["signals"])
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "results"}, ensure_ascii=False, indent=2))
