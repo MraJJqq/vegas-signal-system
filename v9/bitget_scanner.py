@@ -5,6 +5,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 from typing import Any
 from vegas_signals import detect_formal_signals
+from market_config import SYMBOLS
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
@@ -22,9 +23,6 @@ MAX_API_RETRIES = 4
 _rate_limit_lock = threading.Lock()
 _next_request_at = 0.0
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
-CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
-STOCKS = ("AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX")
-SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 
 class BitgetError(RuntimeError):
     pass
@@ -32,12 +30,15 @@ class BitgetError(RuntimeError):
 def _wait_for_request_slot() -> None:
     """Pace all worker threads to reduce Bitget HTTP 429 responses."""
     global _next_request_at
+    # Reserve a globally spaced request slot under the lock, then sleep
+    # outside it so worker threads do not block one another while waiting.
     with _rate_limit_lock:
         now = time.monotonic()
-        delay = _next_request_at - now
-        if delay > 0:
-            time.sleep(delay)
-        _next_request_at = time.monotonic() + MIN_REQUEST_INTERVAL_SECONDS
+        request_at = max(now, _next_request_at)
+        _next_request_at = request_at + MIN_REQUEST_INTERVAL_SECONDS
+    delay = request_at - now
+    if delay > 0:
+        time.sleep(delay)
 
 
 def get_json(path: str, params: dict[str, str]) -> dict[str, Any]:

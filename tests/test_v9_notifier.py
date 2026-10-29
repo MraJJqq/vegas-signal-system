@@ -4,9 +4,11 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v9"))
 import ntfy_notifier
+import bitget_scanner
+from market_config import CORE_MARKETS, STOCKS as STOCK_SYMBOLS
 
-CORE = ["BTC", "HYPE", "XAU", "CL"]
-STOCKS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX"]
+CORE = list(CORE_MARKETS)
+STOCKS = list(STOCK_SYMBOLS)
 
 
 class BarkNotifierTests(unittest.TestCase):
@@ -79,6 +81,11 @@ class BarkNotifierTests(unittest.TestCase):
 
     def test_oil_symbol_alias(self):
         self.assertEqual(ntfy_notifier.display_symbol("CLUSDT"), "CL")
+
+    def test_scanner_and_notifier_share_the_same_market_pool(self):
+        self.assertEqual(set(bitget_scanner.SYMBOLS), {f"{s}USDT" for s in CORE + STOCKS})
+        self.assertEqual(ntfy_notifier.ALLOWED_SYMBOLS, set(CORE + STOCKS))
+        self.assertEqual(len(bitget_scanner.SYMBOLS), 27)
 
 
 if __name__ == "__main__":
