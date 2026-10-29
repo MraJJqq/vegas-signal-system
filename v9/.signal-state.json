@@ -186,7 +186,7 @@
     "touched_lines": [],
     "touch_timestamp_ms": null,
     "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "__daily_formal_signals__": {
     "date": "2026-10-29",
