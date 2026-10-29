@@ -93,6 +93,7 @@ jobs:
           echo "Unable to push V9 state after 3 attempts."
           exit 1
       - name: Send V9 Bark notification
+        id: bark
         if: ${{ always() && steps.scan.outcome == 'success' }}
         env:
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
@@ -100,7 +101,7 @@ jobs:
           V9_PUBLIC_SIGNAL_PATH: /tmp/v9-bark-signals.json
         run: python v9/ntfy_notifier.py v9/scan-report.json
       - name: Publish sanitized signal state to Vegas Octopus V2
-        if: ${{ success() }}
+        if: ${{ always() && steps.scan.outcome == 'success' && steps.bark.outcome == 'success' }}
         env:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
