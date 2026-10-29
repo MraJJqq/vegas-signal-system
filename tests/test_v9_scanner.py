@@ -26,6 +26,20 @@ class V9ScannerIntegrityTests(unittest.TestCase):
         self.assertEqual(payload["code"], "00000")
         self.assertEqual(request.call_count, 2)
 
+    def test_transient_network_error_is_retried(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"code":"00000","data":[]}'
+        with patch.object(bitget_scanner, "_wait_for_request_slot"), \
+             patch.object(bitget_scanner.time, "sleep") as sleep, \
+             patch.object(
+                 bitget_scanner.urllib.request, "urlopen",
+                 side_effect=[urllib.error.URLError("timed out"), response],
+             ) as request:
+            payload = bitget_scanner.get_json("/test", {})
+        self.assertEqual(payload["code"], "00000")
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(2)
+
     def test_partial_scan_is_not_success(self):
         report = {
             "scan_status": "partial",
@@ -98,6 +112,33 @@ class V9ScannerIntegrityTests(unittest.TestCase):
             self.assertEqual(request.call_count, 1)
             self.assertEqual([c["timestamp_ms"] for c in candles], [2000, 3000, 4000])
             self.assertEqual(candles[-1]["close"], 11.0)
+
+    def test_complete_short_history_cache_avoids_full_repaging(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            cached = [
+                {"timestamp_ms": ts, "open": 10.0, "high": 11.0, "low": 9.0,
+                 "close": 10.0, "closed": True}
+                for ts in (1000, 2000, 3000)
+            ]
+            with open(f"{cache_dir}/TESTUSDT-4H.json", "w", encoding="utf-8") as cache_file:
+                json.dump({"version": 1, "complete": True, "candles": cached}, cache_file)
+
+            latest_page = [
+                [3000, "10", "11", "9", "10"],
+                [4000, "10", "12", "9", "11"],
+            ]
+            with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 5), \
+                 patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
+                 patch.object(bitget_scanner, "CANDLE_CACHE_DIR", cache_dir), \
+                 patch.object(bitget_scanner, "get_json", return_value={"code": "00000", "data": latest_page}) as request:
+                candles = bitget_scanner.fetch_candles("TESTUSDT", "4H")
+
+            self.assertEqual(request.call_count, 1)
+            self.assertEqual([c["timestamp_ms"] for c in candles], [1000, 2000, 3000, 4000])
+            with open(f"{cache_dir}/TESTUSDT-4H.json", encoding="utf-8") as cache_file:
+                saved = json.load(cache_file)
+            self.assertTrue(saved["complete"])
+            self.assertEqual(len(saved["candles"]), 4)
 
     def test_4h_candles_are_paginated_and_returned_oldest_first(self):
         pages = [
