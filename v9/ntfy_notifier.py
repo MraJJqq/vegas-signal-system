@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timezone, timedelta
 import urllib.error
 import urllib.request
 from typing import Any
@@ -68,6 +69,43 @@ def load_report(path: str) -> dict[str, Any]:
     return report
 
 
+
+def build_public_signal_state(report: dict[str, Any]) -> dict[str, Any]:
+    """Build the webpage signal list from exactly the symbols shown in Bark."""
+    _, symbols = build_body(report)
+    tz = timezone(timedelta(hours=8))
+    timestamp = report.get("finished_at_utc") or report.get("started_at_utc")
+    try:
+        scanned_at = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+        if scanned_at.tzinfo is None:
+            scanned_at = scanned_at.replace(tzinfo=timezone.utc)
+        signal_date = scanned_at.astimezone(tz).date().isoformat()
+    except (TypeError, ValueError):
+        signal_date = datetime.now(tz).date().isoformat()
+    return {
+        "__daily_formal_signals__": {
+            "date": signal_date,
+            "signals": [
+                {"symbol": f"{symbol}USDT", "timeframe": "2H", "formal_signal": True}
+                for symbol in symbols
+            ],
+        }
+    }
+
+
+def write_public_signal_state(report: dict[str, Any]) -> None:
+    path = os.environ.get("V9_PUBLIC_SIGNAL_PATH", "").strip()
+    if not path:
+        return
+    state = build_public_signal_state(report)
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as file:
+        json.dump(state, file, ensure_ascii=False, separators=(",", ":"))
+        file.write("\n")
+
+
 def _read_bark_response(response_body: str) -> None:
     if not response_body.strip():
         return
@@ -128,6 +166,7 @@ def send_notification(report_path: str) -> int:
             "group": BARK_GROUP,
             "level": "active",
         })
+        write_public_signal_state(report)
     except (OSError, ValueError, urllib.error.URLError, TimeoutError, RuntimeError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
         return 1
