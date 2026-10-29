@@ -37,6 +37,22 @@ def _touched_zones(low: float, high: float, values: dict[str, list[float | None]
             hits.extend(label for label in labels)
     return hits
 
+def _merge_events(
+    events_4h: list[tuple[int, int, int, dict[str, Any]]],
+    events_2h: list[tuple[int, int, int, dict[str, Any]]],
+):
+    """Merge already time-ordered candle events in O(n), with 4H winning equal-time ties."""
+    i4 = i2 = 0
+    while i4 < len(events_4h) and i2 < len(events_2h):
+        if events_4h[i4][0] <= events_2h[i2][0]:
+            yield events_4h[i4]
+            i4 += 1
+        else:
+            yield events_2h[i2]
+            i2 += 1
+    yield from events_4h[i4:]
+    yield from events_2h[i2:]
+
 
 def detect_formal_signals(
     symbol: str,
@@ -64,18 +80,18 @@ def detect_formal_signals(
     filter_values_2h = ema(closes_2h, FILTER_PERIOD)
     signals: list[dict[str, Any]] = []
 
-    events: list[tuple[int, int, int, dict[str, Any]]] = []
+    events_4h: list[tuple[int, int, int, dict[str, Any]]] = []
+    events_2h: list[tuple[int, int, int, dict[str, Any]]] = []
     for index, candle in enumerate(closed_4h):
         ts = int(candle["timestamp_ms"])
         if ts > last_processed_4h:
-            events.append((ts + 4 * HOUR_MS, 0, index, candle))
+            events_4h.append((ts + 4 * HOUR_MS, 0, index, candle))
     for index, candle in enumerate(closed_2h):
         ts = int(candle["timestamp_ms"])
         if ts > last_processed_2h:
-            events.append((ts + SIGNAL_INTERVAL_MS, 1, index, candle))
-    events.sort(key=lambda event: (event[0], event[1]))
+            events_2h.append((ts + SIGNAL_INTERVAL_MS, 1, index, candle))
 
-    for close_time_ms, event_type, index, candle in events:
+    for close_time_ms, event_type, index, candle in _merge_events(events_4h, events_2h):
         ts = int(candle["timestamp_ms"])
         if event_type == 0:
             if not observing:
