@@ -176,8 +176,10 @@ def scan_market_data() -> dict[str, Any]:
         "results": [],
         "signals": [],
     }
-    for symbol in scan_symbols:
+    def scan_one_symbol(symbol: str) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
         item = {"symbol": symbol, "timeframes": {}}
+        signals_for_symbol: list[dict[str, Any]] = []
+        warmup_sufficient = False
         try:
             candles_2h = fetch_candles(symbol, GRANULARITY)
             candles_4h = fetch_candles(symbol, OBSERVATION_GRANULARITY)
@@ -187,9 +189,15 @@ def scan_market_data() -> dict[str, Any]:
                 raise BitgetError("No closed 2H candles returned")
             if not closed_4h:
                 raise BitgetError("No closed 4H candles returned")
-            signals = detect_formal_signals(symbol, candles_2h, candles_4h, state.setdefault(symbol, {}))
-            report["signals"].extend(s for s in signals if datetime.fromtimestamp(s["candle_timestamp_ms"] / 1000, tz=tz).date() == today)
-            item["timeframes"][GRANULARITY] = {"candles_received": len(candles_2h), "closed_candles": len(closed_2h), "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"], "latest_closed_price": closed_2h[-1]["close"]}
+            signals_for_symbol = detect_formal_signals(
+                symbol, candles_2h, candles_4h, state.setdefault(symbol, {})
+            )
+            item["timeframes"][GRANULARITY] = {
+                "candles_received": len(candles_2h),
+                "closed_candles": len(closed_2h),
+                "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"],
+                "latest_closed_price": closed_2h[-1]["close"],
+            }
             warmup_sufficient = len(closed_4h) >= EMA_HISTORY_LIMIT
             item["timeframes"][OBSERVATION_GRANULARITY] = {
                 "candles_received": len(candles_4h),
@@ -200,20 +208,43 @@ def scan_market_data() -> dict[str, Any]:
                 "ema676_warmup_sufficient": warmup_sufficient,
             }
             item.update({"data_available": True, "excluded_reason": None})
+        except Exception as exc:
+            error = str(exc)
+            item["timeframes"]["error"] = {
+                "message": error, "stage": "market_data_or_signal_processing"
+            }
+            item.update({"data_available": False, "excluded_reason": error})
+        return item, signals_for_symbol, warmup_sufficient
+
+    # Network I/O dominates scan time. Use bounded concurrency to scan several
+    # independent symbols at once while preserving deterministic report order.
+    from concurrent.futures import ThreadPoolExecutor
+    max_workers = min(4, len(scan_symbols)) or 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        scanned = list(executor.map(scan_one_symbol, scan_symbols))
+
+    for symbol, (item, signals, warmup_sufficient) in zip(scan_symbols, scanned):
+        if item["data_available"]:
             report["symbols_ok"] += 1
+            report["signals"].extend(
+                signal for signal in signals
+                if datetime.fromtimestamp(
+                    signal["candle_timestamp_ms"] / 1000, tz=tz
+                ).date() == today
+            )
             if not warmup_sufficient:
                 report["symbols_warmup_insufficient"] += 1
                 report["warmup_insufficient_symbols"].append({
                     "symbol": symbol,
-                    "candles_received": len(candles_4h),
+                    "candles_received": item["timeframes"][OBSERVATION_GRANULARITY]["candles_received"],
                     "warmup_target": EMA_HISTORY_LIMIT,
                 })
-        except Exception as exc:
-            error = str(exc)
-            item["timeframes"]["error"] = {"message": error, "stage": "market_data_or_signal_processing"}
-            item.update({"data_available": False, "excluded_reason": error})
+        else:
             report["symbols_excluded"] += 1
-            report["failed_symbols"].append({"symbol": symbol, "error": error})
+            report["failed_symbols"].append({
+                "symbol": symbol,
+                "error": item["excluded_reason"],
+            })
         report["results"].append(item)
     daily_by_key = {
         (str(s.get("symbol")), int(s.get("candle_timestamp_ms", 0)), str(s.get("filter_side"))): s
