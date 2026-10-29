@@ -5,6 +5,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 from typing import Any
 from vegas_signals import detect_formal_signals
+from market_config import CORE_MARKETS, STOCKS, SYMBOLS
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
@@ -22,9 +23,6 @@ MAX_API_RETRIES = 4
 _rate_limit_lock = threading.Lock()
 _next_request_at = 0.0
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
-CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
-STOCKS = ("AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX")
-SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 
 class BitgetError(RuntimeError):
     pass
