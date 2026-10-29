@@ -43,9 +43,8 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
 
     # 2H only needs a short EMA12 warm-up; 4H Vegas bands need much deeper
     # history, especially EMA576/EMA676. Bitget pages are fetched backwards.
-    # Include the current potentially-open 4H candle so the requested history
-    # still contains EMA_HISTORY_LIMIT fully closed candles.
-    target_count = EMA_HISTORY_LIMIT + 1 if granularity == OBSERVATION_GRANULARITY else CANDLE_LIMIT
+    # The historical-candles endpoint returns finished candles only.
+    target_count = EMA_HISTORY_LIMIT if granularity == OBSERVATION_GRANULARITY else CANDLE_LIMIT
     collected: dict[int, dict[str, Any]] = {}
     end_time: int | None = None
 
