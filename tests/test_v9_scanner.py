@@ -24,6 +24,32 @@ class V9ScannerIntegrityTests(unittest.TestCase):
         self.assertEqual(payload["code"], "00000")
         self.assertEqual(request.call_count, 2)
 
+    def test_rate_limit_wait_happens_outside_lock(self):
+        class TrackingLock:
+            held = False
+
+            def __enter__(self):
+                self.held = True
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                self.held = False
+
+        lock = TrackingLock()
+        with patch.object(bitget_scanner, "_rate_limit_lock", lock), \\
+             patch.object(bitget_scanner.time, "monotonic", return_value=100.0), \\
+             patch.object(bitget_scanner.time, "sleep") as sleep:
+            bitget_scanner._next_request_at = 101.0
+
+            def assert_unlocked(delay):
+                self.assertFalse(lock.held)
+                self.assertEqual(delay, 1.0)
+
+            sleep.side_effect = assert_unlocked
+            bitget_scanner._wait_for_request_slot()
+
+        self.assertEqual(bitget_scanner._next_request_at, 101.0 + bitget_scanner.MIN_REQUEST_INTERVAL_SECONDS)
+        sleep.assert_called_once_with(1.0)
+
     def test_partial_scan_is_not_success(self):
         report = {
             "scan_status": "partial",
