@@ -3,189 +3,211 @@
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "HYPEUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "observing": true,
+    "touched_lines": [
+      "中锋EMA144",
+      "中锋EMA169"
+    ],
+    "touch_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "XAUUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "CLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "AAPLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "MSFTUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "GOOGLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "AMZNUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "NVDAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "TSLAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "METAUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "INTCUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "QCOMUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "AMDUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "observing": true,
+    "touched_lines": [
+      "中锋EMA144",
+      "中锋EMA169"
+    ],
+    "touch_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "TSMUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "observing": true,
+    "touched_lines": [
+      "中锋EMA144",
+      "中锋EMA169",
+      "红峰EMA576",
+      "红峰EMA676"
+    ],
+    "touch_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "AVGOUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "observing": true,
+    "touched_lines": [
+      "中锋EMA144",
+      "中锋EMA169"
+    ],
+    "touch_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "ORCLUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "observing": true,
+    "touched_lines": [
+      "红峰EMA576",
+      "红峰EMA676"
+    ],
+    "touch_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "ARMUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "MUUSDT": {
-    "observing": false,
-    "touched_lines": [],
-    "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "observing": true,
+    "touched_lines": [
+      "中锋EMA144",
+      "中锋EMA169",
+      "红峰EMA576",
+      "红峰EMA676"
+    ],
+    "touch_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "ASMLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "SNDKUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "SKHYNIXUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "MRVLUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "GLWUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "HOODUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "CBRSUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
-    "last_processed_4h_timestamp_ms": 1793246400000
+    "last_processed_2h_timestamp_ms": 1793268000000,
+    "last_processed_4h_timestamp_ms": 1793260800000
   },
   "SPCXUSDT": {
     "observing": false,
     "touched_lines": [],
     "touch_timestamp_ms": null,
-    "last_processed_2h_timestamp_ms": 1793260800000,
+    "last_processed_2h_timestamp_ms": 1793268000000,
     "last_processed_4h_timestamp_ms": 1793260800000
   },
   "__daily_formal_signals__": {
