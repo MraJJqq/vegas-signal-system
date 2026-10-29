@@ -8,8 +8,10 @@ on:
       - ".github/workflows/v9-bitget-scan.yml"
       - "v9/ntfy_notifier.py"
       - "v9/bitget_scanner.py"
+      - "v9/vegas_signals.py"
       - "tests/test_v9_notifier.py"
       - "tests/test_v9_scanner.py"
+      - "tests/test_v9_signals.py"
   schedule:
     # Beijing time 10:00–22:00 every two hours; GitHub cron uses UTC.
     - cron: "0 2,4,6,8,10,12,14 * * *"
