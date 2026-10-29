@@ -34,6 +34,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore 4H candle cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/v9-candles
+          key: v9-candle-cache-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            v9-candle-cache-
       - name: Validate Python syntax and tests
         run: |
           python -m compileall -q v9 tests
@@ -43,6 +50,12 @@ jobs:
         env:
           V9_REPORT_PATH: v9/scan-report.json
         run: python v9/bitget_scanner.py
+      - name: Save refreshed 4H candle cache
+        if: ${{ always() && steps.scan.outcome == 'success' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/v9-candles
+          key: v9-candle-cache-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Persist V9 state to repository
         if: ${{ always() && steps.scan.outcome == 'success' }}
         run: |

@@ -1,4 +1,6 @@
+import json
 import sys
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
@@ -72,6 +74,31 @@ class V9ScannerIntegrityTests(unittest.TestCase):
             with self.assertRaisesRegex(bitget_scanner.BitgetError, "Duplicate candle timestamp"):
                 bitget_scanner.fetch_candles("TESTUSDT", "4H")
 
+    def test_4h_cache_refreshes_with_one_request(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            bitget_scanner.os.makedirs(cache_dir, exist_ok=True)
+            cached = [
+                {"timestamp_ms": ts, "open": 10.0, "high": 11.0, "low": 9.0,
+                 "close": 10.0, "closed": True}
+                for ts in (1000, 2000, 3000)
+            ]
+            with open(f"{cache_dir}/TESTUSDT-4H.json", "w", encoding="utf-8") as cache_file:
+                json.dump(cached, cache_file)
+
+            latest_page = [
+                [3000, "10", "11", "9", "10"],
+                [4000, "10", "12", "9", "11"],
+            ]
+            with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 3), \
+                 patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
+                 patch.object(bitget_scanner, "CANDLE_CACHE_DIR", cache_dir), \
+                 patch.object(bitget_scanner, "get_json", return_value={"code": "00000", "data": latest_page}) as request:
+                candles = bitget_scanner.fetch_candles("TESTUSDT", "4H")
+
+            self.assertEqual(request.call_count, 1)
+            self.assertEqual([c["timestamp_ms"] for c in candles], [2000, 3000, 4000])
+            self.assertEqual(candles[-1]["close"], 11.0)
+
     def test_4h_candles_are_paginated_and_returned_oldest_first(self):
         pages = [
             [[5000, "10", "11", "9", "10"], [4000, "10", "11", "9", "10"]],
@@ -84,8 +111,10 @@ class V9ScannerIntegrityTests(unittest.TestCase):
             calls.append((path, dict(params)))
             return {"code": "00000", "data": pages[len(calls) - 1]}
 
-        with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 5), \
+        with tempfile.TemporaryDirectory() as cache_dir, \
+             patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 5), \
              patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
+             patch.object(bitget_scanner, "CANDLE_CACHE_DIR", cache_dir), \
              patch.object(bitget_scanner, "get_json", side_effect=fake_get_json):
             candles = bitget_scanner.fetch_candles("TESTUSDT", "4H")
 

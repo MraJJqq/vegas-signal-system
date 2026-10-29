@@ -22,6 +22,7 @@ MAX_API_RETRIES = 4
 _rate_limit_lock = threading.Lock()
 _next_request_at = 0.0
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
+CANDLE_CACHE_DIR = os.environ.get("V9_CANDLE_CACHE_DIR", ".cache/v9-candles")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
 STOCKS = ("AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX")
 SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
@@ -90,7 +91,66 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
     )
     page_limit = HISTORY_CANDLE_PAGE_LIMIT if history_endpoint else CANDLE_PAGE_LIMIT
 
-    while len(collected) < target_count:
+    # Reuse the full 4H EMA warm-up history between workflow runs. Refresh the
+    # newest page and merge it into the cache; fall back to full pagination if
+    # the cache is missing, incomplete, or too stale to bridge safely.
+    cache_path = os.path.join(CANDLE_CACHE_DIR, f"{symbol}-{granularity}.json")
+    cache_hit = False
+    if history_endpoint:
+        cached: list[dict[str, Any]] = []
+        try:
+            with open(cache_path, encoding="utf-8") as cache_file:
+                cache_payload = json.load(cache_file)
+            if isinstance(cache_payload, list):
+                cached = [
+                    row for row in cache_payload
+                    if isinstance(row, dict) and isinstance(row.get("timestamp_ms"), int)
+                ]
+        except (OSError, json.JSONDecodeError):
+            cached = []
+
+        if len(cached) >= target_count:
+            # One request replaces the ~18-page history download on warm runs.
+            latest_payload = get_json(endpoint_path, {
+                "symbol": symbol,
+                "productType": PRODUCT_TYPE,
+                "granularity": granularity,
+                "limit": str(page_limit),
+            })
+            latest_rows = latest_payload.get("data") or []
+            refreshed: dict[int, dict[str, Any]] = {
+                int(row["timestamp_ms"]): dict(row) for row in cached
+            }
+            newest_fresh_ts: int | None = None
+            for row in latest_rows:
+                if not isinstance(row, list) or len(row) < 5:
+                    continue
+                try:
+                    ts = int(row[0])
+                    candle = {
+                        "timestamp_ms": ts,
+                        "open": float(row[1]),
+                        "high": float(row[2]),
+                        "low": float(row[3]),
+                        "close": float(row[4]),
+                        "closed": False,
+                    }
+                except (TypeError, ValueError, IndexError):
+                    continue
+                refreshed[ts] = candle
+                newest_fresh_ts = ts if newest_fresh_ts is None else max(newest_fresh_ts, ts)
+
+            # Compare against the pre-refresh cache tip, not the merged maximum.
+            previous_tip = max(int(row["timestamp_ms"]) for row in cached)
+            if (
+                latest_rows and newest_fresh_ts is not None
+                and newest_fresh_ts >= previous_tip
+                and newest_fresh_ts - previous_tip <= page_limit * interval_ms
+            ):
+                collected = dict(sorted(refreshed.items())[-target_count:])
+                cache_hit = len(collected) >= target_count
+
+    while not cache_hit and len(collected) < target_count:
         page_size = min(page_limit, target_count - len(collected))
         params = {
             "symbol": symbol,
@@ -137,6 +197,12 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
             break
 
     candles = [collected[ts] for ts in sorted(collected)]
+    if history_endpoint:
+        os.makedirs(CANDLE_CACHE_DIR, exist_ok=True)
+        cache_tmp = cache_path + ".tmp"
+        with open(cache_tmp, "w", encoding="utf-8") as cache_file:
+            json.dump(candles[-target_count:], cache_file, separators=(",", ":"))
+        os.replace(cache_tmp, cache_path)
     now = int(time.time() * 1000)
     for candle in candles:
         ts = candle["timestamp_ms"]
