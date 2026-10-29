@@ -9,7 +9,11 @@ BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
 GRANULARITY = "2H"
 OBSERVATION_GRANULARITY = "4H"
+# 4H EMA676 needs a long warm-up to reduce sensitivity to its seed value.
+# Fetch up to five EMA676 periods when the market has that much history.
 CANDLE_LIMIT = 800
+EMA_HISTORY_LIMIT = 3500
+CANDLE_PAGE_LIMIT = 1000
 TIMEOUT = 15
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
@@ -32,32 +36,74 @@ def get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
     return payload
 
 def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str, Any]]:
-    payload = get_json("/api/v2/mix/market/candles", {"symbol": symbol, "productType": PRODUCT_TYPE, "granularity": granularity, "limit": str(CANDLE_LIMIT)})
-    candles = []
-    for row in payload.get("data") or []:
-        if not isinstance(row, list) or len(row) < 5:
-            continue
-        try:
-            candles.append({"timestamp_ms": int(row[0]), "open": float(row[1]), "high": float(row[2]), "low": float(row[3]), "close": float(row[4]), "closed": False})
-        except (TypeError, ValueError, IndexError):
-            continue
-    candles.sort(key=lambda x: x["timestamp_ms"])
-    seen = set()
-    now = int(time.time() * 1000)
     interval_ms = {"2H": 2 * 3600000, "4H": 4 * 3600000}.get(granularity)
     if interval_ms is None:
         raise ValueError(f"Unsupported V9 candle granularity: {granularity}")
-    for c in candles:
-        ts = c["timestamp_ms"]
-        if ts in seen:
-            raise BitgetError(f"Duplicate candle timestamp: {ts}")
-        seen.add(ts)
-        prices = [c[k] for k in ("open", "high", "low", "close")]
+
+    # 2H only needs a short EMA12 warm-up; 4H Vegas bands need much deeper
+    # history, especially EMA576/EMA676. Bitget pages are fetched backwards.
+    target_count = EMA_HISTORY_LIMIT if granularity == OBSERVATION_GRANULARITY else CANDLE_LIMIT
+    collected: dict[int, dict[str, Any]] = {}
+    end_time: int | None = None
+
+    while len(collected) < target_count:
+        page_size = min(CANDLE_PAGE_LIMIT, target_count - len(collected))
+        params = {
+            "symbol": symbol,
+            "productType": PRODUCT_TYPE,
+            "granularity": granularity,
+            "limit": str(page_size),
+        }
+        if end_time is not None:
+            params["endTime"] = str(end_time)
+        payload = get_json("/api/v2/mix/market/candles", params)
+        rows = payload.get("data") or []
+        if not rows:
+            break
+
+        page_timestamps: list[int] = []
+        for row in rows:
+            if not isinstance(row, list) or len(row) < 5:
+                continue
+            try:
+                ts = int(row[0])
+                candle = {
+                    "timestamp_ms": ts,
+                    "open": float(row[1]),
+                    "high": float(row[2]),
+                    "low": float(row[3]),
+                    "close": float(row[4]),
+                    "closed": False,
+                }
+            except (TypeError, ValueError, IndexError):
+                continue
+            collected[ts] = candle
+            page_timestamps.append(ts)
+
+        if not page_timestamps:
+            break
+        oldest_ts = min(page_timestamps)
+        # Prevent an API pagination loop if the endpoint ignores endTime.
+        if end_time is not None and oldest_ts >= end_time:
+            break
+        end_time = oldest_ts - 1
+        if len(rows) < page_size:
+            break
+
+    candles = [collected[ts] for ts in sorted(collected)]
+    now = int(time.time() * 1000)
+    for candle in candles:
+        ts = candle["timestamp_ms"]
+        prices = [candle[k] for k in ("open", "high", "low", "close")]
         if not all(math.isfinite(v) and v > 0 for v in prices):
             raise BitgetError(f"Invalid OHLC value at {ts}")
-        if c["high"] < max(c["open"], c["close"]) or c["low"] > min(c["open"], c["close"]) or c["low"] > c["high"]:
+        if (
+            candle["high"] < max(candle["open"], candle["close"])
+            or candle["low"] > min(candle["open"], candle["close"])
+            or candle["low"] > candle["high"]
+        ):
             raise BitgetError(f"Invalid OHLC range at {ts}")
-        c["closed"] = ts + interval_ms <= now
+        candle["closed"] = ts + interval_ms <= now
     return candles
 
 def load_state() -> dict[str, dict[str, Any]]:
@@ -112,6 +158,8 @@ def scan_market_data() -> dict[str, Any]:
         "symbols_total": len(scan_symbols),
         "symbols_ok": 0,
         "symbols_excluded": 0,
+        "scan_status": "running",
+        "failed_symbols": [],
         "results": [],
         "signals": [],
     }
@@ -133,9 +181,11 @@ def scan_market_data() -> dict[str, Any]:
             item.update({"data_available": True, "excluded_reason": None})
             report["symbols_ok"] += 1
         except Exception as exc:
-            item["timeframes"][GRANULARITY] = {"error": str(exc)}
-            item.update({"data_available": False, "excluded_reason": str(exc)})
+            error = str(exc)
+            item["timeframes"]["error"] = {"message": error, "stage": "market_data_or_signal_processing"}
+            item.update({"data_available": False, "excluded_reason": error})
             report["symbols_excluded"] += 1
+            report["failed_symbols"].append({"symbol": symbol, "error": error})
         report["results"].append(item)
     daily_by_key = {
         (str(s.get("symbol")), int(s.get("candle_timestamp_ms", 0)), str(s.get("filter_side"))): s
@@ -147,8 +197,21 @@ def scan_market_data() -> dict[str, Any]:
     state["__daily_formal_signals__"] = daily_state
     state["__rule_version__"] = {"version": rule_version}
     report["signals"] = daily_state["signals"]
+    report["scan_status"] = (
+        "complete" if report["symbols_ok"] == report["symbols_total"] else
+        "partial" if report["symbols_ok"] > 0 else "failed"
+    )
+    report["finished_at_utc"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
     return report
+
+def scan_exit_code(report: dict[str, Any]) -> int:
+    """Only a full 27/27 market scan is considered successful."""
+    return 0 if (
+        report.get("scan_status") == "complete"
+        and report.get("symbols_ok") == report.get("symbols_total")
+        and report.get("symbols_excluded") == 0
+    ) else 1
 
 def main() -> int:
     report = scan_market_data()
@@ -158,7 +221,7 @@ def main() -> int:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(rendered + "\n")
-    return 0 if report["symbols_ok"] else 1
+    return scan_exit_code(report)
 
 if __name__ == "__main__":
     sys.exit(main())
