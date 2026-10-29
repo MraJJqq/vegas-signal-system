@@ -29,8 +29,8 @@ class V9ScannerIntegrityTests(unittest.TestCase):
     def test_transient_network_error_is_retried(self):
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'{"code":"00000","data":[]}'
-        with patch.object(bitget_scanner, "_wait_for_request_slot"), \\
-             patch.object(bitget_scanner.time, "sleep") as sleep, \\
+        with patch.object(bitget_scanner, "_wait_for_request_slot"), \
+             patch.object(bitget_scanner.time, "sleep") as sleep, \
              patch.object(
                  bitget_scanner.urllib.request, "urlopen",
                  side_effect=[urllib.error.URLError("timed out"), response],
@@ -127,9 +127,9 @@ class V9ScannerIntegrityTests(unittest.TestCase):
                 [3000, "10", "11", "9", "10"],
                 [4000, "10", "12", "9", "11"],
             ]
-            with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 5), \\
-                 patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \\
-                 patch.object(bitget_scanner, "CANDLE_CACHE_DIR", cache_dir), \\
+            with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 5), \
+                 patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
+                 patch.object(bitget_scanner, "CANDLE_CACHE_DIR", cache_dir), \
                  patch.object(bitget_scanner, "get_json", return_value={"code": "00000", "data": latest_page}) as request:
                 candles = bitget_scanner.fetch_candles("TESTUSDT", "4H")
 
