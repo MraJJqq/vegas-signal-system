@@ -35,15 +35,15 @@ class V9ScannerIntegrityTests(unittest.TestCase):
         }
         self.assertEqual(bitget_scanner.scan_exit_code(report), 1)
 
-    def test_insufficient_ema_warmup_is_not_success(self):
+    def test_insufficient_ema_warmup_is_warning_when_all_symbols_scanned(self):
         report = {
-            "scan_status": "complete",
+            "scan_status": "complete_with_warmup_warning",
             "symbols_ok": 27,
             "symbols_total": 27,
             "symbols_excluded": 0,
             "symbols_warmup_insufficient": 1,
         }
-        self.assertEqual(bitget_scanner.scan_exit_code(report), 1)
+        self.assertEqual(bitget_scanner.scan_exit_code(report), 0)
 
     def test_duplicate_candle_timestamp_is_rejected(self):
         duplicate_rows = [
