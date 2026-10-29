@@ -27,10 +27,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate Python syntax and tests
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           python -m compileall -q v9 tests
           python -m unittest discover -s tests -v
       - name: Scan Bitget USDT futures
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         id: scan
         env:
           V9_REPORT_PATH: v9/scan-report.json
@@ -128,7 +130,7 @@ jobs:
             rm -f "$credentials_file"
           fi
       - name: Send V9 Bark notification
-        if: ${{ always() && steps.scan.outcome == 'success' }}
+        if: ${{ always() && (github.event_name == 'workflow_dispatch' || steps.scan.outcome == 'success') }}
         env:
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
           V9_NOTIFICATION_TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
