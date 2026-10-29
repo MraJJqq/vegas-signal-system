@@ -39,7 +39,6 @@ jobs:
           V9_CN_A_REPORT_PATH: v9_cn_a/scan-report.json
           V9_CN_A_POOL_PATH: v9_cn_a/baostock-stock-pool.json
           V9_CN_A_CANDLE_CACHE_PATH: v9_cn_a/.candle-cache.json
-          BARK_KEY: ${{ secrets.BARK_KEY }}
         run: python v9_cn_a/baostock_scanner.py
       - name: Persist A-share state only
         if: always()
