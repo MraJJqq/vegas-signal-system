@@ -97,8 +97,7 @@ def diagnose_history(candles: list[dict[str, Any]]) -> dict[str, Any]:
     out["diagnostic_status"] = "ok"
     return out
 
-def send_bark(s
-def main() -> int:
+def send_bark(snt:
     today = datetime.now(TZ).date().isoformat()
     pool, state, cache = load_pool(), load_json(STATE_PATH, {}), load_json(CACHE_PATH, {})
     daily = state.get("__daily_formal_signals__", {})
