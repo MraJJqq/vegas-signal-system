@@ -1,6 +1,7 @@
 """VEGAS V9 scanner: 4H observation, 2H formal signal confirmation."""
 from __future__ import annotations
-import json, math, os, sys, time, urllib.parse, urllib.request
+import json, math, os, sys, time, urllib.error, urllib.parse, urllib.request
+import threading
 from datetime import datetime, timezone, timedelta
 from typing import Any
 from vegas_signals import detect_formal_signals
@@ -16,6 +17,10 @@ EMA_HISTORY_LIMIT = 3500
 CANDLE_PAGE_LIMIT = 1000
 HISTORY_CANDLE_PAGE_LIMIT = 200
 TIMEOUT = 15
+MIN_REQUEST_INTERVAL_SECONDS = 0.35
+MAX_API_RETRIES = 4
+_rate_limit_lock = threading.Lock()
+_next_request_at = 0.0
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
 STOCKS = ("AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX")
@@ -24,17 +29,47 @@ SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 class BitgetError(RuntimeError):
     pass
 
+def _wait_for_request_slot() -> None:
+    """Pace all worker threads to reduce Bitget HTTP 429 responses."""
+    global _next_request_at
+    with _rate_limit_lock:
+        now = time.monotonic()
+        delay = _next_request_at - now
+        if delay > 0:
+            time.sleep(delay)
+        _next_request_at = time.monotonic() + MIN_REQUEST_INTERVAL_SECONDS
+
+
 def get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
     url = f"{BASE_URL}{path}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"User-Agent": "VEGAS-V9/1.0", "Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
-            payload = json.loads(response.read().decode())
-    except Exception as exc:
-        raise BitgetError(f"Bitget request failed: {exc}") from exc
-    if payload.get("code") != "00000":
-        raise BitgetError(f"Bitget API error {payload.get('code')}: {payload.get('msg', 'unknown')}")
-    return payload
+    for attempt in range(MAX_API_RETRIES):
+        _wait_for_request_slot()
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as response:
+                payload = json.loads(response.read().decode())
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < MAX_API_RETRIES - 1:
+                retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                try:
+                    delay = max(float(retry_after), 2 ** (attempt + 1)) if retry_after else 2 ** (attempt + 1)
+                except (TypeError, ValueError):
+                    delay = 2 ** (attempt + 1)
+                time.sleep(min(delay, 30))
+                continue
+            raise BitgetError(f"Bitget request failed: HTTP {exc.code}: {exc.reason}") from exc
+        except Exception as exc:
+            raise BitgetError(f"Bitget request failed: {exc}") from exc
+
+        if payload.get("code") == "00000":
+            return payload
+        api_code = str(payload.get("code", "unknown"))
+        api_message = str(payload.get("msg", "unknown"))
+        if ("429" in api_code or "rate limit" in api_message.lower()) and attempt < MAX_API_RETRIES - 1:
+            time.sleep(min(2 ** (attempt + 1), 30))
+            continue
+        raise BitgetError(f"Bitget API error {api_code}: {api_message}")
+    raise BitgetError("Bitget request failed after retry limit")
 
 def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str, Any]]:
     interval_ms = {"2H": 2 * 3600000, "4H": 4 * 3600000}.get(granularity)
