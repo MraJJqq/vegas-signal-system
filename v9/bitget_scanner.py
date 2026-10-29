@@ -225,11 +225,13 @@ def scan_market_data() -> dict[str, Any]:
     state["__daily_formal_signals__"] = daily_state
     state["__rule_version__"] = {"version": rule_version}
     report["signals"] = daily_state["signals"]
-    report["scan_status"] = (
-        "complete"
-        if report["symbols_ok"] == report["symbols_total"]
+    all_symbols_scanned = (
+        report["symbols_ok"] == report["symbols_total"]
         and report["symbols_excluded"] == 0
-        and report["symbols_warmup_insufficient"] == 0
+    )
+    report["scan_status"] = (
+        "complete" if all_symbols_scanned and report["symbols_warmup_insufficient"] == 0
+        else "complete_with_warmup_warning" if all_symbols_scanned
         else "partial" if report["symbols_ok"] > 0 else "failed"
     )
     report["finished_at_utc"] = datetime.now(timezone.utc).isoformat()
@@ -237,12 +239,11 @@ def scan_market_data() -> dict[str, Any]:
     return report
 
 def scan_exit_code(report: dict[str, Any]) -> int:
-    """Only a full 27/27 market scan is considered successful."""
+    """Require all symbols to scan; distinguish warmup warnings from data failures."""
     return 0 if (
-        report.get("scan_status") == "complete"
+        report.get("scan_status") in {"complete", "complete_with_warmup_warning"}
         and report.get("symbols_ok") == report.get("symbols_total")
         and report.get("symbols_excluded") == 0
-        and report.get("symbols_warmup_insufficient", 0) == 0
     ) else 1
 
 def main() -> int:
