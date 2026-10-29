@@ -14,6 +14,7 @@ OBSERVATION_GRANULARITY = "4H"
 CANDLE_LIMIT = 800
 EMA_HISTORY_LIMIT = 3500
 CANDLE_PAGE_LIMIT = 1000
+HISTORY_CANDLE_PAGE_LIMIT = 200
 TIMEOUT = 15
 STATE_PATH = os.environ.get("V9_SIGNAL_STATE_PATH", "v9/.signal-state.json")
 CORE_MARKETS = ("BTC", "HYPE", "XAU", "CL")
@@ -42,12 +43,20 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
 
     # 2H only needs a short EMA12 warm-up; 4H Vegas bands need much deeper
     # history, especially EMA576/EMA676. Bitget pages are fetched backwards.
+    # The historical-candles endpoint returns finished candles only.
     target_count = EMA_HISTORY_LIMIT if granularity == OBSERVATION_GRANULARITY else CANDLE_LIMIT
     collected: dict[int, dict[str, Any]] = {}
     end_time: int | None = None
 
+    history_endpoint = granularity == OBSERVATION_GRANULARITY
+    endpoint_path = (
+        "/api/v2/mix/market/history-candles"
+        if history_endpoint else "/api/v2/mix/market/candles"
+    )
+    page_limit = HISTORY_CANDLE_PAGE_LIMIT if history_endpoint else CANDLE_PAGE_LIMIT
+
     while len(collected) < target_count:
-        page_size = min(CANDLE_PAGE_LIMIT, target_count - len(collected))
+        page_size = min(page_limit, target_count - len(collected))
         params = {
             "symbol": symbol,
             "productType": PRODUCT_TYPE,
@@ -56,7 +65,7 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
         }
         if end_time is not None:
             params["endTime"] = str(end_time)
-        payload = get_json("/api/v2/mix/market/candles", params)
+        payload = get_json(endpoint_path, params)
         rows = payload.get("data") or []
         if not rows:
             break
@@ -77,6 +86,8 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
                 }
             except (TypeError, ValueError, IndexError):
                 continue
+            if ts in collected:
+                raise BitgetError(f"Duplicate candle timestamp: {ts}")
             collected[ts] = candle
             page_timestamps.append(ts)
 
@@ -160,6 +171,8 @@ def scan_market_data() -> dict[str, Any]:
         "symbols_excluded": 0,
         "scan_status": "running",
         "failed_symbols": [],
+        "symbols_warmup_insufficient": 0,
+        "warmup_insufficient_symbols": [],
         "results": [],
         "signals": [],
     }
@@ -177,16 +190,24 @@ def scan_market_data() -> dict[str, Any]:
             signals = detect_formal_signals(symbol, candles_2h, candles_4h, state.setdefault(symbol, {}))
             report["signals"].extend(s for s in signals if datetime.fromtimestamp(s["candle_timestamp_ms"] / 1000, tz=tz).date() == today)
             item["timeframes"][GRANULARITY] = {"candles_received": len(candles_2h), "closed_candles": len(closed_2h), "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"], "latest_closed_price": closed_2h[-1]["close"]}
+            warmup_sufficient = len(closed_4h) >= EMA_HISTORY_LIMIT
             item["timeframes"][OBSERVATION_GRANULARITY] = {
                 "candles_received": len(candles_4h),
                 "closed_candles": len(closed_4h),
                 "latest_closed_candle_ms": closed_4h[-1]["timestamp_ms"],
                 "latest_closed_price": closed_4h[-1]["close"],
                 "ema676_warmup_target": EMA_HISTORY_LIMIT,
-                "ema676_warmup_sufficient": len(candles_4h) >= EMA_HISTORY_LIMIT,
+                "ema676_warmup_sufficient": warmup_sufficient,
             }
             item.update({"data_available": True, "excluded_reason": None})
             report["symbols_ok"] += 1
+            if not warmup_sufficient:
+                report["symbols_warmup_insufficient"] += 1
+                report["warmup_insufficient_symbols"].append({
+                    "symbol": symbol,
+                    "candles_received": len(candles_4h),
+                    "warmup_target": EMA_HISTORY_LIMIT,
+                })
         except Exception as exc:
             error = str(exc)
             item["timeframes"]["error"] = {"message": error, "stage": "market_data_or_signal_processing"}
@@ -205,8 +226,11 @@ def scan_market_data() -> dict[str, Any]:
     state["__rule_version__"] = {"version": rule_version}
     report["signals"] = daily_state["signals"]
     report["scan_status"] = (
-        "complete" if report["symbols_ok"] == report["symbols_total"] else
-        "partial" if report["symbols_ok"] > 0 else "failed"
+        "complete"
+        if report["symbols_ok"] == report["symbols_total"]
+        and report["symbols_excluded"] == 0
+        and report["symbols_warmup_insufficient"] == 0
+        else "partial" if report["symbols_ok"] > 0 else "failed"
     )
     report["finished_at_utc"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
@@ -218,6 +242,7 @@ def scan_exit_code(report: dict[str, Any]) -> int:
         report.get("scan_status") == "complete"
         and report.get("symbols_ok") == report.get("symbols_total")
         and report.get("symbols_excluded") == 0
+        and report.get("symbols_warmup_insufficient", 0) == 0
     ) else 1
 
 def main() -> int:
