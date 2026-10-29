@@ -1,13 +1,29 @@
 import sys
 import unittest
+import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v9"))
 import bitget_scanner
 
 
 class V9ScannerIntegrityTests(unittest.TestCase):
+
+    def test_http_429_is_retried_and_then_succeeds(self):
+        rate_limited = urllib.error.HTTPError(
+            "https://api.bitget.com/test", 429, "Too Many Requests",
+            {"Retry-After": "0"}, None
+        )
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"code":"00000","data":[]}'
+        with patch.object(bitget_scanner, "_wait_for_request_slot"), \
+             patch.object(bitget_scanner.time, "sleep"), \
+             patch.object(bitget_scanner.urllib.request, "urlopen", side_effect=[rate_limited, response]) as request:
+            payload = bitget_scanner.get_json("/test", {})
+        self.assertEqual(payload["code"], "00000")
+        self.assertEqual(request.call_count, 2)
+
     def test_partial_scan_is_not_success(self):
         report = {
             "scan_status": "partial",
