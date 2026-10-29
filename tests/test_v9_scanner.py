@@ -35,8 +35,8 @@ class V9ScannerIntegrityTests(unittest.TestCase):
                 self.held = False
 
         lock = TrackingLock()
-        with patch.object(bitget_scanner, "_rate_limit_lock", lock), \\
-             patch.object(bitget_scanner.time, "monotonic", return_value=100.0), \\
+        with patch.object(bitget_scanner, "_rate_limit_lock", lock), \
+             patch.object(bitget_scanner.time, "monotonic", return_value=100.0), \
              patch.object(bitget_scanner.time, "sleep") as sleep:
             bitget_scanner._next_request_at = 101.0
 
