@@ -97,6 +97,7 @@ jobs:
         env:
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
           V9_NOTIFICATION_TEST_MODE: "0"
+          V9_PUBLIC_SIGNAL_PATH: /tmp/v9-bark-signals.json
         run: python v9/ntfy_notifier.py v9/scan-report.json
       - name: Publish sanitized signal state to Vegas Octopus V2
         if: ${{ success() }}
@@ -107,25 +108,12 @@ jobs:
             echo "::error::OCTOPUS_REPO_TOKEN is missing; cannot publish V9 signals to Vegas Octopus V2."
             exit 1
           fi
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          state = json.loads(Path("v9/.signal-state.json").read_text(encoding="utf-8"))
-          daily = state.get("__daily_formal_signals__", {})
-          public_state = {
-              "__daily_formal_signals__": {
-                  "date": daily.get("date"),
-                  "signals": [
-                      {"symbol": item.get("symbol"), "timeframe": item.get("timeframe"), "formal_signal": True}
-                      for item in daily.get("signals", [])
-                      if isinstance(item, dict) and item.get("formal_signal") is True
-                  ]
-              }
-          }
-          Path("/tmp/v9-signals.json").write_text(json.dumps(public_state, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-          PY
+          if [ ! -f /tmp/v9-bark-signals.json ]; then
+            echo "::error::Bark-aligned signal manifest is missing."
+            exit 1
+          fi
           git clone --depth 1 https://github.com/MraJJqq/vegas-octopus-v2.git /tmp/octopus-v2
-          cp /tmp/v9-signals.json /tmp/octopus-v2/v9-signals.json
+          cp /tmp/v9-bark-signals.json /tmp/octopus-v2/v9-signals.json
           cd /tmp/octopus-v2
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
