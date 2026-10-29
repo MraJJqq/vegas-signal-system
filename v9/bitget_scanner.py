@@ -5,7 +5,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 from typing import Any
 from vegas_signals import detect_formal_signals
-from market_config import CORE_MARKETS, STOCKS, SYMBOLS
+from market_config import SYMBOLS
 
 BASE_URL = "https://api.bitget.com"
 PRODUCT_TYPE = "USDT-FUTURES"
