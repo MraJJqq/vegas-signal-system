@@ -31,6 +31,20 @@ class BarkNotifierTests(unittest.TestCase):
         self.assertEqual(set(symbols), set(CORE + STOCKS))
         self.assertEqual(len(symbols), 27)
 
+    def test_public_signal_state_matches_bark_symbol_list(self):
+        report = {"finished_at_utc": "2026-10-29T12:00:00+00:00", "signals": [
+            {"formal_signal": True, "symbol": "NVDAUSDT"},
+            {"formal_signal": True, "symbol": "BTCUSDT"},
+            {"formal_signal": True, "symbol": "NVDAUSDT"},
+            {"formal_signal": False, "symbol": "TSLAUSDT"},
+            {"formal_signal": True, "symbol": "JPMUSDT"},
+        ]}
+        state = ntfy_notifier.build_public_signal_state(report)
+        signals = state["__daily_formal_signals__"]["signals"]
+        self.assertEqual(state["__daily_formal_signals__"]["date"], "2026-10-29")
+        self.assertEqual([item["symbol"] for item in signals], ["NVDAUSDT", "BTCUSDT"])
+        self.assertTrue(all(item["formal_signal"] is True for item in signals))
+
     def test_payload_has_no_title_or_url_and_posts_once(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "report.json"
