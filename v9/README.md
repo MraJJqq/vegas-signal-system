@@ -9,13 +9,7 @@
 - 固定扫描池共 27 个：BTC、HYPE、XAU、CL，以及 AAPL、MSFT、GOOGL、AMZN、NVDA、TSLA、META、INTC、QCOM、AMD、TSM、AVGO、ORCL、ARM、MU、ASML、SNDK、SKHYNIX、MRVL、GLW、HOOD、CBRS、SPCX。
 - 数据源：Bitget USDT 永续合约；观察期使用 4H 指标，信号期使用原生 2H K 线及 2H EMA12。
 
-## 通知规则
-- 按北京时间 10:00–22:00 每 2 小时扫描一次（每日计划 7 次），并支持 GitHub Actions 手动触发；只在已收盘的 2H K 线确认后产生正式信号。
-- 每轮扫描成功后发送一条 Bark 汇总通知，内容为当天累计的全部 2H 正式信号；无信号时仍发送通知，两个分类显示 `▰ No change ▰`。
-- **只使用 Bark；不使用 ntfy。** Bark 失败则任务失败。只需配置 GitHub Secret：V9_BARK_KEY。
-- 同一通知内按品种去重并按固定顺序排列；美股每行最多三个品种。
-
 ## 隔离与验证
 - V9 独立放在 v9/；V8 目录和工作流保持不变。
 - V9 使用独立信号状态文件与报告文件。
-- 修改后应通过 Python 编译、单元测试，并手动运行一次工作流检查 Bark 通知链路。
+- 修改后应通过 Python 编译与信号逻辑单元测试。
