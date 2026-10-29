@@ -177,7 +177,14 @@ def scan_market_data() -> dict[str, Any]:
             signals = detect_formal_signals(symbol, candles_2h, candles_4h, state.setdefault(symbol, {}))
             report["signals"].extend(s for s in signals if datetime.fromtimestamp(s["candle_timestamp_ms"] / 1000, tz=tz).date() == today)
             item["timeframes"][GRANULARITY] = {"candles_received": len(candles_2h), "closed_candles": len(closed_2h), "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"], "latest_closed_price": closed_2h[-1]["close"]}
-            item["timeframes"][OBSERVATION_GRANULARITY] = {"candles_received": len(candles_4h), "closed_candles": len(closed_4h), "latest_closed_candle_ms": closed_4h[-1]["timestamp_ms"], "latest_closed_price": closed_4h[-1]["close"]}
+            item["timeframes"][OBSERVATION_GRANULARITY] = {
+                "candles_received": len(candles_4h),
+                "closed_candles": len(closed_4h),
+                "latest_closed_candle_ms": closed_4h[-1]["timestamp_ms"],
+                "latest_closed_price": closed_4h[-1]["close"],
+                "ema676_warmup_target": EMA_HISTORY_LIMIT,
+                "ema676_warmup_sufficient": len(candles_4h) >= EMA_HISTORY_LIMIT,
+            }
             item.update({"data_available": True, "excluded_reason": None})
             report["symbols_ok"] += 1
         except Exception as exc:
