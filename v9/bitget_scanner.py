@@ -32,12 +32,15 @@ class BitgetError(RuntimeError):
 def _wait_for_request_slot() -> None:
     """Pace all worker threads to reduce Bitget HTTP 429 responses."""
     global _next_request_at
+    # Reserve a globally spaced request slot under the lock, then sleep
+    # outside it so worker threads do not block one another while waiting.
     with _rate_limit_lock:
         now = time.monotonic()
-        delay = _next_request_at - now
-        if delay > 0:
-            time.sleep(delay)
-        _next_request_at = time.monotonic() + MIN_REQUEST_INTERVAL_SECONDS
+        request_at = max(now, _next_request_at)
+        _next_request_at = request_at + MIN_REQUEST_INTERVAL_SECONDS
+    delay = request_at - now
+    if delay > 0:
+        time.sleep(delay)
 
 
 def get_json(path: str, params: dict[str, str]) -> dict[str, Any]:
