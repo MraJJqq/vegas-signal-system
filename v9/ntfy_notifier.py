@@ -8,15 +8,13 @@ import time
 import urllib.error
 import urllib.request
 from typing import Any
+from market_config import CORE_MARKETS as CORE_ORDER, STOCKS as STOCK_ORDER, ALLOWED_SYMBOLS
 
 BARK_ENDPOINT = "https://api.day.app/push"
 BARK_GROUP = "VEGAS V9"
 BARK_TIMEOUT_SECONDS = 20
 BARK_MAX_ATTEMPTS = 3
 BARK_RETRY_BACKOFF_SECONDS = 1
-CORE_ORDER = ("BTC", "HYPE", "XAU", "CL")
-STOCK_ORDER = ("AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "INTC", "QCOM", "AMD", "TSM", "AVGO", "ORCL", "ARM", "MU", "ASML", "SNDK", "SKHYNIX", "MRVL", "GLW", "HOOD", "CBRS", "SPCX")
-ALLOWED_SYMBOLS = frozenset(CORE_ORDER + STOCK_ORDER)
 
 
 def normalize_symbol(raw_symbol: Any) -> str:
