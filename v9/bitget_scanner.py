@@ -17,7 +17,8 @@ EMA_HISTORY_LIMIT = 3500
 CANDLE_PAGE_LIMIT = 1000
 HISTORY_CANDLE_PAGE_LIMIT = 200
 TIMEOUT = 15
-MIN_REQUEST_INTERVAL_SECONDS = 0.35
+# Bitget public market endpoints allow up to 20 requests/sec; keep a conservative ~6.7/sec ceiling.
+MIN_REQUEST_INTERVAL_SECONDS = 0.15
 MAX_API_RETRIES = 4
 _rate_limit_lock = threading.Lock()
 _next_request_at = 0.0
