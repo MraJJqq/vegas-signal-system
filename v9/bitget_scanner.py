@@ -328,7 +328,15 @@ def scan_market_data() -> dict[str, Any]:
                 "closed_candles": len(closed_4h),
                 "latest_closed_candle_ms": closed_4h[-1]["timestamp_ms"],
                 "latest_closed_price": closed_4h[-1]["close"],
+                "earliest_closed_candle_ms": closed_4h[0]["timestamp_ms"],
+                "history_span_days": round(
+                    (closed_4h[-1]["timestamp_ms"] - closed_4h[0]["timestamp_ms"])
+                    / (24 * 3600000), 2
+                ),
                 "ema676_warmup_target": EMA_HISTORY_LIMIT,
+                "ema676_warmup_target_span_days": round(
+                    (EMA_HISTORY_LIMIT - 1) * 4 / 24, 2
+                ),
                 "ema676_warmup_sufficient": warmup_sufficient,
             }
             item.update({"data_available": True, "excluded_reason": None})
