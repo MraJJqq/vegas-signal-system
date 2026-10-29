@@ -37,7 +37,7 @@ class V9ScannerIntegrityTests(unittest.TestCase):
 
     def test_insufficient_ema_warmup_is_not_success(self):
         report = {
-            "scan_status": "partial",
+            "scan_status": "complete",
             "symbols_ok": 27,
             "symbols_total": 27,
             "symbols_excluded": 0,
@@ -50,7 +50,7 @@ class V9ScannerIntegrityTests(unittest.TestCase):
             [5000, "10", "11", "9", "10"],
             [5000, "10", "11", "9", "10"],
         ]
-        with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 1), \
+        with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 2), \
              patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
              patch.object(bitget_scanner, "get_json", return_value={"code": "00000", "data": duplicate_rows}):
             with self.assertRaisesRegex(bitget_scanner.BitgetError, "Duplicate candle timestamp"):
@@ -68,7 +68,7 @@ class V9ScannerIntegrityTests(unittest.TestCase):
             calls.append((path, dict(params)))
             return {"code": "00000", "data": pages[len(calls) - 1]}
 
-        with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 4), \
+        with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 5), \
              patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
              patch.object(bitget_scanner, "get_json", side_effect=fake_get_json):
             candles = bitget_scanner.fetch_candles("TESTUSDT", "4H")
