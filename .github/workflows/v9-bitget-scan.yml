@@ -4,7 +4,6 @@ on:
   schedule:
     # Beijing time 10:00–22:00 every two hours; GitHub cron uses UTC.
     - cron: "0 2,4,6,8,10,12,14 * * *"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -27,18 +26,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate Python syntax and tests
-        if: ${{ github.event_name != 'workflow_dispatch' }}
         run: |
           python -m compileall -q v9 tests
           python -m unittest discover -s tests -v
       - name: Scan Bitget USDT futures
-        if: ${{ github.event_name != 'workflow_dispatch' }}
         id: scan
         env:
           V9_REPORT_PATH: v9/scan-report.json
         run: python v9/bitget_scanner.py
       - name: Persist V9 state to repository
-        if: ${{ always() && github.event_name != 'workflow_dispatch' }}
+        if: ${{ always() }}
         run: |
           if [ ! -f v9/.signal-state.json ]; then
             echo "No V9 state file produced; nothing to persist."
@@ -87,7 +84,7 @@ jobs:
           echo "Unable to push V9 state after 3 attempts."
           exit 1
       - name: Publish sanitized signal state to Vegas Octopus V2
-        if: ${{ success() && github.event_name != 'workflow_dispatch' }}
+        if: ${{ success() }}
         env:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
@@ -128,18 +125,6 @@ jobs:
             git config credential.helper "store --file=$credentials_file"
             git push origin HEAD:main
             rm -f "$credentials_file"
-          fi
-      - name: Send V9 Bark notification
-        if: ${{ always() && (github.event_name == 'workflow_dispatch' || steps.scan.outcome == 'success') }}
-        env:
-          V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
-          V9_NOTIFICATION_TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            printf '{"signals":[]}' > /tmp/v9-bark-test-report.json
-            python v9/ntfy_notifier.py /tmp/v9-bark-test-report.json
-          else
-            python v9/ntfy_notifier.py v9/scan-report.json
           fi
       - name: Upload scan report
         if: always()
