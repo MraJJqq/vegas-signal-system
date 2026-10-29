@@ -2,13 +2,32 @@ import unittest
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v9"))
-from vegas_signals import detect_formal_signals
+from vegas_signals import _merge_events, detect_formal_signals
 
 HOUR = 3600000
 def candle(ts, close=100.0, high=100.0, low=100.0):
     return {"timestamp_ms": ts, "open": close, "high": high, "low": low, "close": close, "closed": True}
 
 class V9SignalTests(unittest.TestCase):
+    def test_event_merge_preserves_close_time_order_and_4h_tie_priority(self):
+        c4a = candle(0)
+        c4b = candle(8 * HOUR)
+        c2a = candle(2 * HOUR)
+        c2b = candle(6 * HOUR)
+        events_4h = [
+            (4 * HOUR, 0, 0, c4a),
+            (12 * HOUR, 0, 1, c4b),
+        ]
+        events_2h = [
+            (4 * HOUR, 1, 0, c2a),
+            (8 * HOUR, 1, 1, c2b),
+        ]
+        merged = list(_merge_events(events_4h, events_2h))
+        self.assertEqual(
+            [(event[0], event[1]) for event in merged],
+            [(4 * HOUR, 0), (4 * HOUR, 1), (8 * HOUR, 1), (12 * HOUR, 0)],
+        )
+
     def test_4h_touch_then_2h_signal_once(self):
         # Flat data creates valid EMAs; 4H candle range touches EMA144.
         state = {}
