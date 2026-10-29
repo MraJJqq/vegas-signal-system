@@ -110,11 +110,6 @@ jobs:
           }
           Path("/tmp/v9-signals.json").write_text(json.dumps(public_state, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
           PY
-          export HOME=/tmp/v9-publish-home
-          mkdir -p "$HOME"
-          chmod 700 "$HOME"
-          printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$OCTOPUS_REPO_TOKEN" > "$HOME/.netrc"
-          chmod 600 "$HOME/.netrc"
           git clone --depth 1 https://github.com/MraJJqq/vegas-octopus-v2.git /tmp/octopus-v2
           cp /tmp/v9-signals.json /tmp/octopus-v2/v9-signals.json
           cd /tmp/octopus-v2
@@ -125,7 +120,12 @@ jobs:
             echo "Public signal mirror unchanged."
           else
             git commit -m "chore: update public V9 signal mirror"
+            credentials_file=/tmp/octopus-git-credentials
+            printf 'https://x-access-token:%s@github.com\n' "$OCTOPUS_REPO_TOKEN" > "$credentials_file"
+            chmod 600 "$credentials_file"
+            git config credential.helper "store --file=$credentials_file"
             git push origin HEAD:main
+            rm -f "$credentials_file"
           fi
       - name: Send V9 Bark notification
         if: ${{ always() && steps.scan.outcome == 'success' }}
