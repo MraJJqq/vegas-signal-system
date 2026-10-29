@@ -43,7 +43,9 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
 
     # 2H only needs a short EMA12 warm-up; 4H Vegas bands need much deeper
     # history, especially EMA576/EMA676. Bitget pages are fetched backwards.
-    target_count = EMA_HISTORY_LIMIT if granularity == OBSERVATION_GRANULARITY else CANDLE_LIMIT
+    # Include the current potentially-open 4H candle so the requested history
+    # still contains EMA_HISTORY_LIMIT fully closed candles.
+    target_count = EMA_HISTORY_LIMIT + 1 if granularity == OBSERVATION_GRANULARITY else CANDLE_LIMIT
     collected: dict[int, dict[str, Any]] = {}
     end_time: int | None = None
 
@@ -189,7 +191,7 @@ def scan_market_data() -> dict[str, Any]:
             signals = detect_formal_signals(symbol, candles_2h, candles_4h, state.setdefault(symbol, {}))
             report["signals"].extend(s for s in signals if datetime.fromtimestamp(s["candle_timestamp_ms"] / 1000, tz=tz).date() == today)
             item["timeframes"][GRANULARITY] = {"candles_received": len(candles_2h), "closed_candles": len(closed_2h), "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"], "latest_closed_price": closed_2h[-1]["close"]}
-            warmup_sufficient = len(candles_4h) >= EMA_HISTORY_LIMIT
+            warmup_sufficient = len(closed_4h) >= EMA_HISTORY_LIMIT
             item["timeframes"][OBSERVATION_GRANULARITY] = {
                 "candles_received": len(candles_4h),
                 "closed_candles": len(closed_4h),
