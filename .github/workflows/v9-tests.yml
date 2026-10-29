@@ -1,6 +1,12 @@
 name: V9 Unit Tests
 
 on:
+  push:
+    branches: [v9-code-efficiency-optimization]
+    paths:
+      - "v9/**"
+      - "tests/**"
+      - ".github/workflows/v9-tests.yml"
   pull_request:
     branches: [main]
     paths:
