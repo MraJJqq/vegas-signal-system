@@ -110,7 +110,7 @@ jobs:
           }
           Path("/tmp/v9-signals.json").write_text(json.dumps(public_state, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
           PY
-          git clone --depth 1 https://x-access-token:${OCTOPUS_REPO_TOKEN}@github.com/MraJJqq/vegas-octopus-v2.git /tmp/octopus-v2
+          git clone --depth 1 "https://x-access-token:${OCTOPUS_REPO_TOKEN}@github.com/MraJJqq/vegas-octopus-v2.git" /tmp/octopus-v2
           cp /tmp/v9-signals.json /tmp/octopus-v2/v9-signals.json
           cd /tmp/octopus-v2
           git config user.name "github-actions[bot]"
