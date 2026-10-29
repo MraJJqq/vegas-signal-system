@@ -38,11 +38,12 @@ jobs:
           python -m unittest discover -s tests -v
       - name: Scan Bitget USDT futures
         id: scan
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         env:
           V9_REPORT_PATH: v9/scan-report.json
         run: python v9/bitget_scanner.py
       - name: Persist V9 state to repository
-        if: ${{ always() }}
+        if: ${{ always() && github.event_name != 'workflow_dispatch' }}
         run: |
           if [ ! -f v9/.signal-state.json ]; then
             echo "No V9 state file produced; nothing to persist."
@@ -91,7 +92,7 @@ jobs:
           echo "Unable to push V9 state after 3 attempts."
           exit 1
       - name: Send V9 Bark notification
-        if: ${{ always() && steps.scan.outcome == 'success' }}
+        if: ${{ github.event_name == 'workflow_dispatch' || (always() && steps.scan.outcome == 'success') }}
         env:
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
           V9_NOTIFICATION_TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
@@ -103,7 +104,7 @@ jobs:
             python v9/ntfy_notifier.py v9/scan-report.json
           fi
       - name: Publish sanitized signal state to Vegas Octopus V2
-        if: ${{ success() }}
+        if: ${{ success() && github.event_name != 'workflow_dispatch' }}
         env:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
@@ -146,7 +147,7 @@ jobs:
             rm -f "$credentials_file"
           fi
       - name: Upload scan report
-        if: always()
+        if: ${{ always() && github.event_name != 'workflow_dispatch' }}
         uses: actions/upload-artifact@v4
         with:
           name: vegas-v9-bitget-scan-report
