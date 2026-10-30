@@ -25,6 +25,7 @@ jobs:
           persist-credentials: true
 
       - name: Avoid overlapping an active market scan
+        id: scan_guard
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -52,11 +53,11 @@ jobs:
               for run in active:
                   print(f"Active scan #{run.get('run_number')}: {run.get('html_url')}")
               with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-                  output.write("skip=true\\n")
+                  output.write("skip=true\n")
           else:
               print("No active V9 scan; Bark retry may proceed.")
               with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-                  output.write("skip=false\\n")
+                  output.write("skip=false\n")
           PY
 
       - name: Retry pending Bark notification
