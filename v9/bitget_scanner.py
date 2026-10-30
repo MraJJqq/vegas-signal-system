@@ -62,6 +62,15 @@ def _parse_api_candle(row: Any, context: str) -> dict[str, Any]:
         raise BitgetError(f"Malformed Bitget candle values in {context}.") from exc
     return _validate_candle(candle, context)
 
+def _ema_seed_influence(candle_count: int, period: int = 676) -> float | None:
+    """Estimate the remaining influence of the EMA's initial SMA seed."""
+    if candle_count < period or period < 1:
+        return None
+    alpha = 2.0 / (period + 1)
+    updates = candle_count - period
+    return (1.0 - alpha) ** updates
+
+
 def _wait_for_request_slot() -> None:
     """Pace all worker threads to reduce Bitget HTTP 429 responses."""
     global _next_request_at
@@ -327,7 +336,9 @@ def scan_market_data() -> dict[str, Any]:
                 "latest_closed_candle_ms": closed_2h[-1]["timestamp_ms"],
                 "latest_closed_price": closed_2h[-1]["close"],
             }
-            warmup_sufficient = len(closed_4h) >= EMA_HISTORY_LIMIT
+            warmup_count = len(closed_4h)
+            warmup_sufficient = warmup_count >= EMA_HISTORY_LIMIT
+            seed_influence = _ema_seed_influence(warmup_count, 676)
             item["timeframes"][OBSERVATION_GRANULARITY] = {
                 "candles_received": len(candles_4h),
                 "closed_candles": len(closed_4h),
@@ -343,6 +354,10 @@ def scan_market_data() -> dict[str, Any]:
                     (EMA_HISTORY_LIMIT - 1) * 4 / 24, 2
                 ),
                 "ema676_warmup_sufficient": warmup_sufficient,
+                "ema676_warmup_remaining": max(0, EMA_HISTORY_LIMIT - warmup_count),
+                "ema676_seed_influence_estimate": (
+                    round(seed_influence, 8) if seed_influence is not None else None
+                ),
             }
             item.update({"data_available": True, "excluded_reason": None})
         except Exception as exc:
@@ -375,6 +390,8 @@ def scan_market_data() -> dict[str, Any]:
                     "symbol": symbol,
                     "candles_received": item["timeframes"][OBSERVATION_GRANULARITY]["candles_received"],
                     "warmup_target": EMA_HISTORY_LIMIT,
+                    "warmup_remaining": item["timeframes"][OBSERVATION_GRANULARITY]["ema676_warmup_remaining"],
+                    "seed_influence_estimate": item["timeframes"][OBSERVATION_GRANULARITY]["ema676_seed_influence_estimate"],
                 })
         else:
             report["symbols_excluded"] += 1
