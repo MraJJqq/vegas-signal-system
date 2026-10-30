@@ -61,6 +61,29 @@ class BarkNotifierTests(unittest.TestCase):
                 self.assertEqual(payload["device_key"], "test-key")
                 self.assertEqual(urlopen.call_args.kwargs["timeout"], 20)
 
+    def test_public_signal_manifest_is_written_even_when_bark_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            report_path = Path(d) / "report.json"
+            public_path = Path(d) / "public.json"
+            report_path.write_text(json.dumps({
+                "finished_at_utc": "2026-10-30T02:00:00+00:00",
+                "signals": [{"formal_signal": True, "symbol": "NVDAUSDT"}],
+            }), encoding="utf-8")
+            env = {
+                "V9_BARK_KEY": "test-key",
+                "V9_BARK_STATE_PATH": str(Path(d) / "state.json"),
+                "V9_PUBLIC_SIGNAL_PATH": str(public_path),
+            }
+            with patch.dict(os.environ, env, clear=False), \
+                 patch.object(ntfy_notifier.urllib.request, "urlopen", side_effect=urllib.error.URLError("offline")), \
+                 patch.object(ntfy_notifier.time, "sleep"):
+                self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 1)
+            state = json.loads(public_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                state["__daily_formal_signals__"]["signals"][0]["symbol"],
+                "NVDAUSDT",
+            )
+
     def test_retries_transient_network_failure_then_succeeds(self):
         with patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen, \
              patch.object(ntfy_notifier.time, "sleep") as sleep:
