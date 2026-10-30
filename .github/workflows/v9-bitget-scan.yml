@@ -2,17 +2,6 @@ name: VEGAS V9 Bitget Scan
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/v9-bitget-scan.yml"
-      - "v9/ntfy_notifier.py"
-      - "v9/publish_signal_manifest.py"
-      - "v9/bitget_scanner.py"
-      - "v9/vegas_signals.py"
-      - "tests/test_v9_notifier.py"
-      - "tests/test_v9_scanner.py"
-      - "tests/test_v9_signals.py"
   schedule:
     # Beijing time 08:00, 12:00, 16:00, 20:00, 22:00; GitHub cron uses UTC.
     - cron: "0 0,4,8,12,14 * * *"
