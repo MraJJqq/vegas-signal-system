@@ -159,23 +159,39 @@ jobs:
             echo "::error::Bark-aligned signal manifest is missing."
             exit 1
           fi
-          git clone --depth 1 https://github.com/MraJJqq/vegas-octopus-v2.git /tmp/octopus-v2
-          cp /tmp/v9-bark-signals.json /tmp/octopus-v2/v9-signals.json
-          cd /tmp/octopus-v2
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add v9-signals.json
-          if git diff --cached --quiet; then
-            echo "Public signal mirror unchanged."
-          else
-            git commit -m "chore: update public V9 signal mirror"
-            credentials_file=/tmp/octopus-git-credentials
-            printf 'https://x-access-token:%s@github.com\n' "$OCTOPUS_REPO_TOKEN" > "$credentials_file"
-            chmod 600 "$credentials_file"
+          credentials_file=/tmp/octopus-git-credentials
+          printf 'https://x-access-token:%s@github.com\n' "$OCTOPUS_REPO_TOKEN" > "$credentials_file"
+          chmod 600 "$credentials_file"
+          for attempt in 1 2 3; do
+            rm -rf /tmp/octopus-v2
+            if ! git clone --depth 1 https://github.com/MraJJqq/vegas-octopus-v2.git /tmp/octopus-v2; then
+              echo "Octopus clone attempt $attempt failed."
+              sleep $((attempt * 2))
+              continue
+            fi
+            cd /tmp/octopus-v2
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config credential.helper "store --file=$credentials_file"
-            git push origin HEAD:main
-            rm -f "$credentials_file"
-          fi
+            cp /tmp/v9-bark-signals.json v9-signals.json
+            git add v9-signals.json
+            if git diff --cached --quiet; then
+              echo "Octopus V9 signal mirror already matches the Bark signal manifest."
+              rm -f "$credentials_file"
+              exit 0
+            fi
+            git commit -m "chore: update public V9 signal mirror"
+            if git push origin HEAD:main; then
+              echo "Octopus V9 signal mirror published successfully."
+              rm -f "$credentials_file"
+              exit 0
+            fi
+            echo "Octopus push attempt $attempt failed; retrying from the latest remote state."
+            sleep $((attempt * 2))
+          done
+          rm -f "$credentials_file"
+          echo "::error::Unable to publish V9 signal manifest to Vegas Octopus V2 after 3 attempts."
+          exit 1
       - name: Upload scan report
         if: ${{ always() && steps.scan.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
