@@ -13,8 +13,8 @@ on:
       - "tests/test_v9_scanner.py"
       - "tests/test_v9_signals.py"
   schedule:
-    # Beijing time 10:00–22:00 every two hours; GitHub cron uses UTC.
-    - cron: "0 2,4,6,8,10,12,14 * * *"
+    # Beijing time 09:00–21:00 every two hours; GitHub cron uses UTC.
+    - cron: "0 1,3,5,7,9,11,13 * * *"
 
 permissions:
   contents: write
