@@ -115,17 +115,20 @@ jobs:
           V9_NOTIFICATION_TEST_MODE: "0"
           V9_PUBLIC_SIGNAL_PATH: /tmp/v9-bark-signals.json
         run: python v9/ntfy_notifier.py v9/scan-report.json
-      - name: Persist Bark notification state
-        if: ${{ always() && steps.bark.outcome == 'success' && hashFiles('v9/.bark-notification-state.json') != '' }}
+      - name: Persist Bark notification state and retry queue
+        if: ${{ always() && steps.scan.outcome == 'success' && steps.bark.outcome != 'skipped' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f v9/.bark-notification-state.json
+          if [ -f v9/.bark-notification-state.json ]; then
+            git add -f v9/.bark-notification-state.json
+          fi
+          git add -f v9/.bark-pending-notification-state.json
           if git diff --cached --quiet; then
-            echo "Bark notification state unchanged; no commit required."
+            echo "Bark notification state and retry queue unchanged; no commit required."
             exit 0
           fi
-          git commit -m "chore(v9): persist Bark notification state"
+          git commit -m "chore(v9): persist Bark notification state and retry queue"
           branch="${GITHUB_REF_NAME}"
           for attempt in 1 2 3; do
             git fetch origin "$branch"
