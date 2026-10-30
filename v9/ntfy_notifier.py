@@ -135,14 +135,14 @@ def load_notification_state(path: str) -> dict[str, Any]:
         return {}
 
 
-def save_notification_state(path: str, fingerprint: str, report: dict[str, Any]) -> None:
+def save_notification_state_for_date(path: str, fingerprint: str, signal_date: str) -> None:
     directory = os.path.dirname(path)
     if directory:
         os.makedirs(directory, exist_ok=True)
     temporary_path = path + ".tmp"
     state = {
         "version": 1,
-        "date": _report_local_date(report),
+        "date": signal_date,
         "fingerprint": fingerprint,
         "accepted_at_utc": datetime.now(timezone.utc).isoformat(),
     }
@@ -150,6 +150,10 @@ def save_notification_state(path: str, fingerprint: str, report: dict[str, Any])
         json.dump(state, file, ensure_ascii=False, indent=2)
         file.write("\n")
     os.replace(temporary_path, path)
+
+
+def save_notification_state(path: str, fingerprint: str, report: dict[str, Any]) -> None:
+    save_notification_state_for_date(path, fingerprint, _report_local_date(report))
 
 
 def save_pending_notification(path: str, fingerprint: str, body: str, report: dict[str, Any], symbols: list[str]) -> None:
@@ -263,10 +267,38 @@ def send_notification(report_path: str) -> int:
             os.path.join(os.path.dirname(state_path), ".bark-pending-notification-state.json"),
         ).strip()
         fingerprint = notification_fingerprint(body, report)
+        signal_date = _report_local_date(report)
         previous_state = load_notification_state(state_path)
+        pending = load_notification_state(pending_path) if not test_mode else {}
+
+        # Retry an earlier failed alert before processing newer scan content.
+        # This preserves real signal events instead of silently replacing them.
+        if not test_mode and pending.get("fingerprint"):
+            if pending.get("date") == signal_date and pending.get("fingerprint") != fingerprint:
+                if not bark_key:
+                    raise RuntimeError("repository secret V9_BARK_KEY is empty or missing.")
+                post_bark({
+                    "device_key": bark_key,
+                    "body": pending.get("body", ""),
+                    "group": BARK_GROUP,
+                    "level": "active",
+                })
+                save_notification_state_for_date(
+                    state_path, pending["fingerprint"], pending["date"]
+                )
+                clear_pending_notification(pending_path)
+                previous_state = load_notification_state(state_path)
+                print(
+                    "Previously failed Bark notification was accepted on retry; "
+                    f"symbols={', '.join(pending.get('symbols', [])) or 'No change'}."
+                )
+            elif pending.get("date") != signal_date:
+                # Do not send stale alerts across Beijing calendar days.
+                clear_pending_notification(pending_path)
+
         if (
             not test_mode
-            and previous_state.get("date") == _report_local_date(report)
+            and previous_state.get("date") == signal_date
             and previous_state.get("fingerprint") == fingerprint
         ):
             clear_pending_notification(pending_path)
@@ -275,13 +307,14 @@ def send_notification(report_path: str) -> int:
                 f"today; symbols={', '.join(symbols) if symbols else 'No change'}."
             )
             return 0
-        if not test_mode:
-            pending = load_notification_state(pending_path)
-            if pending.get("fingerprint") and pending.get("fingerprint") != fingerprint:
-                print("Pending Bark notification superseded by the latest scan content.")
-            save_pending_notification(pending_path, fingerprint, body, report, symbols)
+
         if not bark_key:
+            if not test_mode:
+                save_pending_notification(pending_path, fingerprint, body, report, symbols)
             raise RuntimeError("repository secret V9_BARK_KEY is empty or missing.")
+
+        if not test_mode:
+            save_pending_notification(pending_path, fingerprint, body, report, symbols)
         post_bark({
             "device_key": bark_key,
             "body": body,
