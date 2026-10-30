@@ -2,6 +2,12 @@ name: V9 Bark Pending Retry
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/v9-bark-retry.yml"
+      - "v9/ntfy_notifier.py"
+      - "tests/test_v9_notifier.py"
   schedule:
     # Retry pending notifications independently of the 2-hour market scan.
     - cron: "20,50 * * * *"
