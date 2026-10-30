@@ -32,6 +32,7 @@ jobs:
           import os
           import urllib.request
           from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
 
           repo = os.environ["GITHUB_REPOSITORY"]
           token = os.environ["GH_TOKEN"]
@@ -70,12 +71,24 @@ jobs:
               problems.append("No successful V9 scan run was found in the latest 30 runs.")
           else:
               last_ok = datetime.fromisoformat(successful["updated_at"].replace("Z", "+00:00"))
-              age_minutes = (now - last_ok).total_seconds() / 60
-              if age_minutes > 150:
-                  problems.append(
-                      f"Last successful V9 scan was {age_minutes:.0f} minutes ago "
-                      "(alert threshold: 150 minutes)."
-                  )
+              beijing_now = now.astimezone(ZoneInfo("Asia/Shanghai"))
+              # Only evaluate missed scans during the configured daily scan window.
+              if 8 <= beijing_now.hour <= 22:
+                  due_slots = [
+                      beijing_now.replace(hour=hour, minute=0, second=0, microsecond=0)
+                      for hour in (8, 12, 16, 20, 22)
+                      if (hour, 0) <= (beijing_now.hour, beijing_now.minute)
+                  ]
+                  if due_slots:
+                      due_utc = due_slots[-1].astimezone(timezone.utc)
+                      if now >= due_utc and last_ok < due_utc:
+                          overdue_minutes = (now - due_utc).total_seconds() / 60
+                          if overdue_minutes > 150:
+                              problems.append(
+                                  f"Scheduled V9 scan at {due_slots[-1].strftime('%H:%M')} Beijing time "
+                                  f"has not succeeded after {overdue_minutes:.0f} minutes "
+                                  "(grace period: 150 minutes)."
+                              )
 
           open_issues = request(api + "/issues?state=open&per_page=100")
           watchdog_issue = next(
