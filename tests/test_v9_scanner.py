@@ -140,6 +140,28 @@ class V9ScannerIntegrityTests(unittest.TestCase):
             self.assertTrue(saved["complete"])
             self.assertEqual(len(saved["candles"]), 4)
 
+    def test_malformed_candle_row_is_rejected(self):
+        with patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 2), \
+             patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
+             patch.object(bitget_scanner, "CANDLE_CACHE_DIR", tempfile.mkdtemp()), \
+             patch.object(bitget_scanner, "get_json", return_value={
+                 "code": "00000", "data": [[5000, "10", "bad", "9", "10"]]
+             }):
+            with self.assertRaisesRegex(bitget_scanner.BitgetError, "Malformed Bitget candle values"):
+                bitget_scanner.fetch_candles("TESTUSDT", "4H")
+
+    def test_invalid_ohlc_is_rejected_before_cache_write(self):
+        with tempfile.TemporaryDirectory() as cache_dir, \
+             patch.object(bitget_scanner, "EMA_HISTORY_LIMIT", 2), \
+             patch.object(bitget_scanner, "HISTORY_CANDLE_PAGE_LIMIT", 2), \
+             patch.object(bitget_scanner, "CANDLE_CACHE_DIR", cache_dir), \
+             patch.object(bitget_scanner, "get_json", return_value={
+                 "code": "00000", "data": [[5000, "10", "9", "8", "10"]]
+             }):
+            with self.assertRaisesRegex(bitget_scanner.BitgetError, "Invalid OHLC range"):
+                bitget_scanner.fetch_candles("TESTUSDT", "4H")
+            self.assertFalse((Path(cache_dir) / "TESTUSDT-4H.json").exists())
+
     def test_4h_candles_are_paginated_and_returned_oldest_first(self):
         pages = [
             [[5000, "10", "11", "9", "10"], [4000, "10", "11", "9", "10"]],
