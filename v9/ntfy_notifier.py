@@ -7,6 +7,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 import urllib.error
 import urllib.request
 from typing import Any
@@ -162,6 +163,23 @@ def _read_bark_response(response_body: str) -> None:
         raise RuntimeError(f"Bark rejected notification (code={result['code']}).")
 
 
+def _retry_delay(attempt: int, retry_after: str | None = None) -> float:
+    """Honor Bark's Retry-After hint, with a bounded exponential fallback."""
+    if retry_after:
+        try:
+            return min(60.0, max(0.0, float(retry_after)))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(retry_after)
+                if retry_at.tzinfo is None:
+                    retry_at = retry_at.replace(tzinfo=timezone.utc)
+                seconds = (retry_at - datetime.now(timezone.utc)).total_seconds()
+                return min(60.0, max(0.0, seconds))
+            except (TypeError, ValueError, OverflowError):
+                pass
+    return float(BARK_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+
+
 def post_bark(payload: dict[str, Any]) -> None:
     request = urllib.request.Request(
         BARK_ENDPOINT,
@@ -171,6 +189,7 @@ def post_bark(payload: dict[str, Any]) -> None:
     )
 
     for attempt in range(1, BARK_MAX_ATTEMPTS + 1):
+        retry_after = None
         try:
             with urllib.request.urlopen(request, timeout=BARK_TIMEOUT_SECONDS) as response:
                 response_body = response.read().decode("utf-8", errors="replace")
@@ -182,14 +201,15 @@ def post_bark(payload: dict[str, Any]) -> None:
             retryable = exc.code == 429 or 500 <= exc.code < 600
             if not retryable or attempt == BARK_MAX_ATTEMPTS:
                 raise RuntimeError(f"Bark HTTP {exc.code}; notification was not accepted.") from exc
+            retry_after = exc.headers.get("Retry-After") if exc.headers else None
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             if attempt == BARK_MAX_ATTEMPTS:
                 raise RuntimeError(
                     f"Bark request failed after {attempt} attempts ({type(exc).__name__})."
                 ) from exc
 
-        delay = BARK_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1))
-        print(f"WARNING: Bark request attempt {attempt} failed; retrying in {delay}s.", file=sys.stderr)
+        delay = _retry_delay(attempt, retry_after)
+        print(f"WARNING: Bark request attempt {attempt} failed; retrying in {delay:g}s.", file=sys.stderr)
         time.sleep(delay)
 
 
