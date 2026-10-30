@@ -165,7 +165,7 @@ jobs:
             exit 1
           fi
           if [ ! -f /tmp/v9-public-signals.json ]; then
-            echo "::error::Bark-aligned signal manifest is missing."
+            echo "::error::Independent public signal manifest is missing."
             exit 1
           fi
           credentials_file=/tmp/octopus-git-credentials
@@ -182,11 +182,11 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config credential.helper "store --file=$credentials_file"
-            cp /tmp/v9-bark-signals.json v9-signals.json
+            cp /tmp/v9-public-signals.json v9-signals.json
             git add v9-signals.json
             verify_remote_manifest() {
               git fetch origin main
-              expected_hash=$(sha256sum /tmp/v9-bark-signals.json | awk '{print $1}')
+              expected_hash=$(sha256sum /tmp/v9-public-signals.json | awk '{print $1}')
               remote_hash=$(git show origin/main:v9-signals.json | sha256sum | awk '{print $1}')
               if [ "$expected_hash" != "$remote_hash" ]; then
                 echo "::warning::Octopus remote manifest hash does not match the V9 source manifest."
