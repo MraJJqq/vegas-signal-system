@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/v9-bitget-scan.yml"
       - "v9/ntfy_notifier.py"
+      - "v9/publish_signal_manifest.py"
       - "v9/bitget_scanner.py"
       - "v9/vegas_signals.py"
       - "tests/test_v9_notifier.py"
@@ -107,13 +108,18 @@ jobs:
           done
           echo "Unable to push V9 state after 3 attempts."
           exit 1
+      - name: Generate public signal manifest independently
+        id: manifest
+        if: ${{ always() && steps.scan.outcome == 'success' }}
+        env:
+          V9_PUBLIC_SIGNAL_PATH: /tmp/v9-public-signals.json
+        run: python v9/publish_signal_manifest.py v9/scan-report.json
       - name: Send V9 Bark notification
         id: bark
         if: ${{ always() && steps.scan.outcome == 'success' }}
         env:
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
           V9_NOTIFICATION_TEST_MODE: "0"
-          V9_PUBLIC_SIGNAL_PATH: /tmp/v9-bark-signals.json
         run: python v9/ntfy_notifier.py v9/scan-report.json
       - name: Persist Bark notification state and retry queue
         if: ${{ always() && steps.scan.outcome == 'success' && steps.bark.outcome != 'skipped' }}
@@ -150,7 +156,7 @@ jobs:
           echo "Unable to persist Bark notification state after 3 attempts."
           exit 1
       - name: Publish sanitized signal state to Vegas Octopus V2
-        if: ${{ always() && steps.scan.outcome == 'success' }}
+        if: ${{ always() && steps.scan.outcome == 'success' && steps.manifest.outcome == 'success' }}
         env:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
@@ -158,7 +164,7 @@ jobs:
             echo "::error::OCTOPUS_REPO_TOKEN is missing; cannot publish V9 signals to Vegas Octopus V2."
             exit 1
           fi
-          if [ ! -f /tmp/v9-bark-signals.json ]; then
+          if [ ! -f /tmp/v9-public-signals.json ]; then
             echo "::error::Bark-aligned signal manifest is missing."
             exit 1
           fi
