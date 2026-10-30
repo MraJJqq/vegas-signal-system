@@ -67,6 +67,16 @@ class V9ScannerIntegrityTests(unittest.TestCase):
         }
         self.assertEqual(bitget_scanner.scan_exit_code(report), 1)
 
+    def test_ema676_seed_influence_decreases_with_more_history(self):
+        short = bitget_scanner._ema_seed_influence(1500, 676)
+        long = bitget_scanner._ema_seed_influence(3500, 676)
+        self.assertIsNotNone(short)
+        self.assertLess(long, short)
+        self.assertAlmostEqual(
+            long, (1 - 2 / 677) ** (3500 - 676), places=10
+        )
+        self.assertIsNone(bitget_scanner._ema_seed_influence(675, 676))
+
     def test_insufficient_ema_warmup_is_warning_when_all_symbols_scanned(self):
         report = {
             "scan_status": "complete_with_warmup_warning",
