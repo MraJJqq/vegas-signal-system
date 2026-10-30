@@ -103,7 +103,7 @@ class BarkNotifierTests(unittest.TestCase):
             ]}
             report_path.write_text(json.dumps(report), encoding="utf-8")
             env = {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(state_path)}
-            with patch.dict(os.environ, env, clear=False), \\
+            with patch.dict(os.environ, env, clear=False), \
                  patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
@@ -117,7 +117,7 @@ class BarkNotifierTests(unittest.TestCase):
             report_path = Path(d) / "report.json"
             state_path = Path(d) / "state.json"
             env = {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(state_path)}
-            with patch.dict(os.environ, env, clear=False), \\
+            with patch.dict(os.environ, env, clear=False), \
                  patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
@@ -135,7 +135,7 @@ class BarkNotifierTests(unittest.TestCase):
             report_path = Path(d) / "report.json"
             state_path = Path(d) / "state.json"
             env = {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(state_path)}
-            with patch.dict(os.environ, env, clear=False), \\
+            with patch.dict(os.environ, env, clear=False), \
                  patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
