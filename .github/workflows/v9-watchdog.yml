@@ -65,15 +65,21 @@ jobs:
           pending = []
 
           # Check each configured Beijing scan slot after a 35-minute grace period.
-          for hour in (8, 12, 16, 20, 22):
+          scan_hours = (8, 12, 16, 20, 22)
+          for index, hour in enumerate(scan_hours):
               due_bj = now_bj.replace(hour=hour, minute=0, second=0, microsecond=0)
               if now_bj < due_bj + timedelta(minutes=35):
                   continue
               due_utc = due_bj.astimezone(timezone.utc)
+              if index + 1 < len(scan_hours):
+                  next_due_bj = due_bj.replace(hour=scan_hours[index + 1])
+              else:
+                  next_due_bj = (due_bj + timedelta(days=1)).replace(hour=scan_hours[0])
+              next_due_utc = next_due_bj.astimezone(timezone.utc)
               matches = []
               for run in scanner_runs:
                   created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
-                  if due_utc - timedelta(minutes=10) <= created <= now_utc:
+                  if due_utc - timedelta(minutes=10) <= created < next_due_utc - timedelta(minutes=10):
                       matches.append(run)
 
               if not matches:
