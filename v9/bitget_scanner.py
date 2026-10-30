@@ -31,6 +31,37 @@ SYMBOLS = tuple(f"{x}USDT" for x in (*CORE_MARKETS, *STOCKS))
 class BitgetError(RuntimeError):
     pass
 
+
+def _validate_candle(candle: dict[str, Any], context: str = "candle") -> dict[str, Any]:
+    try:
+        timestamp = int(candle["timestamp_ms"])
+        prices = [float(candle[key]) for key in ("open", "high", "low", "close")]
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise BitgetError(f"Malformed {context}: missing or invalid timestamp/OHLC.") from exc
+    if timestamp < 0 or not all(math.isfinite(value) and value > 0 for value in prices):
+        raise BitgetError(f"Invalid timestamp or non-positive/non-finite OHLC in {context}.")
+    open_price, high, low, close = prices
+    if high < max(open_price, close) or low > min(open_price, close) or low > high:
+        raise BitgetError(f"Invalid OHLC range in {context} at {timestamp}.")
+    return {
+        "timestamp_ms": timestamp, "open": open_price, "high": high,
+        "low": low, "close": close, "closed": bool(candle.get("closed", False)),
+    }
+
+
+def _parse_api_candle(row: Any, context: str) -> dict[str, Any]:
+    if not isinstance(row, list) or len(row) < 5:
+        raise BitgetError(f"Malformed Bitget candle row in {context}.")
+    try:
+        candle = {
+            "timestamp_ms": int(row[0]), "open": float(row[1]),
+            "high": float(row[2]), "low": float(row[3]),
+            "close": float(row[4]), "closed": False,
+        }
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise BitgetError(f"Malformed Bitget candle values in {context}.") from exc
+    return _validate_candle(candle, context)
+
 def _wait_for_request_slot() -> None:
     """Pace all worker threads to reduce Bitget HTTP 429 responses."""
     global _next_request_at
@@ -115,12 +146,15 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
             else:
                 # Backward compatibility with the original list-only cache format.
                 cache_rows = cache_payload if isinstance(cache_payload, list) else []
-            cached = [
-                row for row in cache_rows
-                if isinstance(row, dict) and isinstance(row.get("timestamp_ms"), int)
-            ]
-        except (OSError, json.JSONDecodeError):
+            cached = [_validate_candle(row, f"cached {symbol} {granularity}")
+                      for row in cache_rows]
+            cached.sort(key=lambda row: row["timestamp_ms"])
+            if len({row["timestamp_ms"] for row in cached}) != len(cached):
+                raise BitgetError(f"Duplicate timestamp in cached {symbol} {granularity} history.")
+        except (OSError, json.JSONDecodeError, BitgetError, TypeError):
+            # A damaged cache is disposable; rebuild it from the exchange.
             cached = []
+            cache_complete = False
 
         # Some markets have less than 3,500 historical candles available.
         # Reuse those only when full pagination previously proved history exhausted.
@@ -138,21 +172,13 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
                 int(row["timestamp_ms"]): dict(row) for row in cached
             }
             newest_fresh_ts: int | None = None
+            fresh_timestamps: set[int] = set()
             for row in latest_rows:
-                if not isinstance(row, list) or len(row) < 5:
-                    continue
-                try:
-                    ts = int(row[0])
-                    candle = {
-                        "timestamp_ms": ts,
-                        "open": float(row[1]),
-                        "high": float(row[2]),
-                        "low": float(row[3]),
-                        "close": float(row[4]),
-                        "closed": False,
-                    }
-                except (TypeError, ValueError, IndexError):
-                    continue
+                candle = _parse_api_candle(row, f"{symbol} {granularity} refresh")
+                ts = candle["timestamp_ms"]
+                if ts in fresh_timestamps:
+                    raise BitgetError(f"Duplicate candle timestamp in refreshed page: {ts}")
+                fresh_timestamps.add(ts)
                 refreshed[ts] = candle
                 newest_fresh_ts = ts if newest_fresh_ts is None else max(newest_fresh_ts, ts)
 
@@ -185,20 +211,8 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
 
         page_timestamps: list[int] = []
         for row in rows:
-            if not isinstance(row, list) or len(row) < 5:
-                continue
-            try:
-                ts = int(row[0])
-                candle = {
-                    "timestamp_ms": ts,
-                    "open": float(row[1]),
-                    "high": float(row[2]),
-                    "low": float(row[3]),
-                    "close": float(row[4]),
-                    "closed": False,
-                }
-            except (TypeError, ValueError, IndexError):
-                continue
+            candle = _parse_api_candle(row, f"{symbol} {granularity} history page")
+            ts = candle["timestamp_ms"]
             if ts in collected:
                 raise BitgetError(f"Duplicate candle timestamp: {ts}")
             collected[ts] = candle
@@ -228,17 +242,8 @@ def fetch_candles(symbol: str, granularity: str = GRANULARITY) -> list[dict[str,
         os.replace(cache_tmp, cache_path)
     now = int(time.time() * 1000)
     for candle in candles:
-        ts = candle["timestamp_ms"]
-        prices = [candle[k] for k in ("open", "high", "low", "close")]
-        if not all(math.isfinite(v) and v > 0 for v in prices):
-            raise BitgetError(f"Invalid OHLC value at {ts}")
-        if (
-            candle["high"] < max(candle["open"], candle["close"])
-            or candle["low"] > min(candle["open"], candle["close"])
-            or candle["low"] > candle["high"]
-        ):
-            raise BitgetError(f"Invalid OHLC range at {ts}")
-        candle["closed"] = ts + interval_ms <= now
+        candle.update(_validate_candle(candle, f"{symbol} {granularity} candle"))
+        candle["closed"] = candle["timestamp_ms"] + interval_ms <= now
     return candles
 
 def load_state() -> dict[str, dict[str, Any]]:
