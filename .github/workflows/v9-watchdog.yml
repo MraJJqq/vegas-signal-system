@@ -7,10 +7,10 @@ on:
     paths:
       - ".github/workflows/v9-watchdog.yml"
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/2 * * * *"
 
 permissions:
-  actions: read
+  actions: write
   issues: write
 
 concurrency:
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Detect missed or failed scheduled V9 scans
+      - name: Detect missed scans and dispatch one-time recovery
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
@@ -31,6 +31,7 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import time
           import urllib.request
           from datetime import datetime, timedelta, timezone
           from zoneinfo import ZoneInfo
@@ -45,60 +46,93 @@ jobs:
               "X-GitHub-Api-Version": "2022-11-28",
           }
 
-          def request(url, method="GET", payload=None, extra_headers=None):
+          def request(url, method="GET", payload=None):
               data = None if payload is None else json.dumps(payload).encode()
-              merged = dict(headers)
-              if extra_headers:
-                  merged.update(extra_headers)
-              req = urllib.request.Request(url, data=data, headers=merged, method=method)
+              req = urllib.request.Request(url, data=data, headers=headers, method=method)
               with urllib.request.urlopen(req, timeout=20) as response:
                   raw = response.read()
                   return json.loads(raw) if raw else None
 
-          runs = request(
-              api + "/actions/workflows/v9-bitget-scan.yml/runs?event=schedule&per_page=100"
-          )
-          scanner_runs = runs.get("workflow_runs", [])
+          def get_runs():
+              result = request(
+                  api + "/actions/workflows/v9-bitget-scan.yml/runs?per_page=100"
+              )
+              return result.get("workflow_runs", [])
+
+          scanner_runs = get_runs()
           now_utc = datetime.now(timezone.utc)
           now_bj = now_utc.astimezone(ZoneInfo("Asia/Shanghai"))
           problems = []
           pending = []
+          recovered = []
 
-          # Check each configured Beijing scan slot after a 35-minute grace period.
+          # Original schedule is unchanged: Beijing 08:00, 12:00, 16:00, 20:00, 22:00.
+          # A missing slot becomes eligible for recovery exactly 10 minutes after due time.
           scan_hours = (8, 12, 16, 20, 22)
           for index, hour in enumerate(scan_hours):
               due_bj = now_bj.replace(hour=hour, minute=0, second=0, microsecond=0)
-              if now_bj < due_bj + timedelta(minutes=35):
+              if now_bj < due_bj + timedelta(minutes=10):
                   continue
+
               due_utc = due_bj.astimezone(timezone.utc)
               if index + 1 < len(scan_hours):
                   next_due_bj = due_bj.replace(hour=scan_hours[index + 1])
               else:
                   next_due_bj = (due_bj + timedelta(days=1)).replace(hour=scan_hours[0])
               next_due_utc = next_due_bj.astimezone(timezone.utc)
+              slot_id = due_bj.strftime("%Y%m%d-%H%M")
+              recovery_marker = f"recovery:{slot_id}"
+
+              # Count only the original scheduled run or a recovery run carrying this exact slot marker.
               matches = []
               for run in scanner_runs:
                   created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
-                  if due_utc - timedelta(minutes=10) <= created < next_due_utc - timedelta(minutes=10):
-                      matches.append(run)
+                  if run.get("event") == "schedule":
+                      if due_utc - timedelta(minutes=10) <= created < next_due_utc - timedelta(minutes=10):
+                          matches.append(run)
+                  elif run.get("event") == "workflow_dispatch":
+                      if recovery_marker in (run.get("display_title") or ""):
+                          matches.append(run)
 
               if not matches:
-                  problems.append(
-                      f"北京时间 {hour:02d}:00 定时扫描未触发（宽限期35分钟）。"
+                  print(f"Missed Beijing {hour:02d}:00 slot; dispatching recovery {recovery_marker}.")
+                  request(
+                      api + "/actions/workflows/v9-bitget-scan.yml/dispatches",
+                      method="POST",
+                      payload={
+                          "ref": "main",
+                          "inputs": {"recovery_slot": recovery_marker},
+                      },
                   )
-                  continue
+                  # Allow GitHub time to register the dispatched run before the next watchdog cycle.
+                  time.sleep(4)
+                  scanner_runs = get_runs()
+                  matches = [
+                      run for run in scanner_runs
+                      if run.get("event") == "workflow_dispatch"
+                      and recovery_marker in (run.get("display_title") or "")
+                  ]
+                  if matches:
+                      recovered.append(f"Beijing {hour:02d}:00 recovery dispatched.")
+                  else:
+                      pending.append(
+                          f"Beijing {hour:02d}:00 recovery dispatch accepted; awaiting run registration."
+                      )
+                      continue
 
               latest = max(matches, key=lambda item: item["created_at"])
               if latest["status"] != "completed":
-                  pending.append(f"{hour:02d}:00 scan is still running; waiting.")
+                  pending.append(
+                      f"Beijing {hour:02d}:00 scan/recovery is running (run #{latest['run_number']})."
+                  )
               elif latest.get("conclusion") != "success":
                   problems.append(
-                      f"北京时间 {hour:02d}:00 定时扫描运行失败："
+                      f"北京时间 {hour:02d}:00 扫描运行失败："
                       f"run #{latest['run_number']} / {latest.get('conclusion')}。"
                   )
               else:
                   print(
-                      f"Beijing {hour:02d}:00 scheduled scan verified: "
+                      f"Beijing {hour:02d}:00 slot verified: "
                       f"run #{latest['run_number']} success."
                   )
 
@@ -110,10 +144,10 @@ jobs:
           )
 
           if problems:
-              details = "\\n".join(f"- {p}" for p in problems)
+              details = "\n".join(f"- {p}" for p in problems)
               body = (
-                  "The V9 scheduled-scan watchdog detected a problem.\\n\\n"
-                  f"{details}\\n\\n"
+                  "The V9 scheduled-scan watchdog detected a failed scan.\n\n"
+                  f"{details}\n\n"
                   "Please inspect the V9 GitHub Actions workflow and its logs."
               )
               if watchdog_issue:
@@ -154,8 +188,10 @@ jobs:
               )
               print(f"Closed recovered watchdog alert #{watchdog_issue['number']}.")
 
+          if recovered:
+              print("Recovery actions: " + "; ".join(recovered))
           if pending:
-              print("Pending scans (not alerted): " + "; ".join(pending))
+              print("Pending scans: " + "; ".join(pending))
           if not problems:
-              print("All due scheduled V9 scans are verified or still within their run window.")
+              print("No failed due scans detected.")
           PY
