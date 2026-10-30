@@ -84,6 +84,48 @@ class BarkNotifierTests(unittest.TestCase):
                 "NVDAUSDT",
             )
 
+    def test_pending_notification_is_retried_before_newer_scan_content(self):
+        with tempfile.TemporaryDirectory() as d:
+            report_path = Path(d) / "report.json"
+            state_path = Path(d) / "state.json"
+            pending_path = Path(d) / "pending.json"
+            old_report = {
+                "finished_at_utc": "2026-10-30T02:00:00+00:00",
+                "signals": [{"formal_signal": True, "symbol": "NVDAUSDT"}],
+            }
+            new_report = {
+                "finished_at_utc": "2026-10-30T03:00:00+00:00",
+                "signals": [{"formal_signal": True, "symbol": "AMDUSDT"}],
+            }
+            old_body, old_symbols = ntfy_notifier.build_body(old_report)
+            old_fingerprint = ntfy_notifier.notification_fingerprint(old_body, old_report)
+            ntfy_notifier.save_pending_notification(
+                str(pending_path), old_fingerprint, old_body, old_report, old_symbols
+            )
+            report_path.write_text(json.dumps(new_report), encoding="utf-8")
+            env = {
+                "V9_BARK_KEY": "test-key",
+                "V9_BARK_STATE_PATH": str(state_path),
+                "V9_BARK_PENDING_PATH": str(pending_path),
+            }
+            with patch.dict(os.environ, env, clear=False), \
+                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.read.return_value = b'{"code":200}'
+                self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
+                self.assertEqual(urlopen.call_count, 2)
+                first_payload = json.loads(urlopen.call_args_list[0].args[0].data.decode())
+                second_payload = json.loads(urlopen.call_args_list[1].args[0].data.decode())
+                self.assertIn("NVDA", first_payload["body"])
+                self.assertIn("AMD", second_payload["body"])
+            self.assertIsNone(json.loads(pending_path.read_text(encoding="utf-8"))["pending"])
+            accepted = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(accepted["fingerprint"],
+                             ntfy_notifier.notification_fingerprint(
+                                 ntfy_notifier.build_body(new_report)[0], new_report
+                             ))
+
     def test_retries_transient_network_failure_then_succeeds(self):
         with patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen, \
              patch.object(ntfy_notifier.time, "sleep") as sleep:
