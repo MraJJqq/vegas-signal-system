@@ -1,6 +1,7 @@
 """VEGAS V9 Bark notifier; preserves the established grouped message format."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -106,6 +107,50 @@ def write_public_signal_state(report: dict[str, Any]) -> None:
         file.write("\n")
 
 
+def _report_local_date(report: dict[str, Any]) -> str:
+    tz = timezone(timedelta(hours=8))
+    timestamp = report.get("finished_at_utc") or report.get("started_at_utc")
+    try:
+        scanned_at = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+        if scanned_at.tzinfo is None:
+            scanned_at = scanned_at.replace(tzinfo=timezone.utc)
+        return scanned_at.astimezone(tz).date().isoformat()
+    except (TypeError, ValueError):
+        return datetime.now(tz).date().isoformat()
+
+
+def notification_fingerprint(body: str, report: dict[str, Any]) -> str:
+    """Deduplicate consecutive identical content within the same Beijing day."""
+    material = f"{_report_local_date(report)}\n{body}".encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
+
+
+def load_notification_state(path: str) -> dict[str, Any]:
+    try:
+        with open(path, encoding="utf-8") as file:
+            state = json.load(file)
+        return state if isinstance(state, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_notification_state(path: str, fingerprint: str, report: dict[str, Any]) -> None:
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_path = path + ".tmp"
+    state = {
+        "version": 1,
+        "date": _report_local_date(report),
+        "fingerprint": fingerprint,
+        "accepted_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    with open(temporary_path, "w", encoding="utf-8") as file:
+        json.dump(state, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    os.replace(temporary_path, path)
+
+
 def _read_bark_response(response_body: str) -> None:
     if not response_body.strip():
         return
@@ -160,12 +205,30 @@ def send_notification(report_path: str) -> int:
         test_mode = os.environ.get("V9_NOTIFICATION_TEST_MODE", "").strip() == "1"
         if test_mode:
             body = "【测试推送】\n" + body
+        state_path = os.environ.get(
+            "V9_BARK_STATE_PATH", "v9/.bark-notification-state.json"
+        ).strip()
+        fingerprint = notification_fingerprint(body, report)
+        previous_state = load_notification_state(state_path)
+        if (
+            not test_mode
+            and previous_state.get("date") == _report_local_date(report)
+            and previous_state.get("fingerprint") == fingerprint
+        ):
+            write_public_signal_state(report)
+            print(
+                "Bark notification suppressed; identical content already accepted "
+                f"today; symbols={', '.join(symbols) if symbols else 'No change'}."
+            )
+            return 0
         post_bark({
             "device_key": bark_key,
             "body": body,
             "group": BARK_GROUP,
             "level": "active",
         })
+        if not test_mode:
+            save_notification_state(state_path, fingerprint, report)
         write_public_signal_state(report)
     except (OSError, ValueError, urllib.error.URLError, TimeoutError, RuntimeError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
@@ -176,7 +239,6 @@ def send_notification(report_path: str) -> int:
         f"symbols={', '.join(symbols) if symbols else 'No change'}."
     )
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v9/scan-report.json"))
