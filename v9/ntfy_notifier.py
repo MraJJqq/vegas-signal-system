@@ -152,6 +152,38 @@ def save_notification_state(path: str, fingerprint: str, report: dict[str, Any])
     os.replace(temporary_path, path)
 
 
+def save_pending_notification(path: str, fingerprint: str, body: str, report: dict[str, Any], symbols: list[str]) -> None:
+    """Persist the latest failed notification so the next scan can retry it."""
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_path = path + ".tmp"
+    state = {
+        "version": 1,
+        "date": _report_local_date(report),
+        "fingerprint": fingerprint,
+        "body": body,
+        "symbols": symbols,
+        "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    with open(temporary_path, "w", encoding="utf-8") as file:
+        json.dump(state, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    os.replace(temporary_path, path)
+
+
+def clear_pending_notification(path: str) -> None:
+    """Keep a durable empty queue marker so workflow persistence is reliable."""
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temporary_path = path + ".tmp"
+    with open(temporary_path, "w", encoding="utf-8") as file:
+        json.dump({"version": 1, "pending": None}, file)
+        file.write("\n")
+    os.replace(temporary_path, path)
+
+
 def _read_bark_response(response_body: str) -> None:
     if not response_body.strip():
         return
@@ -220,13 +252,15 @@ def send_notification(report_path: str) -> int:
         # Build the Octopus mirror independently of Bark delivery success.
         write_public_signal_state(report)
         bark_key = os.environ.get("V9_BARK_KEY", "").strip()
-        if not bark_key:
-            raise RuntimeError("repository secret V9_BARK_KEY is empty or missing.")
         test_mode = os.environ.get("V9_NOTIFICATION_TEST_MODE", "").strip() == "1"
         if test_mode:
             body = "【测试推送】\n" + body
         state_path = os.environ.get(
             "V9_BARK_STATE_PATH", "v9/.bark-notification-state.json"
+        ).strip()
+        pending_path = os.environ.get(
+            "V9_BARK_PENDING_PATH",
+            os.path.join(os.path.dirname(state_path), ".bark-pending-notification-state.json"),
         ).strip()
         fingerprint = notification_fingerprint(body, report)
         previous_state = load_notification_state(state_path)
@@ -235,11 +269,19 @@ def send_notification(report_path: str) -> int:
             and previous_state.get("date") == _report_local_date(report)
             and previous_state.get("fingerprint") == fingerprint
         ):
+            clear_pending_notification(pending_path)
             print(
                 "Bark notification suppressed; identical content already accepted "
                 f"today; symbols={', '.join(symbols) if symbols else 'No change'}."
             )
             return 0
+        if not test_mode:
+            pending = load_notification_state(pending_path)
+            if pending.get("fingerprint") and pending.get("fingerprint") != fingerprint:
+                print("Pending Bark notification superseded by the latest scan content.")
+            save_pending_notification(pending_path, fingerprint, body, report, symbols)
+        if not bark_key:
+            raise RuntimeError("repository secret V9_BARK_KEY is empty or missing.")
         post_bark({
             "device_key": bark_key,
             "body": body,
@@ -248,6 +290,7 @@ def send_notification(report_path: str) -> int:
         })
         if not test_mode:
             save_notification_state(state_path, fingerprint, report)
+            clear_pending_notification(pending_path)
     except (OSError, ValueError, urllib.error.URLError, TimeoutError, RuntimeError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
         return 1
