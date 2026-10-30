@@ -16,6 +16,8 @@ def main() -> int:
     try:
         report = load_report(report_path)
         write_public_signal_state(report)
+        if not os.path.isfile(output_path):
+            raise OSError(f"manifest was not created at {output_path}")
     except (OSError, ValueError) as exc:
         print(f"ERROR: public signal manifest generation failed: {exc}", file=sys.stderr)
         return 1
