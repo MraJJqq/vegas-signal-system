@@ -2,12 +2,6 @@ name: V9 Bark Pending Retry
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/v9-bark-retry.yml"
-      - "v9/ntfy_notifier.py"
-      - "tests/test_v9_notifier.py"
   schedule:
     # Retry pending notifications only between Beijing 08:00 and 21:50.
     - cron: "20,50 0-13 * * *"
