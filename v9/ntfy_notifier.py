@@ -214,16 +214,14 @@ def post_bark(payload: dict[str, Any]) -> None:
 
 
 def send_notification(report_path: str) -> int:
-    bark_key = os.environ.get("V9_BARK_KEY", "").strip()
-    if not bark_key:
-        print("ERROR: repository secret V9_BARK_KEY is empty or missing.", file=sys.stderr)
-        return 1
-
     try:
         report = load_report(report_path)
         body, symbols = build_body(report)
         # Build the Octopus mirror independently of Bark delivery success.
         write_public_signal_state(report)
+        bark_key = os.environ.get("V9_BARK_KEY", "").strip()
+        if not bark_key:
+            raise RuntimeError("repository secret V9_BARK_KEY is empty or missing.")
         test_mode = os.environ.get("V9_NOTIFICATION_TEST_MODE", "").strip() == "1"
         if test_mode:
             body = "【测试推送】\n" + body
