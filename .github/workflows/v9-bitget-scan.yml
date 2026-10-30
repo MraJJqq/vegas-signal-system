@@ -147,7 +147,7 @@ jobs:
           echo "Unable to persist Bark notification state after 3 attempts."
           exit 1
       - name: Publish sanitized signal state to Vegas Octopus V2
-        if: ${{ always() && steps.scan.outcome == 'success' && steps.bark.outcome == 'success' }}
+        if: ${{ always() && steps.scan.outcome == 'success' }}
         env:
           OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
         run: |
