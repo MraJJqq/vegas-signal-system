@@ -382,4 +382,6 @@ def send_notification(report_path: str) -> int:
     return 0
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--retry-pending":
+        sys.exit(retry_pending_notification())
     sys.exit(send_notification(sys.argv[1] if len(sys.argv) > 1 else "v9/scan-report.json"))
