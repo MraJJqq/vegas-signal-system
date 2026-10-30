@@ -178,16 +178,35 @@ jobs:
             git config credential.helper "store --file=$credentials_file"
             cp /tmp/v9-bark-signals.json v9-signals.json
             git add v9-signals.json
+            verify_remote_manifest() {
+              git fetch origin main
+              expected_hash=$(sha256sum /tmp/v9-bark-signals.json | awk '{print $1}')
+              remote_hash=$(git show origin/main:v9-signals.json | sha256sum | awk '{print $1}')
+              if [ "$expected_hash" != "$remote_hash" ]; then
+                echo "::warning::Octopus remote manifest hash does not match the V9 source manifest."
+                return 1
+              fi
+              echo "Octopus remote manifest SHA-256 verified: $remote_hash"
+              return 0
+            }
             if git diff --cached --quiet; then
               echo "Octopus V9 signal mirror already matches the Bark signal manifest."
-              rm -f "$credentials_file"
-              exit 0
+              if verify_remote_manifest; then
+                rm -f "$credentials_file"
+                exit 0
+              fi
+              echo "Remote verification failed despite no local diff; retrying."
+              sleep $((attempt * 2))
+              continue
             fi
             git commit -m "chore: update public V9 signal mirror"
             if git push origin HEAD:main; then
-              echo "Octopus V9 signal mirror published successfully."
-              rm -f "$credentials_file"
-              exit 0
+              if verify_remote_manifest; then
+                echo "Octopus V9 signal mirror published and remotely verified."
+                rm -f "$credentials_file"
+                exit 0
+              fi
+              echo "Post-push verification failed; retrying from the latest remote state."
             fi
             echo "Octopus push attempt $attempt failed; retrying from the latest remote state."
             sleep $((attempt * 2))
