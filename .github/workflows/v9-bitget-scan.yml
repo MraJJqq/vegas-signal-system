@@ -1,7 +1,14 @@
 name: VEGAS V9 Bitget Scan
 
+run-name: V9 scan (${{ inputs.recovery_slot || 'manual' }})
+
 on:
   workflow_dispatch:
+    inputs:
+      recovery_slot:
+        description: Watchdog recovery slot identifier
+        required: false
+        type: string
   schedule:
     # Beijing time 08:00, 12:00, 16:00, 20:00, 22:00; GitHub cron uses UTC.
     - cron: "0 0,4,8,12,14 * * *"
