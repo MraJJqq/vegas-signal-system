@@ -231,5 +231,65 @@ class BarkNotifierTests(unittest.TestCase):
                 self.assertEqual(urlopen.call_count, 2)
 
 
+    def test_standalone_pending_retry_sends_and_clears_queue(self):
+        with tempfile.TemporaryDirectory() as d:
+            state_path = Path(d) / "state.json"
+            pending_path = Path(d) / "pending.json"
+            today = ntfy_notifier.datetime.now(
+                ntfy_notifier.timezone(ntfy_notifier.timedelta(hours=8))
+            ).date().isoformat()
+            pending = {
+                "version": 1,
+                "date": today,
+                "fingerprint": "pending-fingerprint",
+                "body": "🔸 美股巨头\\n▰ NVDA ▰",
+                "symbols": ["NVDA"],
+            }
+            pending_path.write_text(json.dumps(pending), encoding="utf-8")
+            env = {
+                "V9_BARK_KEY": "test-key",
+                "V9_BARK_STATE_PATH": str(state_path),
+                "V9_BARK_PENDING_PATH": str(pending_path),
+            }
+            with patch.dict(os.environ, env, clear=False), \\
+                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.read.return_value = b'{"code":200}'
+                self.assertEqual(ntfy_notifier.retry_pending_notification(), 0)
+                payload = json.loads(urlopen.call_args.args[0].data.decode())
+                self.assertEqual(payload["body"], pending["body"])
+            self.assertIsNone(json.loads(pending_path.read_text())["pending"])
+            self.assertEqual(json.loads(state_path.read_text())["fingerprint"], "pending-fingerprint")
+
+    def test_standalone_pending_retry_preserves_queue_on_delivery_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            state_path = Path(d) / "state.json"
+            pending_path = Path(d) / "pending.json"
+            today = ntfy_notifier.datetime.now(
+                ntfy_notifier.timezone(ntfy_notifier.timedelta(hours=8))
+            ).date().isoformat()
+            pending = {
+                "version": 1,
+                "date": today,
+                "fingerprint": "pending-fingerprint",
+                "body": "pending alert",
+                "symbols": ["NVDA"],
+            }
+            pending_path.write_text(json.dumps(pending), encoding="utf-8")
+            env = {
+                "V9_BARK_KEY": "test-key",
+                "V9_BARK_STATE_PATH": str(state_path),
+                "V9_BARK_PENDING_PATH": str(pending_path),
+            }
+            with patch.dict(os.environ, env, clear=False), \\
+                 patch.object(ntfy_notifier.urllib.request, "urlopen",
+                              side_effect=urllib.error.URLError("offline")), \\
+                 patch.object(ntfy_notifier.time, "sleep"):
+                self.assertEqual(ntfy_notifier.retry_pending_notification(), 1)
+            self.assertEqual(json.loads(pending_path.read_text())["fingerprint"], "pending-fingerprint")
+            self.assertFalse(state_path.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
