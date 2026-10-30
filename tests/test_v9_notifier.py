@@ -176,7 +176,7 @@ class BarkNotifierTests(unittest.TestCase):
     def test_oil_symbol_alias(self):
         self.assertEqual(ntfy_notifier.display_symbol("CLUSDT"), "CL")
 
-    def test_identical_notification_is_suppressed_after_acceptance(self):
+    def test_identical_notification_is_sent_on_every_scan(self):
         with tempfile.TemporaryDirectory() as d:
             report_path = Path(d) / "report.json"
             state_path = Path(d) / "state.json"
@@ -192,7 +192,7 @@ class BarkNotifierTests(unittest.TestCase):
                 response.read.return_value = b'{"code":200}'
                 self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
                 self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
-                self.assertEqual(urlopen.call_count, 1)
+                self.assertEqual(urlopen.call_count, 2)
 
     def test_changed_notification_is_sent_after_previous_content(self):
         with tempfile.TemporaryDirectory() as d:
