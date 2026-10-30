@@ -222,6 +222,8 @@ def send_notification(report_path: str) -> int:
     try:
         report = load_report(report_path)
         body, symbols = build_body(report)
+        # Build the Octopus mirror independently of Bark delivery success.
+        write_public_signal_state(report)
         test_mode = os.environ.get("V9_NOTIFICATION_TEST_MODE", "").strip() == "1"
         if test_mode:
             body = "【测试推送】\n" + body
@@ -235,7 +237,6 @@ def send_notification(report_path: str) -> int:
             and previous_state.get("date") == _report_local_date(report)
             and previous_state.get("fingerprint") == fingerprint
         ):
-            write_public_signal_state(report)
             print(
                 "Bark notification suppressed; identical content already accepted "
                 f"today; symbols={', '.join(symbols) if symbols else 'No change'}."
@@ -249,7 +250,6 @@ def send_notification(report_path: str) -> int:
         })
         if not test_mode:
             save_notification_state(state_path, fingerprint, report)
-        write_public_signal_state(report)
     except (OSError, ValueError, urllib.error.URLError, TimeoutError, RuntimeError) as exc:
         print(f"ERROR: Bark notification failed: {exc}", file=sys.stderr)
         return 1
