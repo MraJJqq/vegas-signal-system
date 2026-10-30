@@ -121,7 +121,7 @@ def _report_local_date(report: dict[str, Any]) -> str:
 
 
 def notification_fingerprint(body: str, report: dict[str, Any]) -> str:
-    """Deduplicate consecutive identical content within the same Beijing day."""
+    """Track delivery state and retries; never suppress a scan notification."""
     material = f"{_report_local_date(report)}\n{body}".encode("utf-8")
     return hashlib.sha256(material).hexdigest()
 
