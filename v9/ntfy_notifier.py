@@ -343,17 +343,9 @@ def send_notification(report_path: str) -> int:
                 # Do not send stale alerts across Beijing calendar days.
                 clear_pending_notification(pending_path)
 
-        if (
-            not test_mode
-            and previous_state.get("date") == signal_date
-            and previous_state.get("fingerprint") == fingerprint
-        ):
-            clear_pending_notification(pending_path)
-            print(
-                "Bark notification suppressed; identical content already accepted "
-                f"today; symbols={', '.join(symbols) if symbols else 'No change'}."
-            )
-            return 0
+        # Every scheduled scan must notify, even when today's cumulative
+        # signal list is unchanged. The fingerprint is retained for delivery
+        # state and retry tracking, not used to suppress hourly notifications.
 
         if not bark_key:
             if not test_mode:
