@@ -83,6 +83,20 @@ class BarkNotifierTests(unittest.TestCase):
             self.assertEqual(urlopen.call_count, 3)
             self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
 
+    def test_rate_limit_retry_honors_retry_after_header(self):
+        error = urllib.error.HTTPError(
+            ntfy_notifier.BARK_ENDPOINT, 429, "Too Many Requests",
+            {"Retry-After": "4"}, None
+        )
+        with patch.object(ntfy_notifier.urllib.request, "urlopen", side_effect=[error, None]), \
+             patch.object(ntfy_notifier.time, "sleep") as sleep:
+            ntfy_notifier.post_bark({"device_key": "test-key", "body": "test"})
+            sleep.assert_called_once_with(4.0)
+
+    def test_retry_after_is_bounded(self):
+        self.assertEqual(ntfy_notifier._retry_delay(1, "999"), 60.0)
+        self.assertEqual(ntfy_notifier._retry_delay(2, "invalid"), 2.0)
+
     def test_rejects_bark_application_error(self):
         with patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
             response = urlopen.return_value.__enter__.return_value
