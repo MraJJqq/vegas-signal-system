@@ -115,6 +115,21 @@ jobs:
           V9_NOTIFICATION_TEST_MODE: "0"
           V9_PUBLIC_SIGNAL_PATH: /tmp/v9-bark-signals.json
         run: python v9/ntfy_notifier.py v9/scan-report.json
+      - name: Persist Bark notification state
+        if: ${{ always() && steps.bark.outcome == 'success' && hashFiles('v9/.bark-notification-state.json') != '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f v9/.bark-notification-state.json
+          if git diff --cached --quiet; then
+            echo "Bark notification state unchanged; no commit required."
+            exit 0
+          fi
+          git commit -m "chore(v9): persist Bark notification state"
+          branch="${GITHUB_REF_NAME}"
+          git fetch origin "$branch"
+          git rebase "origin/$branch"
+          git push origin "HEAD:$branch"
       - name: Publish sanitized signal state to Vegas Octopus V2
         if: ${{ always() && steps.scan.outcome == 'success' && steps.bark.outcome == 'success' }}
         env:
