@@ -1,7 +1,7 @@
 import json, os, sys, tempfile, unittest
 import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "v9"))
 import ntfy_notifier
 
@@ -88,7 +88,10 @@ class BarkNotifierTests(unittest.TestCase):
             ntfy_notifier.BARK_ENDPOINT, 429, "Too Many Requests",
             {"Retry-After": "4"}, None
         )
-        with patch.object(ntfy_notifier.urllib.request, "urlopen", side_effect=[error, None]), \
+        success_response = MagicMock()
+        success_response.__enter__.return_value.status = 200
+        success_response.__enter__.return_value.read.return_value = b'{"code":200}'
+        with patch.object(ntfy_notifier.urllib.request, "urlopen", side_effect=[error, success_response]), \
              patch.object(ntfy_notifier.time, "sleep") as sleep:
             ntfy_notifier.post_bark({"device_key": "test-key", "body": "test"})
             sleep.assert_called_once_with(4.0)
