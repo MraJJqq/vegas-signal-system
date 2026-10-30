@@ -249,6 +249,53 @@ def post_bark(payload: dict[str, Any]) -> None:
         time.sleep(delay)
 
 
+
+def retry_pending_notification() -> int:
+    """Retry a durable Bark alert independently of the market scanner."""
+    tz = timezone(timedelta(hours=8))
+    today = datetime.now(tz).date().isoformat()
+    state_path = os.environ.get(
+        "V9_BARK_STATE_PATH", "v9/.bark-notification-state.json"
+    ).strip()
+    pending_path = os.environ.get(
+        "V9_BARK_PENDING_PATH",
+        os.path.join(os.path.dirname(state_path), ".bark-pending-notification-state.json"),
+    ).strip()
+    try:
+        pending = load_notification_state(pending_path)
+        if not pending.get("fingerprint"):
+            print("No pending Bark notification; nothing to retry.")
+            return 0
+        if pending.get("date") != today:
+            clear_pending_notification(pending_path)
+            print("Discarded stale pending Bark notification from a previous Beijing day.")
+            return 0
+        body = pending.get("body")
+        if not isinstance(body, str) or not body:
+            raise ValueError("Pending Bark notification has no valid message body.")
+        bark_key = os.environ.get("V9_BARK_KEY", "").strip()
+        if not bark_key:
+            raise RuntimeError("repository secret V9_BARK_KEY is empty or missing.")
+        post_bark({
+            "device_key": bark_key,
+            "body": body,
+            "group": BARK_GROUP,
+            "level": "active",
+        })
+        save_notification_state_for_date(
+            state_path, pending["fingerprint"], pending["date"]
+        )
+        clear_pending_notification(pending_path)
+        print(
+            "Pending Bark notification accepted by API; "
+            f"symbols={', '.join(pending.get('symbols', [])) or 'No change'}."
+        )
+        return 0
+    except (OSError, ValueError, urllib.error.URLError, TimeoutError, RuntimeError, KeyError) as exc:
+        print(f"ERROR: Bark pending retry failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def send_notification(report_path: str) -> int:
     try:
         report = load_report(report_path)
