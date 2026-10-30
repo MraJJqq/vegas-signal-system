@@ -9,8 +9,8 @@ on:
       - "v9/ntfy_notifier.py"
       - "tests/test_v9_notifier.py"
   schedule:
-    # Retry pending notifications independently of the 2-hour market scan.
-    - cron: "20,50 * * * *"
+    # Retry pending notifications only between Beijing 08:00 and 21:50.
+    - cron: "20,50 0-13 * * *"
 
 permissions:
   actions: read
