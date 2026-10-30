@@ -242,7 +242,7 @@ class BarkNotifierTests(unittest.TestCase):
                 "version": 1,
                 "date": today,
                 "fingerprint": "pending-fingerprint",
-                "body": "🔸 美股巨头\\n▰ NVDA ▰",
+                "body": "🔸 美股巨头\n▰ NVDA ▰",
                 "symbols": ["NVDA"],
             }
             pending_path.write_text(json.dumps(pending), encoding="utf-8")
@@ -251,7 +251,7 @@ class BarkNotifierTests(unittest.TestCase):
                 "V9_BARK_STATE_PATH": str(state_path),
                 "V9_BARK_PENDING_PATH": str(pending_path),
             }
-            with patch.dict(os.environ, env, clear=False), \\
+            with patch.dict(os.environ, env, clear=False), \
                  patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
@@ -282,9 +282,9 @@ class BarkNotifierTests(unittest.TestCase):
                 "V9_BARK_STATE_PATH": str(state_path),
                 "V9_BARK_PENDING_PATH": str(pending_path),
             }
-            with patch.dict(os.environ, env, clear=False), \\
+            with patch.dict(os.environ, env, clear=False), \
                  patch.object(ntfy_notifier.urllib.request, "urlopen",
-                              side_effect=urllib.error.URLError("offline")), \\
+                              side_effect=urllib.error.URLError("offline")), \
                  patch.object(ntfy_notifier.time, "sleep"):
                 self.assertEqual(ntfy_notifier.retry_pending_notification(), 1)
             self.assertEqual(json.loads(pending_path.read_text())["fingerprint"], "pending-fingerprint")
