@@ -49,7 +49,7 @@ class BarkNotifierTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "report.json"
             path.write_text(json.dumps({"signals": []}), encoding="utf-8")
-            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key"}, clear=False), \
+            with patch.dict(os.environ, {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(Path(d) / "state.json")}, clear=False), \
                  patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
                 response = urlopen.return_value.__enter__.return_value
                 response.status = 200
@@ -93,6 +93,60 @@ class BarkNotifierTests(unittest.TestCase):
 
     def test_oil_symbol_alias(self):
         self.assertEqual(ntfy_notifier.display_symbol("CLUSDT"), "CL")
+
+    def test_identical_notification_is_suppressed_after_acceptance(self):
+        with tempfile.TemporaryDirectory() as d:
+            report_path = Path(d) / "report.json"
+            state_path = Path(d) / "state.json"
+            report = {"finished_at_utc": "2026-10-30T02:00:00+00:00", "signals": [
+                {"formal_signal": True, "symbol": "NVDAUSDT"}
+            ]}
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+            env = {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(state_path)}
+            with patch.dict(os.environ, env, clear=False), \\
+                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.read.return_value = b'{"code":200}'
+                self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
+                self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
+                self.assertEqual(urlopen.call_count, 1)
+
+    def test_changed_notification_is_sent_after_previous_content(self):
+        with tempfile.TemporaryDirectory() as d:
+            report_path = Path(d) / "report.json"
+            state_path = Path(d) / "state.json"
+            env = {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(state_path)}
+            with patch.dict(os.environ, env, clear=False), \\
+                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.read.return_value = b'{"code":200}'
+                for symbol in ("NVDAUSDT", "AMDUSDT"):
+                    report_path.write_text(json.dumps({
+                        "finished_at_utc": "2026-10-30T02:00:00+00:00",
+                        "signals": [{"formal_signal": True, "symbol": symbol}],
+                    }), encoding="utf-8")
+                    self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
+                self.assertEqual(urlopen.call_count, 2)
+
+    def test_same_content_on_new_beijing_day_is_sent_again(self):
+        with tempfile.TemporaryDirectory() as d:
+            report_path = Path(d) / "report.json"
+            state_path = Path(d) / "state.json"
+            env = {"V9_BARK_KEY": "test-key", "V9_BARK_STATE_PATH": str(state_path)}
+            with patch.dict(os.environ, env, clear=False), \\
+                 patch.object(ntfy_notifier.urllib.request, "urlopen") as urlopen:
+                response = urlopen.return_value.__enter__.return_value
+                response.status = 200
+                response.read.return_value = b'{"code":200}'
+                for timestamp in ("2026-10-30T02:00:00+00:00", "2026-10-31T02:00:00+00:00"):
+                    report_path.write_text(json.dumps({
+                        "finished_at_utc": timestamp,
+                        "signals": [{"formal_signal": True, "symbol": "NVDAUSDT"}],
+                    }), encoding="utf-8")
+                    self.assertEqual(ntfy_notifier.send_notification(str(report_path)), 0)
+                self.assertEqual(urlopen.call_count, 2)
 
 
 if __name__ == "__main__":
