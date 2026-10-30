@@ -127,9 +127,25 @@ jobs:
           fi
           git commit -m "chore(v9): persist Bark notification state"
           branch="${GITHUB_REF_NAME}"
-          git fetch origin "$branch"
-          git rebase "origin/$branch"
-          git push origin "HEAD:$branch"
+          for attempt in 1 2 3; do
+            git fetch origin "$branch"
+            if ! git rebase "origin/$branch"; then
+              if git status --porcelain | grep -q 'v9/\.bark-notification-state\.json'; then
+                git checkout --theirs -- v9/.bark-notification-state.json
+                git add -f v9/.bark-notification-state.json
+                GIT_EDITOR=true git rebase --continue
+              else
+                git rebase --abort
+                exit 1
+              fi
+            fi
+            if git push origin "HEAD:$branch"; then
+              exit 0
+            fi
+            echo "Bark state push attempt $attempt failed; refreshing remote and retrying."
+          done
+          echo "Unable to persist Bark notification state after 3 attempts."
+          exit 1
       - name: Publish sanitized signal state to Vegas Octopus V2
         if: ${{ always() && steps.scan.outcome == 'success' && steps.bark.outcome == 'success' }}
         env:
