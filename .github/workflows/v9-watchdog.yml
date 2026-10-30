@@ -22,20 +22,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Detect missed or failed V9 scans
+      - name: Detect missed or failed scheduled V9 scans
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V9_BARK_KEY: ${{ secrets.V9_BARK_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           python - <<'PY'
           import json
           import os
           import urllib.request
-          from datetime import datetime, timezone
+          from datetime import datetime, timedelta, timezone
           from zoneinfo import ZoneInfo
 
           repo = os.environ["GITHUB_REPOSITORY"]
           token = os.environ["GH_TOKEN"]
+          bark_key = os.environ.get("V9_BARK_KEY", "").strip()
           api = f"https://api.github.com/repos/{repo}"
           headers = {
               "Accept": "application/vnd.github+json",
@@ -43,52 +45,56 @@ jobs:
               "X-GitHub-Api-Version": "2022-11-28",
           }
 
-          def request(url, method="GET", payload=None):
+          def request(url, method="GET", payload=None, extra_headers=None):
               data = None if payload is None else json.dumps(payload).encode()
-              req = urllib.request.Request(url, data=data, headers=headers, method=method)
+              merged = dict(headers)
+              if extra_headers:
+                  merged.update(extra_headers)
+              req = urllib.request.Request(url, data=data, headers=merged, method=method)
               with urllib.request.urlopen(req, timeout=20) as response:
                   raw = response.read()
                   return json.loads(raw) if raw else None
 
-          runs = request(api + "/actions/workflows/v9-bitget-scan.yml/runs?per_page=30")
-          scanner_runs = runs.get("workflow_runs", [])
-          now = datetime.now(timezone.utc)
-          latest = scanner_runs[0] if scanner_runs else None
-          successful = next(
-              (r for r in scanner_runs if r.get("status") == "completed"
-               and r.get("conclusion") == "success"),
-              None,
+          runs = request(
+              api + "/actions/workflows/v9-bitget-scan.yml/runs?event=schedule&per_page=100"
           )
-
+          scanner_runs = runs.get("workflow_runs", [])
+          now_utc = datetime.now(timezone.utc)
+          now_bj = now_utc.astimezone(ZoneInfo("Asia/Shanghai"))
           problems = []
-          if latest and latest.get("status") == "completed" and latest.get("conclusion") != "success":
-              problems.append(
-                  f"Latest V9 scan run #{latest['run_number']} ended with "
-                  f"conclusion: {latest.get('conclusion')}."
-              )
+          pending = []
 
-          if not successful:
-              problems.append("No successful V9 scan run was found in the latest 30 runs.")
-          else:
-              last_ok = datetime.fromisoformat(successful["updated_at"].replace("Z", "+00:00"))
-              beijing_now = now.astimezone(ZoneInfo("Asia/Shanghai"))
-              # Only evaluate missed scans during the configured daily scan window.
-              if 8 <= beijing_now.hour <= 22:
-                  due_slots = [
-                      beijing_now.replace(hour=hour, minute=0, second=0, microsecond=0)
-                      for hour in (8, 12, 16, 20, 22)
-                      if (hour, 0) <= (beijing_now.hour, beijing_now.minute)
-                  ]
-                  if due_slots:
-                      due_utc = due_slots[-1].astimezone(timezone.utc)
-                      if now >= due_utc and last_ok < due_utc:
-                          overdue_minutes = (now - due_utc).total_seconds() / 60
-                          if overdue_minutes > 150:
-                              problems.append(
-                                  f"Scheduled V9 scan at {due_slots[-1].strftime('%H:%M')} Beijing time "
-                                  f"has not succeeded after {overdue_minutes:.0f} minutes "
-                                  "(grace period: 150 minutes)."
-                              )
+          # Check each configured Beijing scan slot after a 35-minute grace period.
+          for hour in (8, 12, 16, 20, 22):
+              due_bj = now_bj.replace(hour=hour, minute=0, second=0, microsecond=0)
+              if now_bj < due_bj + timedelta(minutes=35):
+                  continue
+              due_utc = due_bj.astimezone(timezone.utc)
+              matches = []
+              for run in scanner_runs:
+                  created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+                  if due_utc - timedelta(minutes=10) <= created <= now_utc:
+                      matches.append(run)
+
+              if not matches:
+                  problems.append(
+                      f"北京时间 {hour:02d}:00 定时扫描未触发（宽限期35分钟）。"
+                  )
+                  continue
+
+              latest = max(matches, key=lambda item: item["created_at"])
+              if latest["status"] != "completed":
+                  pending.append(f"{hour:02d}:00 scan is still running; waiting.")
+              elif latest.get("conclusion") != "success":
+                  problems.append(
+                      f"北京时间 {hour:02d}:00 定时扫描运行失败："
+                      f"run #{latest['run_number']} / {latest.get('conclusion')}。"
+                  )
+              else:
+                  print(
+                      f"Beijing {hour:02d}:00 scheduled scan verified: "
+                      f"run #{latest['run_number']} success."
+                  )
 
           open_issues = request(api + "/issues?state=open&per_page=100")
           watchdog_issue = next(
@@ -99,10 +105,9 @@ jobs:
 
           if problems:
               details = "\\n".join(f"- {p}" for p in problems)
-              run_url = latest.get("html_url", "Unavailable") if latest else "No run found"
               body = (
-                  "The automated V9 scan watchdog detected a problem.\\n\\n"
-                  f"{details}\\n\\nLatest run: {run_url}\\n\\n"
+                  "The V9 scheduled-scan watchdog detected a problem.\\n\\n"
+                  f"{details}\\n\\n"
                   "Please inspect the V9 GitHub Actions workflow and its logs."
               )
               if watchdog_issue:
@@ -117,14 +122,34 @@ jobs:
                       },
                   )
                   print(f"Created watchdog alert: {created['html_url']}")
-              raise SystemExit("V9 scan health check failed.")
-          else:
-              print("V9 scan health is within the expected 150-minute window.")
-              if watchdog_issue:
-                  request(
-                      api + f"/issues/{watchdog_issue['number']}",
-                      method="PATCH",
-                      payload={"state": "closed"},
-                  )
-                  print(f"Closed recovered watchdog alert #{watchdog_issue['number']}.")
+                  if bark_key:
+                      payload = json.dumps({
+                          "device_key": bark_key,
+                          "title": "VEGAS V9 定时扫描告警",
+                          "body": details,
+                          "group": "VEGAS V9",
+                          "level": "active",
+                      }, ensure_ascii=False).encode("utf-8")
+                      bark_request = urllib.request.Request(
+                          "https://api.day.app/push",
+                          data=payload,
+                          headers={"Content-Type": "application/json"},
+                          method="POST",
+                      )
+                      with urllib.request.urlopen(bark_request, timeout=20) as response:
+                          print(f"Bark alert accepted: HTTP {response.status}")
+                  else:
+                      print("V9_BARK_KEY is missing; GitHub issue created but Bark alert skipped.")
+          elif watchdog_issue:
+              request(
+                  api + f"/issues/{watchdog_issue['number']}",
+                  method="PATCH",
+                  payload={"state": "closed"},
+              )
+              print(f"Closed recovered watchdog alert #{watchdog_issue['number']}.")
+
+          if pending:
+              print("Pending scans (not alerted): " + "; ".join(pending))
+          if not problems:
+              print("All due scheduled V9 scans are verified or still within their run window.")
           PY
