@@ -216,6 +216,68 @@ jobs:
           rm -f "$credentials_file"
           echo "::error::Unable to publish V9 signal manifest to Vegas Octopus V2 after 3 attempts."
           exit 1
+      - name: Publish sanitized signal state directly to Vegas Octopus V1
+        if: ${{ always() && steps.scan.outcome == 'success' && steps.manifest.outcome == 'success' }}
+        env:
+          OCTOPUS_REPO_TOKEN: ${{ secrets.OCTOPUS_REPO_TOKEN }}
+        run: |
+          if [ -z "${OCTOPUS_REPO_TOKEN}" ]; then
+            echo "::error::OCTOPUS_REPO_TOKEN is missing; cannot publish V9 signals to Vegas Octopus V1."
+            exit 1
+          fi
+          if [ ! -f /tmp/v9-public-signals.json ]; then
+            echo "::error::Independent public signal manifest is missing."
+            exit 1
+          fi
+          credentials_file=/tmp/octopus-v1-git-credentials
+          printf 'https://x-access-token:%s@github.com\\n' "$OCTOPUS_REPO_TOKEN" > "$credentials_file"
+          chmod 600 "$credentials_file"
+          for attempt in 1 2 3; do
+            rm -rf /tmp/octopus-v1
+            if ! git clone --depth 1 https://github.com/MraJJqq/vegas-octopus.git /tmp/octopus-v1; then
+              echo "Octopus V1 clone attempt $attempt failed."
+              sleep $((attempt * 2))
+              continue
+            fi
+            cd /tmp/octopus-v1
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config credential.helper "store --file=$credentials_file"
+            cp /tmp/v9-public-signals.json data/v9-signals.json
+            git add data/v9-signals.json
+            verify_remote_manifest() {
+              git fetch origin main
+              expected_hash=$(sha256sum /tmp/v9-public-signals.json | awk '{print $1}')
+              remote_hash=$(git show origin/main:data/v9-signals.json | sha256sum | awk '{print $1}')
+              if [ "$expected_hash" != "$remote_hash" ]; then
+                echo "::warning::Octopus V1 feed hash does not match the V9 source manifest."
+                return 1
+              fi
+              echo "Octopus V1 V9 feed SHA-256 verified: $remote_hash"
+              return 0
+            }
+            if git diff --cached --quiet; then
+              echo "Octopus V1 V9 feed already matches the V9 source manifest."
+              if verify_remote_manifest; then
+                rm -f "$credentials_file"
+                exit 0
+              fi
+              sleep $((attempt * 2))
+              continue
+            fi
+            git commit -m "chore: update direct V9 signal feed"
+            if git push origin HEAD:main; then
+              if verify_remote_manifest; then
+                rm -f "$credentials_file"
+                exit 0
+              fi
+            fi
+            echo "Octopus V1 push attempt $attempt failed; retrying."
+            sleep $((attempt * 2))
+          done
+          rm -f "$credentials_file"
+          echo "::error::Unable to publish V9 signal manifest to Vegas Octopus V1 after 3 attempts."
+          exit 1
       - name: Upload scan report
         if: ${{ always() && steps.scan.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
