@@ -230,7 +230,7 @@ jobs:
             exit 1
           fi
           credentials_file=/tmp/octopus-v1-git-credentials
-          printf 'https://x-access-token:%s@github.com\\n' "$OCTOPUS_REPO_TOKEN" > "$credentials_file"
+          printf 'https://x-access-token:%s@github.com\n' "$OCTOPUS_REPO_TOKEN" > "$credentials_file"
           chmod 600 "$credentials_file"
           for attempt in 1 2 3; do
             rm -rf /tmp/octopus-v1
